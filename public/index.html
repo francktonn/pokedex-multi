@@ -4216,6 +4216,27 @@
     if(e.key === "Escape" && guessOverlay.classList.contains("open")) guessClose();
   });
 
+  // ---------- Confirmation avant de quitter / rafraîchir la page ----------
+  // Évite qu'un clic accidentel sur "Actualiser", "Fermer l'onglet" ou "Précédent"
+  // ne coupe tout le monde en pleine partie multijoueur (ou fasse perdre une manche
+  // solo en cours). Le navigateur affiche sa propre boîte de dialogue de confirmation ;
+  // les navigateurs modernes n'affichent plus de texte personnalisé pour des raisons de
+  // sécurité, mais définir returnValue reste nécessaire pour déclencher l'alerte native.
+  function hasUnsavedGameInProgress(){
+    // Partie multijoueur active (lobby ou manche en cours) : quitter fait perdre sa
+    // place / son secret vis-à-vis des autres joueurs.
+    if(mpRoomCode) return true;
+    // Partie solo : un Pokémon a déjà été tiré (une devinette est en cours).
+    if(current) return true;
+    return false;
+  }
+  window.addEventListener("beforeunload", function(e){
+    if(!hasUnsavedGameInProgress()) return;
+    e.preventDefault();
+    e.returnValue = "Une partie est en cours : si tu quittes ou actualises la page maintenant, tu risques de perdre ta progression (et ton secret pour les autres joueurs, en multijoueur). Continuer ?";
+    return e.returnValue;
+  });
+
   setLights(null);
   getFrenchIndex(); // préchauffe l'index des noms français pour des suggestions instantanées
   getSpeciesMeta(); // préchauffe les métadonnées (génération/catégorie/formes) pour la configuration de la partie
