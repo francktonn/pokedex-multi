@@ -2826,22 +2826,6 @@
     }
   }
 
-  async function mpTryAutoRejoin(){
-    const session = mpLoadSession();
-    if(!session || !session.code || !session.playerId) return;
-    const state = await mpApiGetState(session.code, session.playerId);
-    if(state && state.me){
-      mpRoomCode = session.code;
-      mpPlayerId = session.playerId;
-      mpPlayerName = session.name;
-      mpCurrentStatus = state.status || "lobby";
-      mpUpdateDrawAvailability();
-      mpStartPolling(); // reprend la synchro en arrière-plan sans attendre l'ouverture de la popup
-    }else{
-      mpClearSession();
-    }
-  }
-
   // ---------- Actions ----------
   async function drawPokemon(){
     clearNotepad();
@@ -2932,7 +2916,7 @@
   clearHistory(); // vide l'historique des tirages à chaque chargement de page (F5)
   setLights(null);
   getFrenchIndex(); // préchauffe l'index des noms français pour des suggestions instantanées
-  mpTryAutoRejoin(); // recolle automatiquement à la partie en cours si la page est rechargée
+  mpClearSession(); // on ne recolle plus automatiquement à l'ancienne partie après un rechargement
 })();
 </script>
 </body>
