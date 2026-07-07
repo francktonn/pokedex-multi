@@ -46,15 +46,11 @@
   /* ============ LAYOUT ============ */
   .stage{
     width:100%;
-    max-width:1080px;
+    max-width:460px;
     display:grid;
-    grid-template-columns: minmax(0,460px) minmax(220px, 320px);
-    gap:28px;
-    align-items:start;
+    grid-template-columns: minmax(0,460px);
     justify-content:center;
-  }
-  @media (max-width: 860px){
-    .stage{grid-template-columns: minmax(0, 460px); justify-items:center;}
+    align-items:start;
   }
 
   /* ============ DEVICE ============ */
@@ -449,77 +445,6 @@
     padding:11px 8px;
   }
   .btn-secondary:active{ box-shadow: 0 1px 0 rgba(0,0,0,.15); }
-  .btn-secondary.copied{ color:#2a7a3d; }
-
-  /* ============ HISTORY PANEL ============ */
-  .history-panel{
-    width:100%;
-    max-width:460px;
-    background: var(--paper);
-    border-radius: var(--radius-md);
-    padding:16px;
-    box-shadow: 0 10px 0 rgba(0,0,0,.18), 0 16px 24px rgba(0,0,0,.3);
-  }
-  .history-head{
-    display:flex; align-items:center; justify-content:space-between;
-    margin-bottom:10px;
-  }
-  .history-title{
-    font-family:'Silkscreen', monospace;
-    font-size:12px;
-    color:#6b6357;
-  }
-  .history-clear{
-    font-family:'Nunito';
-    font-weight:700;
-    font-size:11.5px;
-    color:var(--red-dark);
-    background:none;
-    border:none;
-    cursor:pointer;
-    text-decoration:underline;
-  }
-  .history-close{
-    display:none; /* réapparaît uniquement quand le panneau est un tiroir plein écran (mobile) */
-    background:none;
-    border:none;
-    color:var(--ink);
-    font-size:18px;
-    line-height:1;
-    cursor:pointer;
-    padding:2px 4px;
-  }
-  .history-list{
-    display:flex;
-    flex-direction:column;
-    gap:6px;
-    max-height:520px;
-    overflow-y:auto;
-  }
-  .history-empty{
-    font-size:12.5px;
-    color:#8c8474;
-    text-align:center;
-    padding:20px 10px;
-  }
-  .history-item{
-    display:flex;
-    align-items:center;
-    gap:10px;
-    background:#fff;
-    border-radius:10px;
-    padding:6px 10px;
-    cursor:pointer;
-    border:none;
-    width:100%;
-    text-align:left;
-    box-shadow: inset 0 0 0 1px rgba(0,0,0,.06);
-    font-family:'Nunito';
-  }
-  .history-item:hover{ box-shadow: inset 0 0 0 1.5px var(--red); }
-  .history-item img{ width:36px; height:36px; object-fit:contain; }
-  .history-item .hname{ font-weight:700; text-transform:capitalize; font-size:13.5px; color:var(--ink);}
-  .history-item .hno{ font-family:'Silkscreen'; font-size:9.5px; color:#8c8474; margin-left:auto;}
 
   /* ============ MULTIJOUEUR ============ */
   .mp-panel .notepad-panel{ max-width:420px; max-height:min(680px, 90vh); }
@@ -787,30 +712,8 @@
     .btn{ padding:11px 16px; font-size:14px; }
     .mp-quickbar{ margin-top:10px; padding:8px 10px; }
 
-    /* L'historique devient un tiroir plein écran (ouvert via le bouton 📜) au lieu
-       de rester affiché sous le Pokédex, ce qui obligeait sinon à scroller la page. */
-    .history-panel{ display:none; }
-    .history-panel.mobile-open{
-      display:flex;
-      flex-direction:column;
-      position:fixed;
-      inset:0;
-      z-index:120;
-      max-width:none;
-      width:100%;
-      height:100%;
-      border-radius:0;
-      padding:calc(16px + env(safe-area-inset-top)) 16px 16px;
-    }
-    .history-panel.mobile-open .history-list{ max-height:none; flex:1; }
-    .history-close{ display:inline-block; }
-
     .fab-stack{ right:14px; bottom:calc(14px + env(safe-area-inset-bottom)); gap:8px; }
     .fab-btn{ width:44px; height:44px; font-size:18px; }
-  }
-
-  @media (min-width: 761px){
-    .fab-history{ display:none; } /* sur desktop, l'historique est déjà visible en permanence à côté */
   }
 
   /* ============ FLOATING ACTION BUTTONS (recherche + bloc-note) ============ */
@@ -1107,9 +1010,6 @@
 
     <div class="controls">
       <button class="btn btn-main" id="btnDraw">🎲 Tirer un Pokémon</button>
-      <div class="btn-row">
-        <button class="btn btn-secondary" id="btnCopy" disabled>📋 Copier les infos</button>
-      </div>
     </div>
 
     <!-- MULTIJOUEUR — barre rapide, toujours visible pendant une partie : plus besoin
@@ -1123,25 +1023,12 @@
       <div id="mpQuickGuessArea"></div>
     </div>
   </div>
-
-  <!-- HISTORY -->
-  <div class="history-panel" id="historyPanel">
-    <div class="history-head">
-      <span class="history-title">HISTORIQUE DES TIRAGES</span>
-      <button class="history-close" id="btnHistoryClose" aria-label="Fermer">✕</button>
-      <button class="history-clear" id="btnClearHistory">Effacer</button>
-    </div>
-    <div class="history-list" id="historyList">
-      <div class="history-empty" id="historyEmpty">Aucun tirage pour l'instant.</div>
-    </div>
-  </div>
 </div>
 
 <!-- FLOATING ACTION BUTTONS -->
 <div class="fab-stack">
   <button class="fab-btn" id="btnSearch" title="Rechercher un Pokémon" aria-label="Rechercher un Pokémon">🔍</button>
   <button class="fab-btn" id="btnMultiplayer" title="Multijoueur" aria-label="Ouvrir le mode multijoueur">👥</button>
-  <button class="fab-btn fab-history" id="btnHistoryToggle" title="Historique" aria-label="Ouvrir l'historique">📜</button>
   <button class="fab-btn" id="btnNotepad" title="Bloc-note" aria-label="Ouvrir le bloc-note">📝</button>
 </div>
 
@@ -1243,8 +1130,6 @@
   "use strict";
 
   const MAX_DEX_ID = 807; // Génération I à VII
-  const HISTORY_KEY = "pokedex_devinette_history_v4";
-  const MAX_HISTORY = 25;
   const NOTEPAD_KEY = "pokedex_devinette_notepad_v1";
 
   const TYPE_COLORS = {
@@ -1390,8 +1275,6 @@
 
   // ---- DOM ----
   const btnDraw = document.getElementById("btnDraw");
-  const btnCopy = document.getElementById("btnCopy");
-  const btnClearHistory = document.getElementById("btnClearHistory");
   const screenContent = document.getElementById("screenContent");
   const dexNo = document.getElementById("dexNo");
   const dexNoRegional = document.getElementById("dexNoRegional");
@@ -1414,11 +1297,6 @@
   const formsRow = document.getElementById("formsRow");
   const lightBusy = document.getElementById("lightBusy");
   const lightReady = document.getElementById("lightReady");
-  const historyList = document.getElementById("historyList");
-  const historyEmpty = document.getElementById("historyEmpty");
-  const historyPanel = document.getElementById("historyPanel");
-  const btnHistoryToggle = document.getElementById("btnHistoryToggle");
-  const btnHistoryClose = document.getElementById("btnHistoryClose");
   const btnNotepad = document.getElementById("btnNotepad");
   const btnNotepadClose = document.getElementById("btnNotepadClose");
   const btnNotepadClear = document.getElementById("btnNotepadClear");
@@ -1911,7 +1789,6 @@
     `;
     nameplate.style.display = "none";
     infoCard.style.display = "none";
-    btnCopy.disabled = true;
     dexNoRegional.textContent = "";
   }
 
@@ -2016,7 +1893,6 @@
 
     nameplate.style.display = "flex";
     infoCard.style.display = "block";
-    btnCopy.disabled = false;
     setLights("ready");
 
     pkmName.textContent = data.displayName;
@@ -2099,62 +1975,6 @@
     evo.descendants.forEach(d => {
       targetEl.appendChild(makeEvoArrow());
       targetEl.appendChild(makeEvoStage(d, { trigger: d.trigger }));
-    });
-  }
-
-  // ---------- History (localStorage) ----------
-  function loadHistory(){
-    try{
-      return JSON.parse(localStorage.getItem(HISTORY_KEY)) || [];
-    }catch(e){ return []; }
-  }
-  function saveHistory(list){
-    try{ localStorage.setItem(HISTORY_KEY, JSON.stringify(list)); }catch(e){}
-  }
-  function pushHistory(data){
-    const list = loadHistory();
-    list.unshift(data);
-    if(list.length > MAX_HISTORY) list.length = MAX_HISTORY;
-    saveHistory(list);
-    renderHistory();
-  }
-  function renderHistory(){
-    const list = loadHistory();
-    historyList.innerHTML = "";
-    if(list.length === 0){
-      historyList.appendChild(historyEmpty);
-      historyEmpty.style.display = "block";
-      return;
-    }
-    list.forEach((d, idx) => {
-      const btn = document.createElement("button");
-      btn.className = "history-item";
-      btn.dataset.idx = idx;
-
-      btn.appendChild(createImgWithFallback([d.spriteSmall, d.sprite], ""));
-
-      const nameSpan = document.createElement("span");
-      nameSpan.className = "hname";
-      nameSpan.textContent = d.displayName || formatName(d.name);
-      btn.appendChild(nameSpan);
-
-      const noSpan = document.createElement("span");
-      noSpan.className = "hno";
-      noSpan.textContent = "N° " + String(d.id).padStart(3,"0");
-      btn.appendChild(noSpan);
-
-      historyList.appendChild(btn);
-    });
-    historyList.querySelectorAll(".history-item").forEach(btn => {
-      btn.addEventListener("click", () => {
-        const list2 = loadHistory();
-        const d = list2[parseInt(btn.dataset.idx,10)];
-        if(d){
-          stopDexFlicker(d.id);
-          renderPokemon(d);
-          soundReveal();
-        }
-      });
     });
   }
 
@@ -2883,7 +2703,6 @@
       try{
         const data = await loadPokemon(newId);
         renderPokemon(data);
-        pushHistory(data);
       }catch(e){}
       // On ferme la popup Multijoueur pour laisser voir l'écran du Pokédex avec le
       // nouveau secret révélé (petit délai pour laisser le temps de lire un éventuel
@@ -2921,7 +2740,6 @@
         await new Promise(r => setTimeout(r, 550));
         stopDexFlicker(data.id);
         renderPokemon(data);
-        pushHistory(data);
         soundReveal();
       }else{
         stopDexFlicker(randomId());
@@ -3083,7 +2901,6 @@
       await new Promise(r => setTimeout(r, 550));
       stopDexFlicker(data.id);
       renderPokemon(data);
-      pushHistory(data);
       soundReveal();
     }catch(err){
       stopDexFlicker(id);
@@ -3094,42 +2911,8 @@
     }
   }
 
-  async function copyInfo(){
-    if(!current) return;
-    const d = current;
-    const lines = [
-      `${d.displayName || formatName(d.name)} (N° ${String(d.id).padStart(3,"0")} national${d.regionalNumber ? `, N° ${String(d.regionalNumber).padStart(3,"0")} ${d.regionalRegion}` : ""})`,
-      d.genus,
-      `Types : ${d.types.map(t => TYPE_FR[t]||t).join(", ")}`,
-      `Catégorie : ${d.category.icon} ${d.category.label}`,
-      `Capture : ${d.captureRate.icon} ${d.captureRate.label}`,
-      `Génération : ${d.generation}`,
-      `Taille : ${d.heightM} m — Poids : ${d.weightKg} kg`,
-      `"${d.flavor}"`
-    ];
-    const text = lines.join("\n");
-    try{
-      await navigator.clipboard.writeText(text);
-      btnCopy.textContent = "✅ Copié !";
-      btnCopy.classList.add("copied");
-    }catch(e){
-      btnCopy.textContent = "Impossible de copier";
-    }
-    setTimeout(() => {
-      btnCopy.textContent = "📋 Copier";
-      btnCopy.classList.remove("copied");
-    }, 1600);
-  }
-
-  function clearHistory(){
-    saveHistory([]);
-    renderHistory();
-  }
-
   // ---------- Init ----------
   btnDraw.addEventListener("click", drawPokemon);
-  btnCopy.addEventListener("click", copyInfo);
-  btnClearHistory.addEventListener("click", clearHistory);
   btnNotepad.addEventListener("click", openNotepad);
   btnNotepadClose.addEventListener("click", closeNotepad);
   btnNotepadClear.addEventListener("click", clearNotepad);
@@ -3139,7 +2922,6 @@
     if(e.key !== "Escape") return;
     if(notepadOverlay.classList.contains("open")) closeNotepad();
     if(searchOverlay.classList.contains("open")) closeSearch();
-    if(historyPanel.classList.contains("mobile-open")) historyPanel.classList.remove("mobile-open");
   });
 
   btnSearch.addEventListener("click", openSearch);
@@ -3156,10 +2938,6 @@
     if(e.key === "Escape" && mpOverlay.classList.contains("open")) mpClose();
   });
 
-  if(btnHistoryToggle) btnHistoryToggle.addEventListener("click", () => historyPanel.classList.add("mobile-open"));
-  if(btnHistoryClose) btnHistoryClose.addEventListener("click", () => historyPanel.classList.remove("mobile-open"));
-
-  clearHistory(); // vide l'historique des tirages à chaque chargement de page (F5)
   setLights(null);
   getFrenchIndex(); // préchauffe l'index des noms français pour des suggestions instantanées
   mpClearSession(); // on ne recolle plus automatiquement à l'ancienne partie après un rechargement
