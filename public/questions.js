@@ -75,7 +75,7 @@
     { id: "size_petit", text: "Mesure-t-il moins de 50 cm ?", tags: ["taille", "petit"] },
     { id: "weight_lourd", text: "Pèse-t-il plus de 50 kg ?", tags: ["poids", "lourd"] },
     { id: "weight_leger", text: "Pèse-t-il moins de 10 kg ?", tags: ["poids", "léger", "leger"] },
-
+ 
     // ---- Capture (2) ----
     { id: "capture_facile", text: "Sa capture est-elle facile ou très facile ?", tags: ["capture", "facile"] },
     { id: "capture_difficile", text: "Sa capture est-elle difficile, très difficile ou extrême ?", tags: ["capture", "difficile"] },
