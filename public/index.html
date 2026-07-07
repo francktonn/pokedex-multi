@@ -3193,18 +3193,30 @@
   // ont presque toujours une fiche complète. On retombe désormais sur le même filtre "hors
   // ligne" que lorsque la carte entière est indisponible : uniquement par plage de génération
   // connue localement, ce qui reste sûr même sans métadonnées de catégorie.
+  // Configuration réellement "en vigueur" pour la recherche manuelle : celle de la partie
+  // multijoueur en cours si on est dans une salle (mpRoomConfig, envoyée par l'hôte),
+  // sinon la configuration solo locale (gameSettings). Avant ce correctif, la recherche
+  // manuelle ignorait complètement la configuration multijoueur : "Valider" dans la fenêtre
+  // de configuration d'une partie envoyait la config au serveur (mpSubmitConfig) sans jamais
+  // toucher à gameSettings, donc la recherche restait filtrée par l'ancienne config solo
+  // (souvent "toutes générations") au lieu de celle réellement active dans la partie.
+  function activeSearchSettings(){
+    return (mpRoomCode && mpRoomConfig) ? mpRoomConfig : gameSettings;
+  }
+
   function isIdAllowedFallback(id){
     const gen = generationOfId(id);
-    return gen ? gameSettings.generations.includes(gen) : true;
+    return gen ? activeSearchSettings().generations.includes(gen) : true;
   }
 
   async function getSearchableFrenchIndex(){
     const list = await getFrenchIndex();
     const meta = await getSpeciesMeta().catch(() => null);
     if(!meta) return list.filter(item => isIdAllowedFallback(item.id)); // pas de métadonnées dispo (hors-ligne) : filtrage par génération uniquement
+    const settings = activeSearchSettings();
     return list.filter(item => {
       const m = meta.get(item.id);
-      return m ? isSpeciesEligible(m, gameSettings) : isIdAllowedFallback(item.id);
+      return m ? isSpeciesEligible(m, settings) : isIdAllowedFallback(item.id);
     });
   }
 
@@ -3213,7 +3225,7 @@
     const meta = await getSpeciesMeta().catch(() => null);
     if(!meta) return isIdAllowedFallback(id);
     const m = meta.get(id);
-    return m ? isSpeciesEligible(m, gameSettings) : isIdAllowedFallback(id);
+    return m ? isSpeciesEligible(m, activeSearchSettings()) : isIdAllowedFallback(id);
   }
 
   const SEARCH_EXCLUDED_MSG = "Ce Pokémon est exclu par la configuration actuelle de la partie (génération ou catégorie désactivée). Change ça via le bouton ⚙️ Configuration de la partie.";
