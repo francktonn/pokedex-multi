@@ -3840,17 +3840,27 @@
       return;
     }
     const isPlaying = state.status === "playing";
-    guessBody.innerHTML = `
-      <div class="mp-code-banner"><span>Code : <span class="mp-code-value">${mpEscapeHtml(mpRoomCode)}</span></span></div>
-      <div class="mp-section-label">Joueurs</div>
-      <div class="mp-players-list" id="guessPlayersList"></div>
-      <div id="guessGuessArea"></div>
-      <div class="mp-note">${isPlaying
+    // On ne reconstruit le squelette (bannière code + zone de devinette) que la
+    // première fois : sinon, chaque rafraîchissement du sondage (toutes les
+    // quelques secondes) effacerait la case de saisie en plein milieu d'une frappe.
+    let list = document.getElementById("guessPlayersList");
+    if(!list){
+      guessBody.innerHTML = `
+        <div class="mp-code-banner"><span>Code : <span class="mp-code-value">${mpEscapeHtml(mpRoomCode)}</span></span></div>
+        <div class="mp-section-label">Joueurs</div>
+        <div class="mp-players-list" id="guessPlayersList"></div>
+        <div id="guessGuessArea"></div>
+        <div class="mp-note" id="guessNoteText"></div>
+      `;
+      list = document.getElementById("guessPlayersList");
+    }
+    const noteEl = document.getElementById("guessNoteText");
+    if(noteEl){
+      noteEl.textContent = isPlaying
         ? "Devine le Pokémon secret des autres joueurs, même si le tien a déjà été trouvé !"
-        : "En attente que l'hôte lance la partie…"}</div>
-    `;
+        : "En attente que l'hôte lance la partie…";
+    }
     const entries = state.players.slice().sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
-    const list = document.getElementById("guessPlayersList");
     if(!list) return;
     list.innerHTML = entries.map(p => {
       const isMe = p.id === mpPlayerId;
