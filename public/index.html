@@ -275,6 +275,11 @@
   .val.capture-hard, .val.capture-very-hard, .val.capture-extreme{color:#c62828;}
   .val.cat-starter{color:#2e7d32;}
   .val.cat-baby{color:#D685AD;}
+  .val.form-base{color:#8c8474;}
+  .val.form-mega{color:#A33EA1;}
+  .val.form-gmax{color:#c62828;}
+  .val.form-regional{color:#1565C0;}
+  .val.form-other{color:#6F35FC;}
   .val.cat-wild{color:var(--ink);}
 
   .section-label{
@@ -1259,6 +1264,7 @@
         <div class="info-tile"><span class="eyebrow">Couleur</span><div class="val" id="valColor">-</div></div>
         <div class="info-tile"><span class="eyebrow">Catégorie</span><div class="val" id="valCategory">-</div></div>
         <div class="info-tile"><span class="eyebrow">Capture</span><div class="val" id="valCapture">-</div></div>
+        <div class="info-tile"><span class="eyebrow">Forme</span><div class="val" id="valForm">-</div></div>
       </div>
 
       <div class="section-label">Faiblesses &amp; résistances</div>
@@ -1356,6 +1362,7 @@
             <div class="info-tile"><span class="eyebrow">Couleur</span><div class="val" id="searchValColor">-</div></div>
             <div class="info-tile"><span class="eyebrow">Catégorie</span><div class="val" id="searchValCategory">-</div></div>
             <div class="info-tile"><span class="eyebrow">Capture</span><div class="val" id="searchValCapture">-</div></div>
+            <div class="info-tile"><span class="eyebrow">Forme</span><div class="val" id="searchValForm">-</div></div>
           </div>
 
           <div class="section-label">Faiblesses &amp; résistances</div>
@@ -1673,6 +1680,7 @@
   const valColor = document.getElementById("valColor");
   const valCategory = document.getElementById("valCategory");
   const valCapture = document.getElementById("valCapture");
+  const valForm = document.getElementById("valForm");
   const typeEffect = document.getElementById("typeEffect");
   const flavorText = document.getElementById("flavorText");
   const evoRow = document.getElementById("evoRow");
@@ -1734,6 +1742,7 @@
   const searchValColor = document.getElementById("searchValColor");
   const searchValCategory = document.getElementById("searchValCategory");
   const searchValCapture = document.getElementById("searchValCapture");
+  const searchValForm = document.getElementById("searchValForm");
   const searchTypeEffect = document.getElementById("searchTypeEffect");
   const searchEvoRow = document.getElementById("searchEvoRow");
   const searchFormsLabel = document.getElementById("searchFormsLabel");
@@ -2156,6 +2165,13 @@
     const regional = getRegionalDexEntry(species);
     const displayName = frenchNameFrom(species.names, pokemon.name);
 
+    // Forme affichée : "de base" si c'est la variété par défaut de l'espèce, sinon on
+    // réutilise les mêmes helpers que pour la liste "Autres formes" afin de rester cohérent
+    // (Méga-Évolution, Forme Gigamax, Forme régionale, etc.).
+    const formInfo = pokemon.is_default
+      ? { key: "base", label: "Forme de base", icon: "⭐" }
+      : { key: formKindFromSuffix(pokemon.name, species.name), label: formLabelFromSuffix(pokemon.name, species.name), icon: "🔀" };
+
     // Formes alternatives (Méga-Évolutions, formes régionales, Gigamax, etc.)
     const otherVarieties = (species.varieties || []).filter(v => !v.is_default);
     const forms = (await Promise.all(otherVarieties.map(async v => {
@@ -2195,7 +2211,8 @@
       color: species.color ? (COLOR_FR[species.color.name] || formatSlug(species.color.name)) : "Inconnue",
       category: categoryFor(species),
       captureRate: captureRateInfo(species.capture_rate),
-      forms: forms
+      forms: forms,
+      form: formInfo
     };
   }
 
@@ -2748,6 +2765,8 @@
     valCategory.className = "val cat-" + data.category.key;
     valCapture.textContent = `${data.captureRate.icon} ${data.captureRate.label}`;
     valCapture.className = "val capture-" + data.captureRate.key;
+    valForm.textContent = data.form.label;
+    valForm.className = "val form-" + data.form.key;
 
     renderTypeEffect(data.types);
 
@@ -3109,6 +3128,8 @@
     searchValCategory.className = "val cat-" + data.category.key;
     searchValCapture.textContent = `${data.captureRate.icon} ${data.captureRate.label}`;
     searchValCapture.className = "val capture-" + data.captureRate.key;
+    searchValForm.textContent = data.form.label;
+    searchValForm.className = "val form-" + data.form.key;
 
     searchTypeEffect.innerHTML = buildTypeEffectHTML(data.types);
     searchFlavorText.textContent = data.flavor;
