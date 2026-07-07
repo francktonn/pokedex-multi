@@ -2262,7 +2262,7 @@
 
       try{
         const query = `query {
-          pokemon_v2_pokemonspecies(where: { id: { _lte: ${MAX_DEX_ID} } }) {
+          pokemon_v2_pokemonspecies(where: { id: { _lte: ${MAX_DEX_ID} } }, limit: ${MAX_DEX_ID + 10}) {
             id
             name
             is_legendary
@@ -3149,6 +3149,7 @@
         const query = `query {
           pokemon_v2_pokemonspeciesname(
             where: { language_id: { _eq: 5 }, pokemon_species_id: { _lte: ${MAX_DEX_ID} } }
+            limit: ${MAX_DEX_ID + 10}
           ) {
             pokemon_species_id
             name
@@ -3184,25 +3185,35 @@
   // pourrait de toute façon pas proposer. Utilisé uniquement par la recherche manuelle —
   // ne s'applique volontairement pas aux suggestions de devinette en multijoueur, où le
   // secret d'un autre joueur peut appartenir à n'importe quelle génération.
+  // Filtre de secours utilisé quand une espèce précise n'a pas (ou plus) de fiche dans la
+  // carte de métadonnées (speciesMetaById) — par ex. un trou dans la réponse GraphQL pour
+  // les générations récentes. Auparavant, une fiche manquante était traitée comme "autorisée
+  // par défaut", ce qui laissait passer des Pokémon de générations pourtant désactivées
+  // (ex : Flambino/gen 8) sans jamais gêner les catégories (légendaires, etc.), car celles-ci
+  // ont presque toujours une fiche complète. On retombe désormais sur le même filtre "hors
+  // ligne" que lorsque la carte entière est indisponible : uniquement par plage de génération
+  // connue localement, ce qui reste sûr même sans métadonnées de catégorie.
+  function isIdAllowedFallback(id){
+    const gen = generationOfId(id);
+    return gen ? gameSettings.generations.includes(gen) : true;
+  }
+
   async function getSearchableFrenchIndex(){
     const list = await getFrenchIndex();
     const meta = await getSpeciesMeta().catch(() => null);
-    if(!meta) return list; // pas de métadonnées dispo (hors-ligne) : pas de filtrage possible
+    if(!meta) return list.filter(item => isIdAllowedFallback(item.id)); // pas de métadonnées dispo (hors-ligne) : filtrage par génération uniquement
     return list.filter(item => {
       const m = meta.get(item.id);
-      return m ? isSpeciesEligible(m, gameSettings) : true;
+      return m ? isSpeciesEligible(m, gameSettings) : isIdAllowedFallback(item.id);
     });
   }
 
   // Même logique que ci-dessus, mais pour un numéro de Pokédex nationale tapé directement.
   async function isSearchIdAllowed(id){
     const meta = await getSpeciesMeta().catch(() => null);
-    if(!meta){
-      const gen = generationOfId(id);
-      return gen ? gameSettings.generations.includes(gen) : true;
-    }
+    if(!meta) return isIdAllowedFallback(id);
     const m = meta.get(id);
-    return m ? isSpeciesEligible(m, gameSettings) : true;
+    return m ? isSpeciesEligible(m, gameSettings) : isIdAllowedFallback(id);
   }
 
   const SEARCH_EXCLUDED_MSG = "Ce Pokémon est exclu par la configuration actuelle de la partie (génération ou catégorie désactivée). Change ça via le bouton ⚙️ Configuration de la partie.";
