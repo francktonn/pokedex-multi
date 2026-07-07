@@ -80,6 +80,23 @@ async function saveRoom(code, room) {
   await getRedis().set(roomKey(code), JSON.stringify(room), 'EX', ROOM_TTL_SECONDS);
 }
 
+// Tire un nouveau Pokémon secret pour CHAQUE joueur présent dans la partie, en
+// parallèle (une seule "manche" démarre pour tout le monde en même temps). Ne
+// touche pas aux scores. Met le statut de la partie à "playing".
+async function startNewRound(room) {
+  const pids = Object.keys(room.players);
+  const draws = await Promise.all(pids.map(async (pid) => {
+    const id = randomId();
+    const name = await fetchFrenchName(id);
+    return { pid, id, name };
+  }));
+  draws.forEach(({ pid, id, name }) => {
+    room.players[pid].pokemonId = id;
+    room.players[pid].pokemonName = name;
+  });
+  room.status = 'playing';
+}
+
 // Ne renvoie JAMAIS le nom du Pokémon secret des autres joueurs : seulement le sien
 // (via `me`) et un booléen `hasPokemon` pour les autres. C'est le serveur qui tranche
 // les devinettes, donc personne ne peut "tricher" en lisant les données brutes.
@@ -96,6 +113,9 @@ function sanitizeRoom(room, playerId) {
   const me = playerId && room.players[playerId] ? room.players[playerId] : null;
   return {
     code: room.code,
+    status: room.status || 'lobby',
+    hostId: room.hostId || null,
+    isHost: !!(playerId && room.hostId === playerId),
     players,
     me: me ? { pokemonId: me.pokemonId || null, pokemonName: me.pokemonName || null } : null
   };
@@ -135,6 +155,7 @@ module.exports = async (req, res) => {
       const action = body.action;
 
       // ---- Créer une partie ----
+      // Le créateur devient automatiquement l'hôte (seul lui peut lancer une manche).
       if (action === 'create') {
         const name = (body.name || '').toString().trim().slice(0, 16);
         if (!name) {
@@ -152,6 +173,8 @@ module.exports = async (req, res) => {
         const room = {
           code,
           createdAt: Date.now(),
+          status: 'lobby', // 'lobby' = en attente que l'hôte lance la 1ère manche, 'playing' = manche en cours
+          hostId: playerId,
           players: { [playerId]: { name, score: 0, pokemonId: null, pokemonName: null } }
         };
         await saveRoom(code, room);
@@ -174,13 +197,17 @@ module.exports = async (req, res) => {
         }
         const playerId = 'p_' + Math.random().toString(36).slice(2, 9);
         room.players[playerId] = { name, score: 0, pokemonId: null, pokemonName: null };
+        // Rejoindre en cours de manche : le nouveau joueur attend simplement la
+        // manche suivante (il n'a pas de secret tant que l'hôte n'en relance pas une).
         await saveRoom(code, room);
         res.status(200).json({ code, playerId });
         return;
       }
 
-      // ---- Tirer un Pokémon secret ----
-      if (action === 'draw') {
+      // ---- Lancer une manche pour TOUT LE MONDE (réservé à l'hôte) ----
+      // Utilisé pour la 1ère manche, et peut aussi être utilisé par l'hôte pour
+      // relancer une manche manuellement à tout moment.
+      if (action === 'start') {
         const code = (body.code || '').toString().trim().toUpperCase();
         const playerId = body.playerId;
         const room = await getRoom(code);
@@ -188,12 +215,13 @@ module.exports = async (req, res) => {
           res.status(404).json({ error: 'Partie ou joueur introuvable' });
           return;
         }
-        const id = randomId();
-        const name = await fetchFrenchName(id);
-        room.players[playerId].pokemonId = id;
-        room.players[playerId].pokemonName = name;
+        if (room.hostId !== playerId) {
+          res.status(403).json({ error: "Seul l'hôte de la partie peut lancer une manche" });
+          return;
+        }
+        await startNewRound(room);
         await saveRoom(code, room);
-        res.status(200).json({ id, name });
+        res.status(200).json({ ok: true });
         return;
       }
 
@@ -212,16 +240,37 @@ module.exports = async (req, res) => {
           return;
         }
         const isCorrect = foldFr(guess) === foldFr(target.pokemonName);
-        if (isCorrect) {
-          room.players[playerId].score = (room.players[playerId].score || 0) + 1;
-          const revealedName = target.pokemonName;
-          target.pokemonId = null;
-          target.pokemonName = null;
-          await saveRoom(code, room);
-          res.status(200).json({ correct: true, name: revealedName });
-        } else {
+        if (!isCorrect) {
           res.status(200).json({ correct: false });
+          return;
         }
+
+        room.players[playerId].score = (room.players[playerId].score || 0) + 1;
+        const revealedName = target.pokemonName;
+        target.pokemonId = null;
+        target.pokemonName = null;
+
+        // La manche ne se termine pas dès qu'un Pokémon est trouvé : elle continue
+        // jusqu'à ce qu'il ne reste plus qu'UN SEUL joueur non trouvé. À ce moment,
+        // la partie relance automatiquement une nouvelle manche pour tout le monde,
+        // en conservant les scores, et le dernier joueur restant reçoit +1 point
+        // bonus pour avoir survécu jusqu'au bout de la manche.
+        let roundEnded = false;
+        let lastPlayerName = null;
+        const allPids = Object.keys(room.players);
+        if (room.status === 'playing' && allPids.length >= 2) {
+          const stillHiding = allPids.filter(pid => room.players[pid].pokemonId);
+          if (stillHiding.length === 1) {
+            roundEnded = true;
+            const lastPid = stillHiding[0];
+            room.players[lastPid].score = (room.players[lastPid].score || 0) + 1;
+            lastPlayerName = room.players[lastPid].name;
+            await startNewRound(room); // ré-attribue un secret à tout le monde, scores conservés
+          }
+        }
+
+        await saveRoom(code, room);
+        res.status(200).json({ correct: true, name: revealedName, roundEnded, lastPlayerName });
         return;
       }
 
@@ -232,6 +281,12 @@ module.exports = async (req, res) => {
         const room = await getRoom(code);
         if (room && room.players[playerId]) {
           delete room.players[playerId];
+          // Si l'hôte quitte, on transfère le rôle au joueur restant le plus ancien
+          // pour que la partie ne reste pas bloquée sans personne pour lancer de manche.
+          if (room.hostId === playerId) {
+            const remaining = Object.keys(room.players);
+            room.hostId = remaining.length ? remaining[0] : null;
+          }
           await saveRoom(code, room);
         }
         res.status(200).json({ ok: true });
