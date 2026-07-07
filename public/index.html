@@ -806,7 +806,7 @@
   /* ============ FLOATING ACTION BUTTONS (recherche + bloc-note) ============ */
   .fab-stack{
     position:fixed;
-    right:20px;
+    left:20px;
     bottom:20px;
     display:flex;
     flex-direction:column;
@@ -1301,6 +1301,7 @@
 <!-- FLOATING ACTION BUTTONS -->
 <div class="fab-stack">
   <button class="fab-btn" id="btnSearch" title="Rechercher un Pokémon" aria-label="Rechercher un Pokémon">🔍</button>
+  <button class="fab-btn" id="btnGuess" title="Deviner le Pokémon des autres" aria-label="Deviner le Pokémon des autres">🎯</button>
   <button class="fab-btn" id="btnMultiplayer" title="Multijoueur" aria-label="Ouvrir le mode multijoueur">👥</button>
   <button class="fab-btn" id="btnNotepad" title="Bloc-note" aria-label="Ouvrir le bloc-note">📝</button>
 </div>
@@ -1313,6 +1314,19 @@
       <button class="notepad-close" id="btnMpClose" aria-label="Fermer">✕</button>
     </div>
     <div class="notepad-body" id="mpBody">
+      <!-- rempli dynamiquement en JS -->
+    </div>
+  </div>
+</div>
+
+<!-- DEVINER (deviner le Pokémon des autres joueurs, sans passer par l'onglet Multijoueur) -->
+<div class="notepad-overlay mp-panel" id="guessOverlay">
+  <div class="notepad-panel">
+    <div class="notepad-head">
+      <span class="notepad-title">🎯 DEVINER LES AUTRES</span>
+      <button class="notepad-close" id="btnGuessClose" aria-label="Fermer">✕</button>
+    </div>
+    <div class="notepad-body" id="guessBody">
       <!-- rempli dynamiquement en JS -->
     </div>
   </div>
@@ -1720,6 +1734,11 @@
   const mpBody = document.getElementById("mpBody");
   const mpQuickBar = document.getElementById("mpQuickBar");
   const mpQuickGuessArea = document.getElementById("mpQuickGuessArea");
+
+  const btnGuess = document.getElementById("btnGuess");
+  const btnGuessClose = document.getElementById("btnGuessClose");
+  const guessOverlay = document.getElementById("guessOverlay");
+  const guessBody = document.getElementById("guessBody");
 
   const btnSearch = document.getElementById("btnSearch");
   const btnSearchClose = document.getElementById("btnSearchClose");
@@ -3499,6 +3518,7 @@
   let mpCurrentStatus = null; // statut de la manche en cours ('lobby' | 'playing' | null si pas en partie)
   let mpIsHost = false; // suis-je l'hôte de la partie en cours ? (seul lui peut modifier la config)
   let mpRoomConfig = null; // dernière configuration connue de la partie (générations/catégories/formes)
+  let mpLastKnownState = null; // dernier état de partie reçu, réutilisé pour afficher le panneau "Deviner"
 
   // Le tirage aléatoire "solo" (bouton principal du Pokédex) est désactivé pendant
   // qu'une manche multijoueur est active : sinon on pourrait re-tirer librement un
@@ -3714,6 +3734,7 @@
   }
 
   function mpRenderPlayersList(state){
+    mpLastKnownState = state && state.players ? state : null;
     if(!state || !state.players){
       mpStopPolling();
       mpRoomCode = null; mpPlayerId = null; mpPlayerName = null;
@@ -3723,6 +3744,7 @@
       mpRoomConfig = null;
       mpUpdateDrawAvailability();
       mpRenderQuickBar(null);
+      guessRenderPanel(null);
       notepadSyncMpPlayers(null);
       mpRenderEntry("La partie n'existe plus ou tu n'en fais plus partie.");
       return;
@@ -3767,18 +3789,68 @@
     const noteText = document.getElementById("mpNoteText");
     if(noteText){
       noteText.textContent = isPlaying
-        ? "Devine le Pokémon secret des autres joueurs, même si le tien a déjà été trouvé ! La manche se termine quand il ne reste plus qu'un seul joueur non trouvé — une nouvelle manche démarre alors automatiquement pour tout le monde, scores conservés."
+        ? "Utilise le bouton 🎯 « Deviner » (dans les boutons flottants) pour deviner le Pokémon secret des autres joueurs, même si le tien a déjà été trouvé ! La manche se termine quand il ne reste plus qu'un seul joueur non trouvé — une nouvelle manche démarre alors automatiquement pour tout le monde, scores conservés."
         : "Une fois que l'hôte aura lancé la partie, chacun reçoit un Pokémon secret en même temps.";
     }
 
     const entries = state.players.slice().sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
 
-    // Barre rapide sur l'écran principal : toujours mise à jour, même si l'onglet
-    // Multijoueur n'est pas ouvert, pour pouvoir deviner sans jamais y aller.
+    // Barre rapide sur l'écran principal, et panneau dédié "Deviner" : toujours mis à
+    // jour, même si l'onglet Multijoueur n'est pas ouvert.
     mpRenderQuickBar(state);
+    guessRenderPanel(state);
     notepadSyncMpPlayers(state);
 
+    // La liste dans l'onglet Multijoueur sert désormais uniquement à voir les scores
+    // et le statut de chacun ; deviner se fait via le bouton dédié 🎯 « Deviner ».
     const list = document.getElementById("mpPlayersList");
+    if(!list) return;
+    list.innerHTML = entries.map(p => {
+      const isMe = p.id === mpPlayerId;
+      let rightPart;
+      if(isMe){
+        rightPart = "";
+      }else if(p.hasPokemon){
+        rightPart = `<span class="mp-player-waiting">à deviner</span>`;
+      }else if(isPlaying){
+        rightPart = `<span class="mp-player-waiting">trouvé ✅</span>`;
+      }else{
+        rightPart = `<span class="mp-player-waiting">en attente</span>`;
+      }
+      return `
+        <div class="mp-player-row${isMe ? " is-me" : ""}">
+          <span class="mp-player-name">${mpEscapeHtml(p.name)}${isMe ? " (toi)" : ""}${p.id === state.hostId ? " 👑" : ""}</span>
+          <span class="mp-player-score">${p.score} pt${p.score > 1 ? "s" : ""}</span>
+          ${rightPart}
+        </div>`;
+    }).join("");
+  }
+
+  // ---- Panneau dédié "Deviner" (accessible via le bouton flottant 🎯, sans avoir
+  // à ouvrir l'onglet Multijoueur) ----
+  function guessRenderPanel(state){
+    if(!guessBody) return;
+    if(!state || !state.players || !mpRoomCode){
+      guessBody.innerHTML = `
+        <div class="mp-note">Rejoins ou crée une partie dans l'onglet Multijoueur pour pouvoir deviner le Pokémon des autres joueurs.</div>
+        <button class="btn btn-secondary" id="guessOpenMpBtn">👥 Ouvrir Multijoueur</button>
+      `;
+      const openMpBtn = document.getElementById("guessOpenMpBtn");
+      if(openMpBtn) openMpBtn.addEventListener("click", () => { guessClose(); mpOpen(); });
+      return;
+    }
+    const isPlaying = state.status === "playing";
+    guessBody.innerHTML = `
+      <div class="mp-code-banner"><span>Code : <span class="mp-code-value">${mpEscapeHtml(mpRoomCode)}</span></span></div>
+      <div class="mp-section-label">Joueurs</div>
+      <div class="mp-players-list" id="guessPlayersList"></div>
+      <div id="guessGuessArea"></div>
+      <div class="mp-note">${isPlaying
+        ? "Devine le Pokémon secret des autres joueurs, même si le tien a déjà été trouvé !"
+        : "En attente que l'hôte lance la partie…"}</div>
+    `;
+    const entries = state.players.slice().sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+    const list = document.getElementById("guessPlayersList");
     if(!list) return;
     list.innerHTML = entries.map(p => {
       const isMe = p.id === mpPlayerId;
@@ -3802,9 +3874,23 @@
 
     list.querySelectorAll(".mp-guess-btn").forEach(btn => {
       btn.addEventListener("click", () => {
-        mpOpenGuessBox(btn.dataset.pid, btn.dataset.name, "mpGuessArea");
+        mpOpenGuessBox(btn.dataset.pid, btn.dataset.name, "guessGuessArea");
       });
     });
+  }
+
+  function guessOpen(){
+    guessOverlay.classList.add("open");
+    guessRenderPanel(mpLastKnownState);
+    if(mpRoomCode){
+      mpStartPolling();
+      mpApiGetState(mpRoomCode, mpPlayerId).then(state => {
+        if(state){ mpLastKnownState = state.players ? state : null; guessRenderPanel(state); }
+      });
+    }
+  }
+  function guessClose(){
+    guessOverlay.classList.remove("open");
   }
 
   // Barre compacte affichée en permanence sur l'écran principal du Pokédex (sous
@@ -3925,7 +4011,7 @@
     mpGuessAreaId = areaId || "mpGuessArea";
     // Un seul essai de devinette actif à la fois : si l'autre zone en avait un
     // (onglet Multijoueur vs barre rapide de l'écran principal), on la vide.
-    ["mpGuessArea", "mpQuickGuessArea"].forEach(id => {
+    ["mpGuessArea", "mpQuickGuessArea", "guessGuessArea"].forEach(id => {
       if(id !== mpGuessAreaId){
         const other = document.getElementById(id);
         if(other) other.innerHTML = "";
@@ -4046,6 +4132,9 @@
     mpRoomConfig = null;
     mpUpdateDrawAvailability();
     mpClearSession();
+    mpLastKnownState = null;
+    mpRenderQuickBar(null);
+    guessRenderPanel(null);
     notepadSyncMpPlayers(null);
     mpRenderEntry();
     if(code && pid){
@@ -4104,6 +4193,13 @@
   mpOverlay.addEventListener("click", (e) => { if(e.target === mpOverlay) mpClose(); });
   document.addEventListener("keydown", (e) => {
     if(e.key === "Escape" && mpOverlay.classList.contains("open")) mpClose();
+  });
+
+  btnGuess.addEventListener("click", guessOpen);
+  btnGuessClose.addEventListener("click", guessClose);
+  guessOverlay.addEventListener("click", (e) => { if(e.target === guessOverlay) guessClose(); });
+  document.addEventListener("keydown", (e) => {
+    if(e.key === "Escape" && guessOverlay.classList.contains("open")) guessClose();
   });
 
   setLights(null);
