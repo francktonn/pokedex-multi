@@ -2432,7 +2432,9 @@
   }
   function mpClose(){
     mpOverlay.classList.remove("open");
-    mpStopPolling();
+    // Le sondage continue en arrière-plan même popup fermée, pour que l'écran
+    // principal se mette à jour tout seul (nouveau secret, nouvelle manche...)
+    // sans devoir rouvrir l'onglet Multijoueur à chaque fois.
   }
 
   function mpStartPolling(){
@@ -2834,6 +2836,7 @@
       mpPlayerName = session.name;
       mpCurrentStatus = state.status || "lobby";
       mpUpdateDrawAvailability();
+      mpStartPolling(); // reprend la synchro en arrière-plan sans attendre l'ouverture de la popup
     }else{
       mpClearSession();
     }
