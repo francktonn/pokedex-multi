@@ -663,6 +663,186 @@
     box-shadow: inset 0 0 0 1px rgba(0,0,0,.06);
   }
 
+  /* ============ QUIZ CARD (menu principal, plus dans l'onglet multijoueur) ============ */
+  .qz-main-card{
+    width:100%;
+    max-width:460px;
+    background: var(--paper);
+    border-radius: var(--radius-md);
+    padding:16px;
+    box-shadow: 0 10px 0 rgba(0,0,0,.18), 0 16px 24px rgba(0,0,0,.3);
+  }
+  .qz-main-head{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:10px;
+  }
+  .qz-main-title{
+    font-family:'Silkscreen', monospace;
+    font-size:12px;
+    color:#6b6357;
+  }
+
+  /* ============ QUIZ (devinette par questions, tours) ============ */
+  .qz-section{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    background:rgba(0,0,0,.04);
+    border-radius:14px;
+    padding:10px;
+  }
+  .qz-turn-banner{
+    font-family:'Baloo 2', sans-serif;
+    font-weight:700;
+    font-size:12.5px;
+    text-align:center;
+    color:var(--red-dark);
+    background:#fff;
+    border-radius:10px;
+    padding:8px 10px;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.06);
+  }
+  .qz-turn-banner.mine{ color:#8a5a00; background:#fff3d0; }
+  .qz-picker{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+  }
+  .qz-picker-input{
+    font-family:'Nunito', sans-serif;
+    font-size:13px;
+    padding:9px 12px;
+    border-radius:10px;
+    border:1px solid rgba(0,0,0,.15);
+    outline:none;
+  }
+  .qz-picker-list{
+    max-height:220px;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    gap:4px;
+    background:#fff;
+    border-radius:10px;
+    padding:6px;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.06);
+  }
+  .qz-picker-item{
+    text-align:left;
+    font-family:'Nunito', sans-serif;
+    font-size:12.5px;
+    font-weight:600;
+    color:var(--ink);
+    background:none;
+    border:none;
+    border-radius:8px;
+    padding:8px 10px;
+    cursor:pointer;
+  }
+  .qz-picker-item:hover, .qz-picker-item:focus{ background:rgba(214,54,42,.08); }
+  .qz-picker-item.used{
+    color:#b0a898;
+    text-decoration:line-through;
+    cursor:not-allowed;
+    background:none;
+  }
+  .qz-picker-empty{
+    font-size:12px;
+    color:#b0a898;
+    text-align:center;
+    padding:8px;
+    font-style:italic;
+  }
+  .qz-pending-card{
+    background:#fff;
+    border-radius:12px;
+    padding:12px;
+    display:flex;
+    flex-direction:column;
+    gap:10px;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.08), 0 6px 14px rgba(0,0,0,.12);
+  }
+  .qz-pending-question{
+    font-family:'Baloo 2', sans-serif;
+    font-weight:700;
+    font-size:14.5px;
+    color:var(--ink);
+    text-align:center;
+  }
+  .qz-pending-asker{
+    font-size:11px;
+    color:#8c8474;
+    text-align:center;
+  }
+  .qz-answer-row{ display:flex; gap:10px; justify-content:center; }
+  .qz-answer-btn{
+    font-family:'Baloo 2', sans-serif;
+    font-weight:800;
+    font-size:14px;
+    color:#fff;
+    border:none;
+    border-radius:999px;
+    padding:10px 26px;
+    cursor:pointer;
+  }
+  .qz-answer-btn.yes{ background:#2e7d32; box-shadow:0 3px 0 #1b5e20; }
+  .qz-answer-btn.no{ background:var(--red); box-shadow:0 3px 0 var(--red-darker); }
+  .qz-answer-btn:active{ transform:translateY(2px); box-shadow:none; }
+  .qz-answer-btn:disabled{ opacity:.5; cursor:not-allowed; }
+  .qz-waiting-list{ display:flex; flex-wrap:wrap; gap:6px; justify-content:center; }
+  .qz-waiting-pill{
+    font-size:10.5px;
+    font-weight:700;
+    border-radius:999px;
+    padding:3px 9px;
+  }
+  .qz-waiting-pill.answered{ background:rgba(46,125,50,.12); color:#2e7d32; }
+  .qz-waiting-pill.pending{ background:rgba(0,0,0,.06); color:#8c8474; }
+  .qz-history{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    max-height:260px;
+    overflow-y:auto;
+  }
+  .qz-history-item{
+    background:#fff;
+    border-radius:10px;
+    padding:8px 10px;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.06);
+  }
+  .qz-history-turn{
+    font-family:'Silkscreen', monospace;
+    font-size:9.5px;
+    color:#8c8474;
+  }
+  .qz-history-question{
+    font-size:12.5px;
+    font-weight:700;
+    color:var(--ink);
+    margin:2px 0 4px;
+  }
+  .qz-history-answers{
+    display:flex;
+    flex-wrap:wrap;
+    gap:5px;
+  }
+  .qz-history-answer{
+    font-size:10.5px;
+    font-weight:700;
+    border-radius:999px;
+    padding:2px 8px;
+  }
+  .qz-history-answer.oui{ background:rgba(46,125,50,.12); color:#2e7d32; }
+  .qz-history-answer.non{ background:rgba(214,54,42,.12); color:var(--red-dark); }
+  .qz-history-answer.abstain{ background:rgba(0,0,0,.06); color:#8c8474; }
+  .qz-empty-note{
+    font-size:11px;
+    color:#b0a898;
+    text-align:center;
+    font-style:italic;
+  }
+
   @media (prefers-reduced-motion: reduce){
     .pokeball-spin{ animation:none; }
     .btn{ transition:none; }
@@ -973,6 +1153,16 @@
     </div>
   </div>
 
+  <!-- QUIZ (devinette par questions, tours) : toujours visible sur l'écran principal,
+       pas besoin d'ouvrir l'onglet Multijoueur. Masquée tant qu'aucune partie n'a
+       lancé ce mode. -->
+  <div class="qz-main-card" id="qzMainCard" style="display:none;">
+    <div class="qz-main-head">
+      <span class="qz-main-title">❓ DEVINETTE PAR QUESTIONS</span>
+    </div>
+    <div id="qzMainBody"></div>
+  </div>
+
   <!-- HISTORY -->
   <div class="history-panel">
     <div class="history-head">
@@ -1085,6 +1275,7 @@
   </div>
 </div>
 
+<script src="questions.js"></script>
 <script>
 (function(){
   "use strict";
@@ -2355,7 +2546,6 @@
   // le tableau des scores.
   const MP_API = "/api/room";
   const MP_SESSION_KEY = "pokedex_devinette_mp_session_v1";
-  const MP_LAST_NAME_KEY = "pokedex_devinette_mp_last_name_v1"; // mémorise le dernier pseudo utilisé, indépendamment d'une partie en cours
   const MP_POLL_MS = 3000;
 
   let mpRoomCode = null;
@@ -2397,17 +2587,6 @@
   }
   function mpClearSession(){
     try{ localStorage.removeItem(MP_SESSION_KEY); }catch(e){}
-  }
-
-  // Mémorise le dernier pseudo utilisé (séparément de la session de partie), pour
-  // pré-remplir le champ "Ton pseudo" automatiquement la prochaine fois, même après
-  // avoir quitté une partie ou dans un nouvel onglet/appareil... enfin, même
-  // appareil : c'est du localStorage, donc ça reste sur ce navigateur.
-  function mpSaveLastName(name){
-    try{ if(name) localStorage.setItem(MP_LAST_NAME_KEY, name); }catch(e){}
-  }
-  function mpLoadLastName(){
-    try{ return localStorage.getItem(MP_LAST_NAME_KEY) || ""; }catch(e){ return ""; }
   }
 
   // Récupère l'état (sanitisé) d'une partie : liste des joueurs/scores, et mon propre
@@ -2466,7 +2645,7 @@
     mpBody.innerHTML = `
       <div class="mp-note">Crée une partie et partage le code à tes amis (ou plus), ou rejoins une partie existante.</div>
       <div class="mp-section-label">Ton pseudo</div>
-      <input type="text" id="mpNameInput" class="mp-input" maxlength="16" placeholder="Ton pseudo" autocomplete="off" value="${mpEscapeHtml(mpLoadLastName())}">
+      <input type="text" id="mpNameInput" class="mp-input" maxlength="16" placeholder="Ton pseudo" autocomplete="off">
       <button class="btn btn-main" id="mpCreateBtn">✨ Créer une partie</button>
       <div class="mp-divider">— OU —</div>
       <div class="mp-section-label">Code de la partie</div>
@@ -2483,15 +2662,8 @@
       codeInput.value = codeInput.value.toUpperCase();
     });
     codeInput.addEventListener("keydown", (e) => { if(e.key === "Enter") mpHandleJoin(); });
-    const nameInput = document.getElementById("mpNameInput");
-    nameInput.addEventListener("keydown", (e) => {
+    document.getElementById("mpNameInput").addEventListener("keydown", (e) => {
       if(e.key === "Enter") mpHandleCreate();
-    });
-    // Mémorise le pseudo au fur et à mesure de la frappe, pas seulement au moment de
-    // créer/rejoindre : comme ça, même si on ferme la popup sans valider, le pseudo
-    // reste pré-rempli la prochaine fois.
-    nameInput.addEventListener("input", () => {
-      mpSaveLastName(nameInput.value.trim().slice(0, 16));
     });
   }
 
@@ -2513,7 +2685,6 @@
       mpPlayerId = data.playerId;
       mpPlayerName = name;
       mpSaveSession();
-      mpSaveLastName(name);
       mpRenderRoomShell();
       mpStartPolling();
     }catch(e){
@@ -2539,7 +2710,6 @@
       mpPlayerId = data.playerId;
       mpPlayerName = name;
       mpSaveSession();
-      mpSaveLastName(name);
       mpRenderRoomShell();
       mpStartPolling();
     }catch(e){
@@ -2583,6 +2753,7 @@
       mpClearSession();
       mpCurrentStatus = null;
       mpUpdateDrawAvailability();
+      qzRender(null);
       mpRenderEntry("La partie n'existe plus ou tu n'en fais plus partie.");
       return;
     }
@@ -2596,9 +2767,12 @@
     const hostControls = document.getElementById("mpHostControls");
     if(hostControls){
       if(isHost){
-        hostControls.innerHTML = `<button class="btn btn-main" id="mpStartBtn">${isPlaying ? "🔁 Relancer une manche" : "🎲 Lancer la partie"}</button>`;
+        const quizBtn = state.quiz ? "" : `<button class="btn btn-secondary" id="mpQuizStartBtn">❓ Lancer le mode Questions</button>`;
+        hostControls.innerHTML = `<button class="btn btn-main" id="mpStartBtn">${isPlaying ? "🔁 Relancer une manche" : "🎲 Lancer la partie"}</button>${quizBtn}`;
         const startBtn = document.getElementById("mpStartBtn");
         if(startBtn) startBtn.addEventListener("click", mpHandleStartRound);
+        const quizStartBtn = document.getElementById("mpQuizStartBtn");
+        if(quizStartBtn) quizStartBtn.addEventListener("click", qzHandleStart);
       }else{
         hostControls.innerHTML = isPlaying ? "" : `<div class="mp-note">En attente que l'hôte lance la partie…</div>`;
       }
@@ -2656,6 +2830,8 @@
         mpOpenGuessBox(btn.dataset.pid, btn.dataset.name);
       });
     });
+
+    qzRender(state);
   }
 
   // Affiche le Pokémon secret du joueur sur l'écran PRINCIPAL du Pokédex (celui
@@ -2688,6 +2864,206 @@
     banner.style.display = "block";
     banner.textContent = text;
     setTimeout(() => { banner.style.display = "none"; }, 5000);
+  }
+
+  // ---------- Mode "Devinette par questions" (tours) ----------
+  // Tourne en parallèle du mode "deviner le nom" existant, dans la même partie :
+  // ça n'y touche pas et réutilise le même sondage périodique (mpApiGetState).
+  let qzBusy = false;
+  let qzPickerOpen = false;
+  let qzLastRenderedTurn = null; // évite de re-render le picker/inputs en pleine saisie
+
+  async function qzHandleStart(){
+    if(qzBusy || !mpRoomCode) return;
+    qzBusy = true;
+    try{
+      await mpApiPost("quiz_start", { code: mpRoomCode, playerId: mpPlayerId });
+      const state = await mpApiGetState(mpRoomCode, mpPlayerId);
+      if(state){ mpRenderPlayersList(state); }
+    }catch(e){
+      alert("Impossible de lancer le mode questions, réessaie.");
+    }finally{
+      qzBusy = false;
+    }
+  }
+
+  function qzRender(state){
+    const card = document.getElementById("qzMainCard");
+    const section = document.getElementById("qzMainBody");
+    if(!card || !section) return;
+    if(!state || !state.quiz){
+      card.style.display = "none";
+      section.innerHTML = "";
+      qzLastRenderedTurn = null;
+      return;
+    }
+    card.style.display = "block";
+    const quiz = state.quiz;
+    // Ne reconstruit le bloc "poser une question / répondre" que si le tour a changé,
+    // pour ne pas interrompre une saisie en cours dans la barre de recherche pendant
+    // le sondage de 3s. L'historique, lui, est toujours mis à jour (append-only).
+    const turnKey = quiz.turnNumber + ":" + (quiz.pending ? quiz.pending.questionId : "none");
+    if(turnKey !== qzLastRenderedTurn || !document.getElementById("qzLiveArea")){
+      qzLastRenderedTurn = turnKey;
+      section.innerHTML = `
+        <div class="qz-section">
+          <div id="qzLiveArea"></div>
+          <div class="mp-section-label">📜 Historique des questions</div>
+          <div class="qz-history" id="qzHistory"></div>
+        </div>
+      `;
+      qzRenderLiveArea(state);
+    }else if(quiz.pending && document.getElementById("qzWaitingList")){
+      // Le tour n'a pas changé, mais de nouvelles réponses ont pu arriver entre deux
+      // sondages : on rafraîchit juste la liste d'attente, sans reconstruire le reste
+      // (pour ne pas perdre le focus si le picker est ouvert ailleurs).
+      qzRenderWaitingList(state);
+    }
+    qzRenderHistory(quiz.history);
+  }
+
+  function qzRenderLiveArea(state){
+    const live = document.getElementById("qzLiveArea");
+    if(!live) return;
+    const quiz = state.quiz;
+
+    if(quiz.pending){
+      const askerEntry = state.players.find(p => p.id === quiz.pending.askerId);
+      const askerName = askerEntry ? askerEntry.name : "?";
+      if(quiz.isMyTurn || quiz.pending.myAnswer || !quiz.pending.targetIds.includes(mpPlayerId)){
+        // C'est moi qui ai posé la question (ou je ne suis pas concerné, ou j'ai déjà
+        // répondu) : on affiche juste la question et qui a déjà répondu.
+        live.innerHTML = `
+          <div class="qz-pending-card">
+            <div class="qz-pending-question">${mpEscapeHtml(quiz.pending.questionText)}</div>
+            <div class="qz-pending-asker">Posée par ${mpEscapeHtml(askerName)} — en attente des réponses…</div>
+            <div class="qz-waiting-list" id="qzWaitingList"></div>
+          </div>
+        `;
+        qzRenderWaitingList(state);
+      }else{
+        // Je suis interrogé et je n'ai pas encore répondu.
+        live.innerHTML = `
+          <div class="qz-pending-card">
+            <div class="qz-pending-question">${mpEscapeHtml(quiz.pending.questionText)}</div>
+            <div class="qz-pending-asker">${mpEscapeHtml(askerName)} te demande :</div>
+            <div class="qz-answer-row">
+              <button class="qz-answer-btn yes" id="qzAnswerYes">✅ Oui</button>
+              <button class="qz-answer-btn no" id="qzAnswerNo">❌ Non</button>
+            </div>
+          </div>
+        `;
+        document.getElementById("qzAnswerYes").addEventListener("click", () => qzSubmitAnswer("oui"));
+        document.getElementById("qzAnswerNo").addEventListener("click", () => qzSubmitAnswer("non"));
+      }
+    }else if(quiz.isMyTurn){
+      live.innerHTML = `
+        <div class="qz-turn-banner mine">🎯 C'est ton tour de poser une question !</div>
+        <div class="qz-picker">
+          <input type="text" id="qzPickerInput" class="qz-picker-input" placeholder="Chercher une question (mot-clé)…" autocomplete="off">
+          <div class="qz-picker-list" id="qzPickerList"></div>
+        </div>
+      `;
+      const input = document.getElementById("qzPickerInput");
+      qzRenderPickerList("", quiz.usedQuestionIds);
+      input.addEventListener("input", () => qzRenderPickerList(input.value, quiz.usedQuestionIds));
+      input.focus();
+    }else{
+      const askerEntry = state.players.find(p => p.id === quiz.currentAskerId);
+      const askerName = askerEntry ? askerEntry.name : "?";
+      live.innerHTML = `<div class="qz-turn-banner">⏳ C'est au tour de ${mpEscapeHtml(askerName)} de poser une question…</div>`;
+    }
+  }
+
+  function qzFilterQuestions(rawQuery){
+    const list = (window.POKEDEX_QUESTIONS || []);
+    const q = (rawQuery || "").trim().toLowerCase();
+    if(!q) return list;
+    return list.filter(item => {
+      if(item.text.toLowerCase().includes(q)) return true;
+      return (item.tags || []).some(tag => tag.toLowerCase().includes(q));
+    });
+  }
+
+  function qzRenderPickerList(rawQuery, usedQuestionIds){
+    const listEl = document.getElementById("qzPickerList");
+    if(!listEl) return;
+    const matches = qzFilterQuestions(rawQuery);
+    if(!matches.length){
+      listEl.innerHTML = `<div class="qz-picker-empty">Aucune question trouvée.</div>`;
+      return;
+    }
+    listEl.innerHTML = matches.map(item => {
+      const used = usedQuestionIds.includes(item.id);
+      return `<button type="button" class="qz-picker-item${used ? " used" : ""}" data-id="${mpEscapeHtml(item.id)}" ${used ? "disabled" : ""}>${mpEscapeHtml(item.text)}</button>`;
+    }).join("");
+    listEl.querySelectorAll(".qz-picker-item:not(.used)").forEach(btn => {
+      btn.addEventListener("click", () => qzSubmitQuestion(btn.dataset.id));
+    });
+  }
+
+  async function qzSubmitQuestion(questionId){
+    if(qzBusy || !mpRoomCode) return;
+    qzBusy = true;
+    try{
+      await mpApiPost("quiz_ask", { code: mpRoomCode, playerId: mpPlayerId, questionId });
+      qzLastRenderedTurn = null; // force le re-render immédiat (pending vient d'apparaître)
+      const state = await mpApiGetState(mpRoomCode, mpPlayerId);
+      if(state) qzRender(state);
+    }catch(e){
+      alert("Impossible d'envoyer cette question, réessaie.");
+    }finally{
+      qzBusy = false;
+    }
+  }
+
+  async function qzSubmitAnswer(answer){
+    if(qzBusy || !mpRoomCode) return;
+    qzBusy = true;
+    try{
+      await mpApiPost("quiz_answer", { code: mpRoomCode, playerId: mpPlayerId, answer });
+      qzLastRenderedTurn = null;
+      const state = await mpApiGetState(mpRoomCode, mpPlayerId);
+      if(state) qzRender(state);
+    }catch(e){
+      alert("Impossible d'envoyer ta réponse, réessaie.");
+    }finally{
+      qzBusy = false;
+    }
+  }
+
+  function qzRenderWaitingList(state){
+    const el = document.getElementById("qzWaitingList");
+    if(!el || !state.quiz.pending) return;
+    const { targetIds, answeredIds } = state.quiz.pending;
+    el.innerHTML = targetIds.map(pid => {
+      const p = state.players.find(pp => pp.id === pid);
+      const name = p ? p.name : "?";
+      const answered = answeredIds.includes(pid);
+      return `<span class="qz-waiting-pill ${answered ? "answered" : "pending"}">${mpEscapeHtml(name)}${answered ? " ✓" : " …"}</span>`;
+    }).join("");
+  }
+
+  function qzRenderHistory(history){
+    const el = document.getElementById("qzHistory");
+    if(!el) return;
+    if(!history || !history.length){
+      el.innerHTML = `<div class="qz-empty-note">Aucune question posée pour l'instant.</div>`;
+      return;
+    }
+    el.innerHTML = history.slice().reverse().map(entry => `
+      <div class="qz-history-item">
+        <div class="qz-history-turn">Tour ${entry.turn} — posée par ${mpEscapeHtml(entry.askerName)}</div>
+        <div class="qz-history-question">${mpEscapeHtml(entry.questionText)}</div>
+        <div class="qz-history-answers">
+          ${entry.answers.map(a => {
+            const cls = a.answer === "oui" ? "oui" : (a.answer === "non" ? "non" : "abstain");
+            const label = a.answer === "oui" ? "Oui" : (a.answer === "non" ? "Non" : "Pas répondu");
+            return `<span class="qz-history-answer ${cls}">${mpEscapeHtml(a.name)} : ${label}</span>`;
+          }).join("")}
+        </div>
+      </div>
+    `).join("");
   }
 
   async function mpHandleStartRound(){
@@ -2841,6 +3217,7 @@
     mpCurrentStatus = null;
     mpUpdateDrawAvailability();
     mpClearSession();
+    qzRender(null);
     mpRenderEntry();
     if(code && pid){
       try{ await mpApiPost("leave", { code, playerId: pid }); }catch(e){}
