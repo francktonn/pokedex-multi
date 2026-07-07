@@ -1409,11 +1409,11 @@
 <div class="notepad-overlay" id="gcOverlay">
   <div class="notepad-panel gc-panel">
     <div class="notepad-head">
-      <span class="notepad-title">⚙️ CONFIGURATION DE LA PARTIE</span>
+      <span class="notepad-title" id="gcTitleText">⚙️ CONFIGURATION DE LA PARTIE</span>
       <button class="notepad-close" id="btnGcClose" aria-label="Fermer">✕</button>
     </div>
     <div class="notepad-body gc-body">
-      <div class="notepad-hint">Choisis quels Pokémon peuvent être tirés au sort. Ça s'applique à tous les prochains tirages, jusqu'à ce que tu changes cette configuration.</div>
+      <div class="notepad-hint" id="gcHintText">Choisis quels Pokémon peuvent être tirés au sort. Ça s'applique à tous les prochains tirages, jusqu'à ce que tu changes cette configuration.</div>
 
       <div class="gc-section">
         <div class="mp-section-label">Pokémon disponibles — Générations</div>
@@ -1445,6 +1445,7 @@
       <button class="btn btn-secondary" id="btnGcCancel">Annuler</button>
       <button class="btn btn-main" id="btnGcValidate">Valider</button>
     </div>
+    <div class="mp-guess-feedback ko" id="gcErrorMsg" style="display:none; padding:0 16px 12px;"></div>
   </div>
 </div>
 
@@ -2407,6 +2408,8 @@
   ];
 
   let gcDraft = null; // copie de travail de gameSettings, appliquée seulement au clic sur "Valider"
+  let gcMode = "solo"; // "solo" (localStorage) ou "mp" (configuration partagée de la partie multijoueur)
+  let gcReadonly = false; // true quand un non-hôte consulte la config multijoueur (aucune modification possible)
 
   function gcBuildGenGrid(){
     gcGenGrid.innerHTML = "";
@@ -2503,23 +2506,93 @@
     gcSummaryCount.textContent = `${count} Pokémon disponible${count > 1 ? "s" : ""}`;
   }
 
-  function gcOpen(){
-    gcDraft = JSON.parse(JSON.stringify(gameSettings));
+  // options.mode: "solo" (par défaut, configuration locale) ou "mp" (configuration
+  // partagée de la partie multijoueur en cours). options.config : config de départ à
+  // afficher pour le mode "mp" (ignoré en solo, qui repart toujours de gameSettings).
+  // options.readonly : true pour un non-hôte qui consulte seulement la config du groupe.
+  function gcOpen(options){
+    const opts = options || {};
+    gcMode = opts.mode === "mp" ? "mp" : "solo";
+    gcReadonly = gcMode === "mp" && !!opts.readonly;
+    gcDraft = JSON.parse(JSON.stringify(gcMode === "mp" ? (opts.config || defaultGameSettings()) : gameSettings));
     gcSyncInputsFromDraft();
     gcRecomputeSummary();
+    gcApplyReadonlyUI();
     gcOverlay.classList.add("open");
   }
   function gcClose(){
     gcOverlay.classList.remove("open");
   }
   function gcHandleReset(){
+    if(gcReadonly) return;
     gcDraft = defaultGameSettings();
     gcSyncInputsFromDraft();
     gcRecomputeSummary();
   }
   function gcHandleValidate(){
-    saveGameSettings(gcDraft);
-    gcClose();
+    if(gcReadonly) return;
+    if(gcMode === "mp"){
+      mpSubmitConfig(gcDraft);
+    }else{
+      saveGameSettings(gcDraft);
+      gcClose();
+    }
+  }
+
+  // Adapte les textes et l'interactivité de la fenêtre de config selon le mode : en
+  // multijoueur, seul l'hôte peut modifier (les autres ont une vue lecture seule), et le
+  // texte d'aide précise que la config s'applique à toute la partie / prochaine manche.
+  function gcApplyReadonlyUI(){
+    const disable = gcReadonly;
+    gcGenGrid.querySelectorAll("input").forEach(inp => { inp.disabled = disable; });
+    gcCategoryList.querySelectorAll("input").forEach(inp => { inp.disabled = disable; });
+    gcFormsList.querySelectorAll("input").forEach(inp => { inp.disabled = disable; });
+    gcSelectAllGensBtn.style.display = disable ? "none" : "";
+    gcClearAllGensBtn.style.display = disable ? "none" : "";
+    btnGcReset.style.display = disable ? "none" : "";
+    btnGcValidate.style.display = disable ? "none" : "";
+    btnGcCancel.textContent = disable ? "Fermer" : "Annuler";
+
+    const titleEl = document.getElementById("gcTitleText");
+    const hintEl = document.getElementById("gcHintText");
+    if(gcMode === "mp"){
+      if(titleEl) titleEl.textContent = "⚙️ CONFIGURATION DE LA PARTIE MULTIJOUEUR";
+      if(hintEl){
+        hintEl.textContent = disable
+          ? "Cette configuration a été définie par l'hôte de la partie : seul lui peut la modifier. Elle s'applique à partir de la prochaine manche."
+          : "Choisis quels Pokémon peuvent être tirés au sort pour toute la partie. Les autres joueurs la voient, mais seul toi (l'hôte) peux la modifier. Elle s'appliquera à partir de la prochaine manche que tu lanceras.";
+      }
+    }else{
+      if(titleEl) titleEl.textContent = "⚙️ CONFIGURATION DE LA PARTIE";
+      if(hintEl) hintEl.textContent = "Choisis quels Pokémon peuvent être tirés au sort. Ça s'applique à tous les prochains tirages, jusqu'à ce que tu changes cette configuration.";
+    }
+
+    const errBox = document.getElementById("gcErrorMsg");
+    if(errBox){ errBox.style.display = "none"; errBox.textContent = ""; }
+  }
+
+  // Envoie la nouvelle configuration au serveur (l'hôte uniquement — vérifié aussi côté
+  // serveur) puis rafraîchit l'écran de la partie. En cas d'erreur (ex: rôle d'hôte perdu
+  // entre-temps), le message est affiché dans la fenêtre plutôt que de fermer en silence.
+  async function mpSubmitConfig(draft){
+    if(!mpRoomCode || !mpPlayerId){ gcClose(); return; }
+    const errBox = document.getElementById("gcErrorMsg");
+    if(errBox){ errBox.style.display = "none"; errBox.textContent = ""; }
+    if(btnGcValidate) btnGcValidate.disabled = true;
+    try{
+      const state = await mpApiPost("config", { code: mpRoomCode, playerId: mpPlayerId, config: draft });
+      mpRoomConfig = state.config || draft;
+      mpIsHost = !!state.isHost;
+      mpRenderPlayersList(state);
+      gcClose();
+    }catch(e){
+      if(errBox){
+        errBox.textContent = e.message || "Erreur réseau, réessaie.";
+        errBox.style.display = "block";
+      }
+    }finally{
+      if(btnGcValidate) btnGcValidate.disabled = false;
+    }
   }
 
   gcBuildGenGrid();
@@ -3108,6 +3181,34 @@
     return frenchIndexPromise;
   }
 
+  // Filtre l'index des noms français selon la configuration actuelle (générations et
+  // catégories) : on ne doit pas pouvoir rechercher à la main un Pokémon que le tirage ne
+  // pourrait de toute façon pas proposer. Utilisé uniquement par la recherche manuelle —
+  // ne s'applique volontairement pas aux suggestions de devinette en multijoueur, où le
+  // secret d'un autre joueur peut appartenir à n'importe quelle génération.
+  async function getSearchableFrenchIndex(){
+    const list = await getFrenchIndex();
+    const meta = await getSpeciesMeta().catch(() => null);
+    if(!meta) return list; // pas de métadonnées dispo (hors-ligne) : pas de filtrage possible
+    return list.filter(item => {
+      const m = meta.get(item.id);
+      return m ? isSpeciesEligible(m, gameSettings) : true;
+    });
+  }
+
+  // Même logique que ci-dessus, mais pour un numéro de Pokédex nationale tapé directement.
+  async function isSearchIdAllowed(id){
+    const meta = await getSpeciesMeta().catch(() => null);
+    if(!meta){
+      const gen = generationOfId(id);
+      return gen ? gameSettings.generations.includes(gen) : true;
+    }
+    const m = meta.get(id);
+    return m ? isSpeciesEligible(m, gameSettings) : true;
+  }
+
+  const SEARCH_EXCLUDED_MSG = "Ce Pokémon est exclu par la configuration actuelle de la partie (génération ou catégorie désactivée). Change ça via le bouton ⚙️ Configuration de la partie.";
+
   // Distance de Levenshtein (nombre minimal de modifications pour passer de a à b),
   // utilisée pour tolérer les petites fautes de frappe dans le nom recherché.
   function levenshtein(a, b){
@@ -3203,7 +3304,7 @@
     const raw = searchInput.value;
     if(!raw.trim()){ hideSuggestions(); return; }
     searchSuggestTimer = setTimeout(async () => {
-      const list = await getFrenchIndex();
+      const list = await getSearchableFrenchIndex();
       if(!list.length) return; // pas d'index dispo (hors ligne) : pas de suggestions live
       const matches = matchFrenchIndex(raw, list, 8);
       renderSuggestions(matches, matches.length ? "Suggestions" : "");
@@ -3220,6 +3321,12 @@
     searchLoading.style.display = "flex";
     btnSearchGo.disabled = true;
     try{
+      if(!(await isSearchIdAllowed(id))){
+        searchLoading.style.display = "none";
+        searchError.style.display = "block";
+        searchError.textContent = SEARCH_EXCLUDED_MSG;
+        return;
+      }
       const data = await loadPokemon(id);
       renderSearchResult(data);
       searchLoading.style.display = "none";
@@ -3262,16 +3369,24 @@
     try{
       // 1) Numéro de Pokédex national tapé directement.
       if(/^\d+$/.test(trimmed)){
+        const idNum = Number(trimmed);
+        if(!(await isSearchIdAllowed(idNum))){
+          searchError.style.display = "block";
+          searchError.textContent = SEARCH_EXCLUDED_MSG;
+          return;
+        }
         const data = await loadPokemon(trimmed);
         renderSearchResult(data);
         searchResultBody.style.display = "block";
         return;
       }
 
-      const list = await getFrenchIndex();
+      const list = await getSearchableFrenchIndex();
       const foldedQuery = foldFr(trimmed);
 
       // 2) Correspondance exacte avec un nom français (accents/casse ignorés).
+      // (La liste est déjà filtrée par la configuration actuelle : un Pokémon exclu ne peut
+      // pas ressortir ici, sa recherche se rabattra donc naturellement sur les étapes suivantes.)
       const exact = list.find(item => item.folded === foldedQuery);
       if(exact){
         const data = await loadPokemon(exact.id);
@@ -3283,6 +3398,11 @@
       // 3) Rétro-compatibilité : nom anglais / slug officiel de l'API.
       try{
         const data = await loadPokemon(normalizeSearchQuery(raw));
+        if(!(await isSearchIdAllowed(data.id))){
+          searchError.style.display = "block";
+          searchError.textContent = SEARCH_EXCLUDED_MSG;
+          return;
+        }
         renderSearchResult(data);
         searchResultBody.style.display = "block";
         return;
@@ -3335,6 +3455,8 @@
   let mpBusy = false;
   let mpLastRenderedPokemonId = null; // dernier secret déjà affiché sur l'écran principal du Pokédex
   let mpCurrentStatus = null; // statut de la manche en cours ('lobby' | 'playing' | null si pas en partie)
+  let mpIsHost = false; // suis-je l'hôte de la partie en cours ? (seul lui peut modifier la config)
+  let mpRoomConfig = null; // dernière configuration connue de la partie (générations/catégories/formes)
 
   // Le tirage aléatoire "solo" (bouton principal du Pokédex) est désactivé pendant
   // qu'une manche multijoueur est active : sinon on pourrait re-tirer librement un
@@ -3525,6 +3647,7 @@
         <span>Code : <span class="mp-code-value" id="mpCodeValue">${mpEscapeHtml(mpRoomCode)}</span></span>
         <button class="mp-copy-code-btn" id="mpCopyCodeBtn" title="Copier le code">📋</button>
       </div>
+      <button class="btn btn-config" id="mpConfigBtn">⚙️ Configuration</button>
       <div id="mpHostControls"></div>
       <div class="mp-my-secret" id="mpMySecret" style="display:none;"></div>
       <div class="mp-round-banner" id="mpRoundBanner" style="display:none;"></div>
@@ -3535,6 +3658,9 @@
       <button class="mp-leave-btn" id="mpLeaveBtn">Quitter la partie</button>
     `;
     document.getElementById("mpLeaveBtn").addEventListener("click", mpLeaveRoom);
+    document.getElementById("mpConfigBtn").addEventListener("click", () => {
+      gcOpen({ mode: "mp", config: mpRoomConfig, readonly: !mpIsHost });
+    });
     document.getElementById("mpCopyCodeBtn").addEventListener("click", async () => {
       try{
         await navigator.clipboard.writeText(mpRoomCode);
@@ -3551,6 +3677,8 @@
       mpRoomCode = null; mpPlayerId = null; mpPlayerName = null;
       mpClearSession();
       mpCurrentStatus = null;
+      mpIsHost = false;
+      mpRoomConfig = null;
       mpUpdateDrawAvailability();
       mpRenderQuickBar(null);
       notepadSyncMpPlayers(null);
@@ -3562,6 +3690,8 @@
     const me = state.me;
     const isHost = !!state.isHost;
     const isPlaying = state.status === "playing";
+    mpIsHost = isHost;
+    mpRoomConfig = state.config || mpRoomConfig;
 
     // ---- Zone réservée à l'hôte : lancer / relancer une manche pour tout le monde ----
     const hostControls = document.getElementById("mpHostControls");
@@ -3870,6 +4000,8 @@
     const code = mpRoomCode, pid = mpPlayerId;
     mpRoomCode = null; mpPlayerId = null; mpPlayerName = null; mpGuessTargetId = null;
     mpCurrentStatus = null;
+    mpIsHost = false;
+    mpRoomConfig = null;
     mpUpdateDrawAvailability();
     mpClearSession();
     notepadSyncMpPlayers(null);
@@ -3906,7 +4038,7 @@
 
   // ---------- Init ----------
   btnDraw.addEventListener("click", drawPokemon);
-  btnGameConfig.addEventListener("click", gcOpen);
+  btnGameConfig.addEventListener("click", () => gcOpen({ mode: "solo" }));
   btnNotepad.addEventListener("click", openNotepad);
   btnNotepadClose.addEventListener("click", closeNotepad);
   btnNotepadClear.addEventListener("click", clearNotepad);
