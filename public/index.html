@@ -1847,6 +1847,7 @@
 
   function renderPokemon(data){
     current = data;
+    clearNotepad(); // le bloc-note se vide à chaque nouveau Pokémon affiché (solo ou multijoueur)
 
     screenContent.innerHTML = "";
     screenContent.appendChild(buildSpriteWithShinyToggle(data));
