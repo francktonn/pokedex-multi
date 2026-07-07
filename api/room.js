@@ -1,10 +1,29 @@
 // Fonction serverless Vercel : gère toute la logique d'une partie multijoueur.
-// Stockage : Vercel KV (Redis géré par Upstash), à brancher depuis l'onglet
-// "Storage" du dashboard Vercel (voir README.md pour les instructions).
-const { kv } = require('@vercel/kv');
+// Stockage : Redis (n'importe quel serveur Redis "classique" — Upstash en mode
+// Redis, Redis Cloud, un Redis auto-hébergé, etc.), via l'URL de connexion fournie
+// dans la variable d'environnement REDIS_URL (voir README.md pour les instructions).
+const Redis = require('ioredis');
 
 const MAX_DEX_ID = 807; // Génération I à VII
 const ROOM_TTL_SECONDS = 60 * 60 * 24; // les parties expirent après 24h d'inactivité
+
+// En serverless, une même instance de fonction peut traiter plusieurs requêtes :
+// on réutilise donc la connexion Redis d'un appel à l'autre au lieu d'en ouvrir
+// une nouvelle à chaque fois (ce qui épuiserait vite le nombre de connexions
+// autorisées par la plupart des offres Redis gratuites).
+let redisClient = null;
+function getRedis() {
+  if (!redisClient) {
+    if (!process.env.REDIS_URL) {
+      throw new Error('Variable d\'environnement REDIS_URL manquante');
+    }
+    redisClient = new Redis(process.env.REDIS_URL, {
+      maxRetriesPerRequest: 3,
+      lazyConnect: false
+    });
+  }
+  return redisClient;
+}
 
 // ---------- Utilitaires ----------
 
@@ -51,12 +70,14 @@ function roomKey(code) {
 }
 
 async function getRoom(code) {
-  return (await kv.get(roomKey(code))) || null; // @vercel/kv (dé)sérialise le JSON tout seul
+  const raw = await getRedis().get(roomKey(code));
+  return raw ? JSON.parse(raw) : null; // contrairement à @vercel/kv, ioredis renvoie du texte brut
 }
 
 async function saveRoom(code, room) {
   room.updatedAt = Date.now();
-  await kv.set(roomKey(code), room, { ex: ROOM_TTL_SECONDS });
+  // "EX" pose le TTL (en secondes) directement dans la même commande que le SET.
+  await getRedis().set(roomKey(code), JSON.stringify(room), 'EX', ROOM_TTL_SECONDS);
 }
 
 // Ne renvoie JAMAIS le nom du Pokémon secret des autres joueurs : seulement le sien
