@@ -10,8 +10,9 @@ package.json          → dépendance @vercel/kv (stockage clé-valeur)
 ```
 
 Le serveur est volontairement minimal : une seule fonction, un seul fichier de logique,
-et une base clé-valeur (Vercel KV, gratuite) pour stocker l'état des parties. Chaque
-partie expire automatiquement au bout de 24h d'inactivité.
+et une base Redis pour stocker l'état des parties (via `ioredis`, connecté avec l'URL
+fournie dans la variable d'environnement `REDIS_URL`). Chaque partie expire
+automatiquement au bout de 24h d'inactivité.
 
 ## 1. Créer le projet sur Vercel
 
@@ -33,18 +34,27 @@ vercel        # suit les instructions, répond aux questions par défaut
 vercel --prod # pour la mise en ligne définitive
 ```
 
-## 2. Brancher le stockage (Vercel KV)
+## 2. Brancher le stockage (Redis)
 
-Sans ça, l'API ne pourra pas sauvegarder les parties.
+Sans ça, l'API ne pourra pas sauvegarder les parties. Il te faut une base Redis
+"classique" (protocole RESP, accessible via une URL `redis://` ou `rediss://`) — par
+exemple gratuitement chez **Upstash** ou **Redis Cloud**, mais n'importe quel
+hébergeur Redis fonctionne.
 
-1. Dans le dashboard Vercel, ouvre ton projet → onglet **Storage**.
-2. Clique **Create Database** → choisis **KV** (propulsé par Upstash Redis, gratuit
-   jusqu'à 30 000 commandes/mois — largement suffisant pour jouer entre amis).
-3. Une fois créée, clique **Connect Project** et sélectionne ton projet. Vercel ajoute
-   automatiquement les variables d'environnement nécessaires (`KV_REST_API_URL`,
-   `KV_REST_API_TOKEN`, etc.) — tu n'as rien à copier-coller toi-même.
-4. Redéploie le projet une fois (bouton "Redeploy") pour que les nouvelles variables
-   d'environnement soient prises en compte.
+### Option la plus simple : Upstash en mode Redis
+1. Va sur https://upstash.com et crée un compte (gratuit).
+2. Crée une base **Redis** (pas "Vercel KV" — le produit Redis "classique" d'Upstash).
+3. Sur la page de la base, récupère l'URL de connexion **avec mot de passe** (souvent
+   appelée "Redis Connect URL" ou "TLS URL"), du style :
+   `rediss://default:xxxxxxxx@xxxxx.upstash.io:6379`
+4. Dans ton projet Vercel : onglet **Settings → Environment Variables**, ajoute une
+   variable nommée `REDIS_URL` avec cette valeur (coche les environnements
+   Production/Preview/Development).
+5. Redéploie le projet (bouton "Redeploy") pour que la variable soit prise en compte.
+
+### Autres hébergeurs (Redis Cloud, Railway, un Redis auto-hébergé, etc.)
+Même principe : récupère l'URL de connexion Redis (avec identifiants) fournie par ton
+hébergeur, et mets-la dans la variable d'environnement `REDIS_URL` sur Vercel.
 
 ## 3. Jouer
 
@@ -64,6 +74,7 @@ secret sur son propre appareil, et peut essayer de deviner celui des autres.
   reste très simple à héberger (pas de WebSocket, pas de serveur à faire tourner en
   continu).
 - Si tu préfères un autre hébergeur que Vercel (Netlify, Cloudflare Workers, etc.), la
-  logique dans `api/room.js` est portable : il suffit d'adapter la partie stockage
-  (remplacer `@vercel/kv` par l'équivalent de la plateforme choisie) et la façon dont
-  le handler reçoit `req`/`res`.
+  logique dans `api/room.js` est portable : comme elle utilise Redis en direct (via
+  `ioredis`), il suffit d'adapter la façon dont le handler reçoit `req`/`res` — le
+  stockage lui-même n'a pas besoin de changer tant que `REDIS_URL` pointe vers une
+  base Redis accessible.
