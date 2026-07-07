@@ -949,6 +949,36 @@
     color:#fff;
     text-decoration:line-through;
   }
+  .notepad-chip-wrap{
+    display:inline-flex;
+    align-items:center;
+    gap:3px;
+  }
+  .notepad-pct-wrap{
+    display:inline-flex;
+    align-items:center;
+    gap:1px;
+    font-family:'Nunito';
+    font-weight:700;
+    font-size:11px;
+    color:var(--red-dark);
+    background:#fff;
+    border:1px solid rgba(0,0,0,.14);
+    border-radius:7px;
+    padding:4px 6px;
+  }
+  .notepad-pct-input{
+    width:30px;
+    border:none;
+    background:transparent;
+    font-family:'Nunito';
+    font-weight:700;
+    font-size:11px;
+    color:var(--ink);
+    text-align:right;
+    padding:0;
+  }
+  .notepad-pct-input:focus{ outline:none; }
   .notepad-active-area .notepad-textarea{
     flex:none;
     min-height:80px;
@@ -1285,7 +1315,8 @@
   };
   const COLOR_FR = {
     black:"Noir", blue:"Bleu", brown:"Marron", gray:"Gris", green:"Vert",
-    pink:"Rose", purple:"Violet", red:"Rouge", white:"Blanc", yellow:"Jaune"
+    pink:"Rose", purple:"Violet", red:"Rouge", white:"Blanc", yellow:"Jaune",
+    beige:"Beige"
   };
 
   // Catégories du bloc-note "à cocher" : chaque item a un id stable (utilisé comme
@@ -1294,6 +1325,7 @@
     { key:"type", label:"Types", items: Object.keys(TYPE_FR).map(k => ({ id:"type:"+k, label:TYPE_FR[k], accent:TYPE_COLORS[k] })) },
     { key:"gen", label:"Générations", items: [1,2,3,4,5,6,7].map(n => ({ id:"gen:"+n, label:"Génération "+n })) },
     { key:"cat", label:"Catégorie", items: [
+      { id:"cat:sauvage", label:"Sauvage" },
       { id:"cat:legendaire", label:"Légendaire" },
       { id:"cat:mythique", label:"Fabuleux (mythique)" },
       { id:"cat:ultra", label:"Ultra-Chimère" },
@@ -1301,7 +1333,7 @@
       { id:"cat:starter", label:"Starter" },
       { id:"cat:bebe", label:"Bébé" }
     ]},
-    { key:"color", label:"Couleur", items: Object.keys(COLOR_FR).map(k => ({ id:"color:"+k, label:COLOR_FR[k] })) },
+    { key:"color", label:"Couleur", items: Object.keys(COLOR_FR).map(k => ({ id:"color:"+k, label:COLOR_FR[k], hasPercent:true })) },
     { key:"habitat", label:"Habitat", items: Object.keys(HABITAT_FR).map(k => ({ id:"habitat:"+k, label:HABITAT_FR[k] })) },
     { key:"size", label:"Taille & poids", items: [
       { id:"size:grand", label:"Plus d'1 m" },
@@ -1310,11 +1342,14 @@
       { id:"size:leger", label:"Moins de 10 kg" }
     ]},
     { key:"divers", label:"Divers", items: [
-      { id:"divers:bicolore", label:"Deux types" },
+      { id:"divers:double_types", label:"Double types" },
+      { id:"divers:monotype", label:"Monotype" },
       { id:"divers:capture_facile", label:"Capture facile" },
       { id:"divers:capture_difficile", label:"Capture difficile" },
       { id:"divers:peut_evoluer", label:"Peut encore évoluer" },
       { id:"divers:evo_finale", label:"Fin d'évolution" },
+      { id:"divers:pokemon_base", label:"Pokémon de base" },
+      { id:"divers:pokemon_forme", label:"Pokémon avec une forme" },
       { id:"divers:nom_long", label:"Nom de +8 lettres" },
       { id:"divers:genre_mf", label:"Mâle et femelle" }
     ]}
@@ -2177,7 +2212,8 @@
   }
 
   function notepadEnsureData(key){
-    if(!notepadState.data[key]) notepadState.data[key] = { note: "", checks: {} };
+    if(!notepadState.data[key]) notepadState.data[key] = { note: "", checks: {}, pct: {} };
+    if(!notepadState.data[key].pct) notepadState.data[key].pct = {};
     return notepadState.data[key];
   }
 
@@ -2260,17 +2296,30 @@
           <span class="notepad-cat-count" data-cat-count="${cat.key}">${notepadCatCounts(cat.items, entry.checks)}/${cat.items.length}</span>
         </summary>
         <div class="notepad-grid">
-          ${cat.items.map(it => `
-            <button type="button" class="notepad-chip${entry.checks[it.id] === "yes" ? " is-yes" : ""}${entry.checks[it.id] === "no" ? " is-no" : ""}"
-              data-item-id="${mpEscapeHtml(it.id)}" data-cat="${cat.key}"
-              ${it.accent ? `style="border-left:4px solid ${it.accent}"` : ""}>${mpEscapeHtml(it.label)}</button>
-          `).join("")}
+          ${cat.items.map(it => {
+            const state = entry.checks[it.id] || null;
+            const showPct = it.hasPercent && state === "yes";
+            const pctVal = (entry.pct && entry.pct[it.id] != null) ? entry.pct[it.id] : 100;
+            return `
+            <span class="notepad-chip-wrap">
+              <button type="button" class="notepad-chip${state === "yes" ? " is-yes" : ""}${state === "no" ? " is-no" : ""}"
+                data-item-id="${mpEscapeHtml(it.id)}" data-cat="${cat.key}"
+                ${it.accent ? `style="border-left:4px solid ${it.accent}"` : ""}>${mpEscapeHtml(it.label)}</button>
+              ${it.hasPercent ? `<span class="notepad-pct-wrap" data-pct-wrap="${mpEscapeHtml(it.id)}" style="display:${showPct ? "inline-flex" : "none"}">
+                <input type="number" class="notepad-pct-input" data-pct-id="${mpEscapeHtml(it.id)}" min="0" max="100" step="5" value="${pctVal}">%
+              </span>` : ""}
+            </span>`;
+          }).join("")}
         </div>
       </details>
     `).join("");
 
     notepadCategories.querySelectorAll(".notepad-chip").forEach(chip => {
       chip.addEventListener("click", () => notepadHandleChipClick(chip));
+    });
+    notepadCategories.querySelectorAll(".notepad-pct-input").forEach(inp => {
+      inp.addEventListener("click", (e) => e.stopPropagation());
+      inp.addEventListener("input", () => notepadHandlePctChange(inp));
     });
   }
 
@@ -2307,6 +2356,23 @@
       next = cur === "no" ? null : "no";
     }
     if(next) entry.checks[id] = next; else delete entry.checks[id];
+
+    // Pourcentage de confiance (couleur uniquement) : affiché seulement quand la
+    // case est verte, réinitialisé à 100% par défaut, effacé sinon.
+    const wrap = chip.closest(".notepad-chip-wrap");
+    const pctWrap = wrap ? wrap.querySelector(".notepad-pct-wrap") : null;
+    if(pctWrap){
+      if(next === "yes"){
+        if(entry.pct[id] == null) entry.pct[id] = 100;
+        const inp = pctWrap.querySelector(".notepad-pct-input");
+        if(inp) inp.value = entry.pct[id];
+        pctWrap.style.display = "inline-flex";
+      }else{
+        delete entry.pct[id];
+        pctWrap.style.display = "none";
+      }
+    }
+
     saveNotepadState();
 
     chip.classList.toggle("is-yes", next === "yes");
@@ -2315,6 +2381,19 @@
     const cat = NOTE_CATEGORIES.find(c => c.key === catKey);
     const countEl = notepadCategories.querySelector(`[data-cat-count="${catKey}"]`);
     if(cat && countEl) countEl.textContent = notepadCatCounts(cat.items, entry.checks) + "/" + cat.items.length;
+  }
+
+  function notepadHandlePctChange(inp){
+    const key = notepadState.activePlayerKey;
+    if(!key) return;
+    const entry = notepadEnsureData(key);
+    const id = inp.dataset.pctId;
+    let v = parseInt(inp.value, 10);
+    if(isNaN(v)) v = 100;
+    v = Math.max(0, Math.min(100, v));
+    inp.value = v;
+    entry.pct[id] = v;
+    saveNotepadState();
   }
 
   function notepadHandleAddPlayer(e){
