@@ -2355,6 +2355,7 @@
   // le tableau des scores.
   const MP_API = "/api/room";
   const MP_SESSION_KEY = "pokedex_devinette_mp_session_v1";
+  const MP_LAST_NAME_KEY = "pokedex_devinette_mp_last_name_v1"; // mémorise le dernier pseudo utilisé, indépendamment d'une partie en cours
   const MP_POLL_MS = 3000;
 
   let mpRoomCode = null;
@@ -2396,6 +2397,17 @@
   }
   function mpClearSession(){
     try{ localStorage.removeItem(MP_SESSION_KEY); }catch(e){}
+  }
+
+  // Mémorise le dernier pseudo utilisé (séparément de la session de partie), pour
+  // pré-remplir le champ "Ton pseudo" automatiquement la prochaine fois, même après
+  // avoir quitté une partie ou dans un nouvel onglet/appareil... enfin, même
+  // appareil : c'est du localStorage, donc ça reste sur ce navigateur.
+  function mpSaveLastName(name){
+    try{ if(name) localStorage.setItem(MP_LAST_NAME_KEY, name); }catch(e){}
+  }
+  function mpLoadLastName(){
+    try{ return localStorage.getItem(MP_LAST_NAME_KEY) || ""; }catch(e){ return ""; }
   }
 
   // Récupère l'état (sanitisé) d'une partie : liste des joueurs/scores, et mon propre
@@ -2454,7 +2466,7 @@
     mpBody.innerHTML = `
       <div class="mp-note">Crée une partie et partage le code à tes amis (ou plus), ou rejoins une partie existante.</div>
       <div class="mp-section-label">Ton pseudo</div>
-      <input type="text" id="mpNameInput" class="mp-input" maxlength="16" placeholder="Ton pseudo" autocomplete="off">
+      <input type="text" id="mpNameInput" class="mp-input" maxlength="16" placeholder="Ton pseudo" autocomplete="off" value="${mpEscapeHtml(mpLoadLastName())}">
       <button class="btn btn-main" id="mpCreateBtn">✨ Créer une partie</button>
       <div class="mp-divider">— OU —</div>
       <div class="mp-section-label">Code de la partie</div>
@@ -2471,8 +2483,15 @@
       codeInput.value = codeInput.value.toUpperCase();
     });
     codeInput.addEventListener("keydown", (e) => { if(e.key === "Enter") mpHandleJoin(); });
-    document.getElementById("mpNameInput").addEventListener("keydown", (e) => {
+    const nameInput = document.getElementById("mpNameInput");
+    nameInput.addEventListener("keydown", (e) => {
       if(e.key === "Enter") mpHandleCreate();
+    });
+    // Mémorise le pseudo au fur et à mesure de la frappe, pas seulement au moment de
+    // créer/rejoindre : comme ça, même si on ferme la popup sans valider, le pseudo
+    // reste pré-rempli la prochaine fois.
+    nameInput.addEventListener("input", () => {
+      mpSaveLastName(nameInput.value.trim().slice(0, 16));
     });
   }
 
@@ -2494,6 +2513,7 @@
       mpPlayerId = data.playerId;
       mpPlayerName = name;
       mpSaveSession();
+      mpSaveLastName(name);
       mpRenderRoomShell();
       mpStartPolling();
     }catch(e){
@@ -2519,6 +2539,7 @@
       mpPlayerId = data.playerId;
       mpPlayerName = name;
       mpSaveSession();
+      mpSaveLastName(name);
       mpRenderRoomShell();
       mpStartPolling();
     }catch(e){
