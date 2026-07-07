@@ -2364,6 +2364,16 @@
   let mpGuessTargetId = null;
   let mpBusy = false;
   let mpLastRenderedPokemonId = null; // dernier secret déjà affiché sur l'écran principal du Pokédex
+  let mpCurrentStatus = null; // statut de la manche en cours ('lobby' | 'playing' | null si pas en partie)
+
+  // Le tirage aléatoire "solo" (bouton principal du Pokédex) est désactivé pendant
+  // qu'une manche multijoueur est active : sinon on pourrait re-tirer librement un
+  // Pokémon random par-dessus son secret en pleine partie.
+  function mpUpdateDrawAvailability(){
+    const locked = !!(mpRoomCode && mpCurrentStatus === "playing");
+    btnDraw.disabled = locked;
+    btnDraw.title = locked ? "Indisponible pendant une manche multijoueur en cours" : "";
+  }
 
   function mpEscapeHtml(s){
     return (s == null ? "" : String(s)).replace(/[&<>"']/g, c => (
@@ -2548,9 +2558,13 @@
       mpStopPolling();
       mpRoomCode = null; mpPlayerId = null; mpPlayerName = null;
       mpClearSession();
+      mpCurrentStatus = null;
+      mpUpdateDrawAvailability();
       mpRenderEntry("La partie n'existe plus ou tu n'en fais plus partie.");
       return;
     }
+    mpCurrentStatus = state.status || "lobby";
+    mpUpdateDrawAvailability();
     const me = state.me;
     const isHost = !!state.isHost;
     const isPlaying = state.status === "playing";
@@ -2636,6 +2650,10 @@
         renderPokemon(data);
         pushHistory(data);
       }catch(e){}
+      // On ferme la popup Multijoueur pour laisser voir l'écran du Pokédex avec le
+      // nouveau secret révélé (petit délai pour laisser le temps de lire un éventuel
+      // message de fin de manche affiché juste avant).
+      setTimeout(() => { mpClose(); }, 900);
     }else if(!newId){
       mpLastRenderedPokemonId = null;
     }
@@ -2654,6 +2672,7 @@
     mpBusy = true;
     const startBtn = document.getElementById("mpStartBtn");
     if(startBtn) startBtn.disabled = true;
+    mpClose(); // on ferme tout de suite pour voir le tirage se dérouler sur l'écran principal
     setLights("busy");
     renderLoading();
     startDexFlicker();
@@ -2796,6 +2815,8 @@
     mpStopPolling();
     const code = mpRoomCode, pid = mpPlayerId;
     mpRoomCode = null; mpPlayerId = null; mpPlayerName = null; mpGuessTargetId = null;
+    mpCurrentStatus = null;
+    mpUpdateDrawAvailability();
     mpClearSession();
     mpRenderEntry();
     if(code && pid){
@@ -2811,6 +2832,8 @@
       mpRoomCode = session.code;
       mpPlayerId = session.playerId;
       mpPlayerName = session.name;
+      mpCurrentStatus = state.status || "lobby";
+      mpUpdateDrawAvailability();
     }else{
       mpClearSession();
     }
