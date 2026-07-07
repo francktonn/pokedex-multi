@@ -479,6 +479,16 @@
     cursor:pointer;
     text-decoration:underline;
   }
+  .history-close{
+    display:none; /* réapparaît uniquement quand le panneau est un tiroir plein écran (mobile) */
+    background:none;
+    border:none;
+    color:var(--ink);
+    font-size:18px;
+    line-height:1;
+    cursor:pointer;
+    padding:2px 4px;
+  }
   .history-list{
     display:flex;
     flex-direction:column;
@@ -663,14 +673,144 @@
     box-shadow: inset 0 0 0 1px rgba(0,0,0,.06);
   }
 
+  /* barre rapide multijoueur, affichée directement sur l'écran principal du
+     Pokédex (pas besoin d'ouvrir l'onglet Multijoueur pour deviner) */
+  .mp-quickbar{
+    margin-top:14px;
+    background: var(--paper);
+    border-radius: var(--radius-sm);
+    padding:10px 12px;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,.06), 0 4px 0 rgba(0,0,0,.15);
+  }
+  .mp-quickbar-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    font-family:'Silkscreen', monospace;
+    font-size:10.5px;
+    color:#6b6357;
+  }
+  .mp-quickbar-code{ color:var(--red-dark); font-weight:700; letter-spacing:.04em; }
+  .mp-quickbar-status{ opacity:.8; }
+  .mp-quickbar-players{
+    display:flex;
+    gap:6px;
+    overflow-x:auto;
+    padding-bottom:2px;
+    scrollbar-width:none;
+  }
+  .mp-quickbar-players::-webkit-scrollbar{ display:none; }
+  .mp-quick-chip{
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    background:#fff;
+    border-radius:999px;
+    padding:5px 6px 5px 10px;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.06);
+    font-family:'Nunito', sans-serif;
+    white-space:nowrap;
+  }
+  .mp-quick-chip.is-me{ box-shadow: inset 0 0 0 1.5px var(--gold); }
+  .mp-quick-name{ font-weight:700; font-size:11.5px; color:var(--ink); }
+  .mp-quick-score{
+    font-family:'Silkscreen', monospace;
+    font-size:9.5px;
+    color:var(--red-dark);
+    background:rgba(214,54,42,.08);
+    border-radius:999px;
+    padding:2px 6px;
+  }
+  .mp-quick-guess-btn{
+    border:none;
+    background:var(--red);
+    color:#fff;
+    border-radius:50%;
+    width:22px; height:22px;
+    font-size:11px;
+    cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 2px 0 var(--red-darker);
+    flex-shrink:0;
+  }
+  .mp-quick-guess-btn:active{ transform:translateY(1px); box-shadow:0 1px 0 var(--red-darker); }
+  .mp-quick-check{ font-size:12px; flex-shrink:0; }
+  .mp-quick-waiting{ font-size:10px; color:#b0a898; font-style:italic; flex-shrink:0; }
+  #mpQuickGuessArea .mp-guess-box{ margin-top:2px; }
+
   @media (prefers-reduced-motion: reduce){
     .pokeball-spin{ animation:none; }
     .btn{ transition:none; }
   }
 
-  @media (max-width:420px){
-    .sprite-wrap{ width:150px; height:150px; }
-    .info-grid{ grid-template-columns: repeat(3,1fr); }
+  /* ============ MOBILE : tout tient sur l'écran, pas de scroll de page ============ */
+  @media (max-width: 760px){
+    html, body{
+      height:100%;
+      overflow:hidden;
+      overscroll-behavior:none;
+    }
+    body{
+      padding:10px 8px calc(10px + env(safe-area-inset-bottom));
+      align-items:flex-start;
+    }
+    .stage{ height:100%; gap:8px; }
+    /* Le cadre du Pokédex garde un scroll interne en secours (jamais visible en
+       usage normal, juste une sécurité si un Pokémon a un texte très long) : la
+       PAGE, elle, ne bouge jamais. */
+    .device{
+      max-height: calc(100dvh - 20px - env(safe-area-inset-bottom));
+      overflow-y:auto;
+      scrollbar-width:none;
+      padding:12px 12px 12px;
+    }
+    .device::-webkit-scrollbar{ display:none; }
+    .topbar{ padding:4px 4px 8px 36px; }
+    .topbar-row2{ padding:0 4px 6px 36px; }
+    .screen-frame{ min-height:150px; padding:10px; }
+    .sprite-wrap{ width:120px; height:120px; }
+    .nameplate{ margin-top:10px; padding:9px 12px; }
+    .info-card{
+      margin-top:8px;
+      padding:10px 12px 12px;
+      max-height:26vh;
+      overflow-y:auto;
+      scrollbar-width:none;
+    }
+    .info-card::-webkit-scrollbar{ display:none; }
+    .info-grid{ grid-template-columns: repeat(3,1fr); gap:6px; }
+    .controls{ margin-top:10px; gap:8px; }
+    .btn{ padding:11px 16px; font-size:14px; }
+    .mp-quickbar{ margin-top:10px; padding:8px 10px; }
+
+    /* L'historique devient un tiroir plein écran (ouvert via le bouton 📜) au lieu
+       de rester affiché sous le Pokédex, ce qui obligeait sinon à scroller la page. */
+    .history-panel{ display:none; }
+    .history-panel.mobile-open{
+      display:flex;
+      flex-direction:column;
+      position:fixed;
+      inset:0;
+      z-index:120;
+      max-width:none;
+      width:100%;
+      height:100%;
+      border-radius:0;
+      padding:calc(16px + env(safe-area-inset-top)) 16px 16px;
+    }
+    .history-panel.mobile-open .history-list{ max-height:none; flex:1; }
+    .history-close{ display:inline-block; }
+
+    .fab-stack{ right:14px; bottom:calc(14px + env(safe-area-inset-bottom)); gap:8px; }
+    .fab-btn{ width:44px; height:44px; font-size:18px; }
+  }
+
+  @media (min-width: 761px){
+    .fab-history{ display:none; } /* sur desktop, l'historique est déjà visible en permanence à côté */
   }
 
   /* ============ FLOATING ACTION BUTTONS (recherche + bloc-note) ============ */
@@ -971,12 +1111,24 @@
         <button class="btn btn-secondary" id="btnCopy" disabled>📋 Copier les infos</button>
       </div>
     </div>
+
+    <!-- MULTIJOUEUR — barre rapide, toujours visible pendant une partie : plus besoin
+         d'ouvrir l'onglet Multijoueur pour deviner le secret des autres joueurs. -->
+    <div class="mp-quickbar" id="mpQuickBar" style="display:none;">
+      <div class="mp-quickbar-head">
+        <span class="mp-quickbar-code">👥 <span id="mpQuickCode">----</span></span>
+        <span class="mp-quickbar-status" id="mpQuickStatus"></span>
+      </div>
+      <div class="mp-quickbar-players" id="mpQuickPlayers"></div>
+      <div id="mpQuickGuessArea"></div>
+    </div>
   </div>
 
   <!-- HISTORY -->
-  <div class="history-panel">
+  <div class="history-panel" id="historyPanel">
     <div class="history-head">
       <span class="history-title">HISTORIQUE DES TIRAGES</span>
+      <button class="history-close" id="btnHistoryClose" aria-label="Fermer">✕</button>
       <button class="history-clear" id="btnClearHistory">Effacer</button>
     </div>
     <div class="history-list" id="historyList">
@@ -989,6 +1141,7 @@
 <div class="fab-stack">
   <button class="fab-btn" id="btnSearch" title="Rechercher un Pokémon" aria-label="Rechercher un Pokémon">🔍</button>
   <button class="fab-btn" id="btnMultiplayer" title="Multijoueur" aria-label="Ouvrir le mode multijoueur">👥</button>
+  <button class="fab-btn fab-history" id="btnHistoryToggle" title="Historique" aria-label="Ouvrir l'historique">📜</button>
   <button class="fab-btn" id="btnNotepad" title="Bloc-note" aria-label="Ouvrir le bloc-note">📝</button>
 </div>
 
@@ -1263,6 +1416,9 @@
   const lightReady = document.getElementById("lightReady");
   const historyList = document.getElementById("historyList");
   const historyEmpty = document.getElementById("historyEmpty");
+  const historyPanel = document.getElementById("historyPanel");
+  const btnHistoryToggle = document.getElementById("btnHistoryToggle");
+  const btnHistoryClose = document.getElementById("btnHistoryClose");
   const btnNotepad = document.getElementById("btnNotepad");
   const btnNotepadClose = document.getElementById("btnNotepadClose");
   const btnNotepadClear = document.getElementById("btnNotepadClear");
@@ -1274,6 +1430,8 @@
   const btnMpClose = document.getElementById("btnMpClose");
   const mpOverlay = document.getElementById("mpOverlay");
   const mpBody = document.getElementById("mpBody");
+  const mpQuickBar = document.getElementById("mpQuickBar");
+  const mpQuickGuessArea = document.getElementById("mpQuickGuessArea");
 
   const btnSearch = document.getElementById("btnSearch");
   const btnSearchClose = document.getElementById("btnSearchClose");
@@ -2363,6 +2521,7 @@
   let mpPlayerName = null;
   let mpPollTimer = null;
   let mpGuessTargetId = null;
+  let mpGuessAreaId = "mpGuessArea"; // "mpGuessArea" (onglet Multijoueur) ou "mpQuickGuessArea" (écran principal)
   let mpBusy = false;
   let mpLastRenderedPokemonId = null; // dernier secret déjà affiché sur l'écran principal du Pokédex
   let mpCurrentStatus = null; // statut de la manche en cours ('lobby' | 'playing' | null si pas en partie)
@@ -2583,6 +2742,7 @@
       mpClearSession();
       mpCurrentStatus = null;
       mpUpdateDrawAvailability();
+      mpRenderQuickBar(null);
       mpRenderEntry("La partie n'existe plus ou tu n'en fais plus partie.");
       return;
     }
@@ -2629,6 +2789,11 @@
     }
 
     const entries = state.players.slice().sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+
+    // Barre rapide sur l'écran principal : toujours mise à jour, même si l'onglet
+    // Multijoueur n'est pas ouvert, pour pouvoir deviner sans jamais y aller.
+    mpRenderQuickBar(state);
+
     const list = document.getElementById("mpPlayersList");
     if(!list) return;
     list.innerHTML = entries.map(p => {
@@ -2653,7 +2818,54 @@
 
     list.querySelectorAll(".mp-guess-btn").forEach(btn => {
       btn.addEventListener("click", () => {
-        mpOpenGuessBox(btn.dataset.pid, btn.dataset.name);
+        mpOpenGuessBox(btn.dataset.pid, btn.dataset.name, "mpGuessArea");
+      });
+    });
+  }
+
+  // Barre compacte affichée en permanence sur l'écran principal du Pokédex (sous
+  // les boutons), pour deviner le secret des autres joueurs sans avoir à ouvrir
+  // l'onglet Multijoueur. Reste à jour via le même sondage périodique.
+  function mpRenderQuickBar(state){
+    if(!mpQuickBar) return;
+    if(!state || !state.players || !mpRoomCode){
+      mpQuickBar.style.display = "none";
+      if(mpQuickGuessArea) mpQuickGuessArea.innerHTML = "";
+      return;
+    }
+    mpQuickBar.style.display = "flex";
+    const isPlaying = state.status === "playing";
+    const codeEl = document.getElementById("mpQuickCode");
+    if(codeEl) codeEl.textContent = mpRoomCode;
+    const statusEl = document.getElementById("mpQuickStatus");
+    if(statusEl) statusEl.textContent = isPlaying ? "manche en cours" : "en attente…";
+
+    const entries = state.players.slice().sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+    const players = document.getElementById("mpQuickPlayers");
+    if(!players) return;
+    players.innerHTML = entries.map(p => {
+      const isMe = p.id === mpPlayerId;
+      let action = "";
+      if(!isMe){
+        if(p.hasPokemon){
+          action = `<button class="mp-quick-guess-btn" data-pid="${mpEscapeHtml(p.id)}" data-name="${mpEscapeHtml(p.name)}" title="Deviner le secret de ${mpEscapeHtml(p.name)}">🔎</button>`;
+        }else if(isPlaying){
+          action = `<span class="mp-quick-check" title="Déjà trouvé">✅</span>`;
+        }else{
+          action = `<span class="mp-quick-waiting">en attente</span>`;
+        }
+      }
+      return `
+        <div class="mp-quick-chip${isMe ? " is-me" : ""}">
+          <span class="mp-quick-name">${mpEscapeHtml(p.name)}${isMe ? " (toi)" : ""}${p.id === state.hostId ? " 👑" : ""}</span>
+          <span class="mp-quick-score">${p.score} pt${p.score > 1 ? "s" : ""}</span>
+          ${action}
+        </div>`;
+    }).join("");
+
+    players.querySelectorAll(".mp-quick-guess-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        mpOpenGuessBox(btn.dataset.pid, btn.dataset.name, "mpQuickGuessArea");
       });
     });
   }
@@ -2726,9 +2938,18 @@
     }
   }
 
-  function mpOpenGuessBox(targetId, targetName){
+  function mpOpenGuessBox(targetId, targetName, areaId){
     mpGuessTargetId = targetId;
-    const area = document.getElementById("mpGuessArea");
+    mpGuessAreaId = areaId || "mpGuessArea";
+    // Un seul essai de devinette actif à la fois : si l'autre zone en avait un
+    // (onglet Multijoueur vs barre rapide de l'écran principal), on la vide.
+    ["mpGuessArea", "mpQuickGuessArea"].forEach(id => {
+      if(id !== mpGuessAreaId){
+        const other = document.getElementById(id);
+        if(other) other.innerHTML = "";
+      }
+    });
+    const area = document.getElementById(mpGuessAreaId);
     if(!area) return;
     area.innerHTML = `
       <div class="mp-guess-box">
@@ -2779,7 +3000,7 @@
 
   function mpCancelGuess(){
     mpGuessTargetId = null;
-    const area = document.getElementById("mpGuessArea");
+    const area = document.getElementById(mpGuessAreaId);
     if(area) area.innerHTML = "";
   }
 
@@ -2918,6 +3139,7 @@
     if(e.key !== "Escape") return;
     if(notepadOverlay.classList.contains("open")) closeNotepad();
     if(searchOverlay.classList.contains("open")) closeSearch();
+    if(historyPanel.classList.contains("mobile-open")) historyPanel.classList.remove("mobile-open");
   });
 
   btnSearch.addEventListener("click", openSearch);
@@ -2933,6 +3155,9 @@
   document.addEventListener("keydown", (e) => {
     if(e.key === "Escape" && mpOverlay.classList.contains("open")) mpClose();
   });
+
+  if(btnHistoryToggle) btnHistoryToggle.addEventListener("click", () => historyPanel.classList.add("mobile-open"));
+  if(btnHistoryClose) btnHistoryClose.addEventListener("click", () => historyPanel.classList.remove("mobile-open"));
 
   clearHistory(); // vide l'historique des tirages à chaque chargement de page (F5)
   setLights(null);
