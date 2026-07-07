@@ -1276,7 +1276,6 @@
     </div>
 
     <div class="controls">
-      <button class="btn btn-config" id="btnGameConfig">⚙️ Configuration de la partie</button>
       <button class="btn btn-main" id="btnDraw">🎲 Tirer un Pokémon</button>
     </div>
 
@@ -1694,7 +1693,6 @@
   const notepadActiveArea = document.getElementById("notepadActiveArea");
   const notepadCategories = document.getElementById("notepadCategories");
 
-  const btnGameConfig = document.getElementById("btnGameConfig");
   const btnGcClose = document.getElementById("btnGcClose");
   const gcOverlay = document.getElementById("gcOverlay");
   const gcGenGrid = document.getElementById("gcGenGrid");
@@ -4038,7 +4036,6 @@
 
   // ---------- Init ----------
   btnDraw.addEventListener("click", drawPokemon);
-  btnGameConfig.addEventListener("click", () => gcOpen({ mode: "solo" }));
   btnNotepad.addEventListener("click", openNotepad);
   btnNotepadClose.addEventListener("click", closeNotepad);
   btnNotepadClear.addEventListener("click", clearNotepad);
