@@ -2363,6 +2363,7 @@
   let mpPollTimer = null;
   let mpGuessTargetId = null;
   let mpBusy = false;
+  let mpLastRenderedPokemonId = null; // dernier secret déjà affiché sur l'écran principal du Pokédex
 
   function mpEscapeHtml(s){
     return (s == null ? "" : String(s)).replace(/[&<>"']/g, c => (
@@ -2429,7 +2430,7 @@
     mpPollTimer = setInterval(async () => {
       if(!mpRoomCode) return;
       const state = await mpApiGetState(mpRoomCode, mpPlayerId);
-      if(state) mpRenderPlayersList(state);
+      if(state){ mpRenderPlayersList(state); mpSyncMainScreen(state); }
     }, MP_POLL_MS);
   }
   function mpStopPolling(){
@@ -2539,7 +2540,7 @@
         if(btn){ btn.textContent = "✅"; setTimeout(() => { btn.textContent = "📋"; }, 1200); }
       }catch(e){}
     });
-    mpApiGetState(mpRoomCode, mpPlayerId).then(state => { if(state) mpRenderPlayersList(state); });
+    mpApiGetState(mpRoomCode, mpPlayerId).then(state => { if(state){ mpRenderPlayersList(state); mpSyncMainScreen(state); } });
   }
 
   function mpRenderPlayersList(state){
@@ -2620,6 +2621,26 @@
     });
   }
 
+  // Affiche le Pokémon secret du joueur sur l'écran PRINCIPAL du Pokédex (celui
+  // derrière la popup Multijoueur), pas seulement dans la petite case du menu.
+  // Appelée à chaque fois qu'on récupère un état frais, elle ne déclenche l'affichage
+  // que si le secret a réellement changé (nouveau tirage), pour ne pas re-flasher
+  // inutilement à chaque sondage de 3s.
+  async function mpSyncMainScreen(state){
+    if(!state || !state.me) return;
+    const newId = state.me.pokemonId || null;
+    if(newId && newId !== mpLastRenderedPokemonId){
+      mpLastRenderedPokemonId = newId;
+      try{
+        const data = await loadPokemon(newId);
+        renderPokemon(data);
+        pushHistory(data);
+      }catch(e){}
+    }else if(!newId){
+      mpLastRenderedPokemonId = null;
+    }
+  }
+
   function mpShowRoundBanner(text){
     const banner = document.getElementById("mpRoundBanner");
     if(!banner) return;
@@ -2641,6 +2662,7 @@
       await mpApiPost("start", { code: mpRoomCode, playerId: mpPlayerId });
       const state = await mpApiGetState(mpRoomCode, mpPlayerId);
       if(state && state.me && state.me.pokemonId){
+        mpLastRenderedPokemonId = state.me.pokemonId;
         const data = await loadPokemon(state.me.pokemonId);
         await new Promise(r => setTimeout(r, 550));
         stopDexFlicker(data.id);
@@ -2737,7 +2759,7 @@
           feedback.className = "mp-guess-feedback ko";
         }
         const state = await mpApiGetState(mpRoomCode, mpPlayerId);
-        if(state) mpRenderPlayersList(state);
+        if(state){ mpRenderPlayersList(state); mpSyncMainScreen(state); }
         return;
       }
       if(result.correct){
@@ -2749,16 +2771,10 @@
         if(state) mpRenderPlayersList(state);
         if(result.roundEnded){
           mpShowRoundBanner(`🏆 ${result.lastPlayerName} était le dernier non trouvé (+1 point bonus) ! Nouvelle manche lancée, scores conservés.`);
-          // Une nouvelle manche vient de démarrer automatiquement côté serveur : si
-          // j'ai reçu un nouveau secret, on l'affiche comme pour un tirage classique.
-          if(state && state.me && state.me.pokemonId){
-            try{
-              const data = await loadPokemon(state.me.pokemonId);
-              renderPokemon(data);
-              pushHistory(data);
-            }catch(e){}
-          }
         }
+        // Que la manche continue ou qu'elle vienne de redémarrer, si mon secret a
+        // changé, on l'affiche sur l'écran principal (comme pour un tirage classique).
+        if(state) await mpSyncMainScreen(state);
         setTimeout(mpCancelGuess, 1400);
       }else{
         if(feedback){
