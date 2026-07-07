@@ -4116,7 +4116,11 @@
         // Que la manche continue ou qu'elle vienne de redémarrer, si mon secret a
         // changé, on l'affiche sur l'écran principal (comme pour un tirage classique).
         if(state) await mpSyncMainScreen(state);
-        setTimeout(mpCancelGuess, 1400);
+        const guessedFromPanel = mpGuessAreaId === "guessGuessArea";
+        setTimeout(() => {
+          mpCancelGuess();
+          if(guessedFromPanel) guessClose();
+        }, 1400);
       }else{
         if(feedback){
           feedback.textContent = "❌ Raté, essaie encore !";
