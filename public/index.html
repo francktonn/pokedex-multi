@@ -799,6 +799,160 @@
     text-decoration:underline;
   }
 
+  /* ---- Bloc-note : sélecteur de joueur + grille de catégories ---- */
+  .notepad-panel-wide{ max-width:480px; max-height:min(720px, 92vh); }
+
+  .notepad-players-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+  }
+  .notepad-player-tab{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-family:'Nunito';
+    font-weight:700;
+    font-size:12.5px;
+    color:var(--ink);
+    background:#fff;
+    border:1px solid rgba(0,0,0,.14);
+    border-radius:999px;
+    padding:6px 10px;
+    cursor:pointer;
+    transition: background .12s ease, border-color .12s ease, color .12s ease;
+  }
+  .notepad-player-tab.active{
+    background: var(--gold);
+    border-color: var(--gold);
+    color: var(--red-darker);
+  }
+  .notepad-player-remove{
+    opacity:.55;
+    font-size:11px;
+    line-height:1;
+  }
+  .notepad-player-remove:hover{ opacity:1; }
+
+  .notepad-add-player{
+    display:flex;
+    gap:6px;
+  }
+  .notepad-add-player input{
+    flex:1;
+    min-width:0;
+    border-radius:8px;
+    border:1px solid rgba(0,0,0,.14);
+    padding:7px 10px;
+    font-family:'Nunito';
+    font-size:12.5px;
+    background:#fff;
+    color:var(--ink);
+  }
+  .notepad-add-player input:focus{ outline:2px solid var(--gold); outline-offset:1px; }
+  .notepad-add-player-btn{
+    width:32px;
+    flex:none;
+    border-radius:8px;
+    border:none;
+    background: var(--gold);
+    color: var(--red-darker);
+    font-weight:800;
+    font-size:15px;
+    cursor:pointer;
+  }
+
+  .notepad-empty{
+    font-size:12px;
+    color:#8c8474;
+    font-style:italic;
+    padding:6px 2px;
+  }
+
+  .notepad-active-area{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    flex:1;
+    min-height:0;
+  }
+  .notepad-categories{
+    flex:1;
+    min-height:0;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    padding-right:2px;
+  }
+  .notepad-cat{
+    border:1px solid rgba(0,0,0,.10);
+    border-radius:10px;
+    background:#fff;
+    overflow:hidden;
+  }
+  .notepad-cat > summary{
+    list-style:none;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:8px 10px;
+    cursor:pointer;
+    font-family:'Nunito';
+    font-weight:800;
+    font-size:12px;
+    color:var(--red-dark);
+    user-select:none;
+  }
+  .notepad-cat > summary::-webkit-details-marker{ display:none; }
+  .notepad-cat > summary::before{
+    content:"▸";
+    display:inline-block;
+    margin-right:6px;
+    transition: transform .12s ease;
+  }
+  .notepad-cat[open] > summary::before{ transform:rotate(90deg); }
+  .notepad-cat-count{
+    font-weight:600;
+    font-size:10.5px;
+    color:#8c8474;
+  }
+  .notepad-grid{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    padding:0 10px 10px;
+  }
+  .notepad-chip{
+    font-family:'Nunito';
+    font-weight:700;
+    font-size:11.5px;
+    color:var(--ink);
+    background:#f4f1ea;
+    border:1px solid rgba(0,0,0,.12);
+    border-radius:7px;
+    padding:5px 9px;
+    cursor:pointer;
+    touch-action:manipulation;
+    user-select:none;
+    transition: background .1s ease, border-color .1s ease, color .1s ease;
+  }
+  .notepad-chip.is-yes{
+    background:#2e7d32;
+    border-color:#2e7d32;
+    color:#fff;
+  }
+  .notepad-chip.is-no{
+    background:#c62828;
+    border-color:#c62828;
+    color:#fff;
+    text-decoration:line-through;
+  }
+  .notepad-active-area .notepad-textarea{
+    flex:none;
+    min-height:80px;
+  }
+
   /* ============ SEARCH (rechercher un pokémon) ============ */
   .search-panel{
     width:100%;
@@ -1069,18 +1223,30 @@
 
 <!-- NOTEPAD (bloc-note) -->
 <div class="notepad-overlay" id="notepadOverlay">
-  <div class="notepad-panel">
+  <div class="notepad-panel notepad-panel-wide">
     <div class="notepad-head">
       <span class="notepad-title">📝 BLOC-NOTE</span>
       <button class="notepad-close" id="btnNotepadClose" aria-label="Fermer">✕</button>
     </div>
     <div class="notepad-body">
-      <div class="notepad-hint">Note ce que tu veux retenir. Ce bloc-note se vide automatiquement à chaque nouveau tirage.</div>
-      <textarea class="notepad-textarea" id="notepadText" placeholder="Écris ici tes notes, tes indices, tes hypothèses…"></textarea>
+      <div class="notepad-hint">Choisis un joueur, puis coche ce que tu sais sur son Pokémon secret : un clic = case verte (vrai), un double-clic = case rouge (faux).</div>
+
+      <div class="notepad-players-row" id="notepadPlayersRow"></div>
+      <form class="notepad-add-player" id="notepadAddPlayerForm">
+        <input type="text" id="notepadAddPlayerInput" maxlength="16" placeholder="Ajouter un joueur…" autocomplete="off">
+        <button type="submit" class="notepad-add-player-btn" title="Ajouter">＋</button>
+      </form>
+
+      <div class="notepad-empty" id="notepadEmptyState" style="display:none;">Ajoute au moins un joueur pour commencer à prendre des notes sur son Pokémon secret.</div>
+
+      <div class="notepad-active-area" id="notepadActiveArea">
+        <div class="notepad-categories" id="notepadCategories"></div>
+        <textarea class="notepad-textarea" id="notepadText" placeholder="Notes libres, indices, hypothèses sur ce joueur…"></textarea>
+      </div>
     </div>
     <div class="notepad-foot">
       <span class="notepad-status" id="notepadStatus">&nbsp;</span>
-      <button class="notepad-clear" id="btnNotepadClear">Effacer</button>
+      <button class="notepad-clear" id="btnNotepadClear">Tout effacer</button>
     </div>
   </div>
 </div>
@@ -1090,7 +1256,7 @@
   "use strict";
 
   const MAX_DEX_ID = 807; // Génération I à VII
-  const NOTEPAD_KEY = "pokedex_devinette_notepad_v1";
+  const NOTEPAD_KEY = "pokedex_devinette_notepad_v2";
 
   const TYPE_COLORS = {
     normal:"#A8A77A", fire:"#EE8130", water:"#6390F0", electric:"#F7D02C",
@@ -1120,6 +1286,38 @@
     black:"Noir", blue:"Bleu", brown:"Marron", gray:"Gris", green:"Vert",
     pink:"Rose", purple:"Violet", red:"Rouge", white:"Blanc", yellow:"Jaune"
   };
+
+  // Catégories du bloc-note "à cocher" : chaque item a un id stable (utilisé comme
+  // clé de sauvegarde), un label affiché, et pour les types une couleur d'accent.
+  const NOTE_CATEGORIES = [
+    { key:"type", label:"Types", items: Object.keys(TYPE_FR).map(k => ({ id:"type:"+k, label:TYPE_FR[k], accent:TYPE_COLORS[k] })) },
+    { key:"gen", label:"Générations", items: [1,2,3,4,5,6,7].map(n => ({ id:"gen:"+n, label:"Génération "+n })) },
+    { key:"cat", label:"Catégorie", items: [
+      { id:"cat:legendaire", label:"Légendaire" },
+      { id:"cat:mythique", label:"Fabuleux (mythique)" },
+      { id:"cat:ultra", label:"Ultra-Chimère" },
+      { id:"cat:fossile", label:"Fossile" },
+      { id:"cat:starter", label:"Starter" },
+      { id:"cat:bebe", label:"Bébé" }
+    ]},
+    { key:"color", label:"Couleur", items: Object.keys(COLOR_FR).map(k => ({ id:"color:"+k, label:COLOR_FR[k] })) },
+    { key:"habitat", label:"Habitat", items: Object.keys(HABITAT_FR).map(k => ({ id:"habitat:"+k, label:HABITAT_FR[k] })) },
+    { key:"size", label:"Taille & poids", items: [
+      { id:"size:grand", label:"Plus d'1 m" },
+      { id:"size:petit", label:"Moins de 50 cm" },
+      { id:"size:lourd", label:"Plus de 50 kg" },
+      { id:"size:leger", label:"Moins de 10 kg" }
+    ]},
+    { key:"divers", label:"Divers", items: [
+      { id:"divers:bicolore", label:"Deux types" },
+      { id:"divers:capture_facile", label:"Capture facile" },
+      { id:"divers:capture_difficile", label:"Capture difficile" },
+      { id:"divers:peut_evoluer", label:"Peut encore évoluer" },
+      { id:"divers:evo_finale", label:"Fin d'évolution" },
+      { id:"divers:nom_long", label:"Nom de +8 lettres" },
+      { id:"divers:genre_mf", label:"Mâle et femelle" }
+    ]}
+  ];
 
   // Tableau des relations de type (défense) : pour chaque type, quels types attaquants
   // font x2 (weak), x0.5 (resist) ou x0 (immune). Sert à calculer les faiblesses/résistances
@@ -1263,6 +1461,12 @@
   const notepadOverlay = document.getElementById("notepadOverlay");
   const notepadText = document.getElementById("notepadText");
   const notepadStatus = document.getElementById("notepadStatus");
+  const notepadPlayersRow = document.getElementById("notepadPlayersRow");
+  const notepadAddPlayerForm = document.getElementById("notepadAddPlayerForm");
+  const notepadAddPlayerInput = document.getElementById("notepadAddPlayerInput");
+  const notepadEmptyState = document.getElementById("notepadEmptyState");
+  const notepadActiveArea = document.getElementById("notepadActiveArea");
+  const notepadCategories = document.getElementById("notepadCategories");
 
   const btnMultiplayer = document.getElementById("btnMultiplayer");
   const btnMpClose = document.getElementById("btnMpClose");
@@ -1940,33 +2144,215 @@
   }
 
   // ---------- Notepad (bloc-note, localStorage) ----------
+  // Structure persistée : { manualPlayers:[{key,name}], activePlayerKey, data:{ [playerKey]: { note, checks:{itemId:'yes'|'no'} } } }
   let notepadSaveTimer = null;
+  let notepadState = loadNotepadState();
+  let notepadMpPlayers = []; // rempli depuis la partie multijoueur en cours (id/name), hors soi-même
+  let notepadChipTimers = {}; // debounce clic simple / double-clic par item
 
-  function loadNotepad(){
-    try{ return localStorage.getItem(NOTEPAD_KEY) || ""; }catch(e){ return ""; }
+  function loadNotepadState(){
+    try{
+      const raw = localStorage.getItem(NOTEPAD_KEY);
+      if(!raw) return { manualPlayers: [], activePlayerKey: null, data: {} };
+      const parsed = JSON.parse(raw);
+      return {
+        manualPlayers: Array.isArray(parsed.manualPlayers) ? parsed.manualPlayers : [],
+        activePlayerKey: parsed.activePlayerKey || null,
+        data: (parsed.data && typeof parsed.data === "object") ? parsed.data : {}
+      };
+    }catch(e){ return { manualPlayers: [], activePlayerKey: null, data: {} }; }
   }
-  function saveNotepad(text){
-    try{ localStorage.setItem(NOTEPAD_KEY, text); }catch(e){}
+  function saveNotepadState(){
+    try{ localStorage.setItem(NOTEPAD_KEY, JSON.stringify(notepadState)); }catch(e){}
   }
+
+  // Fusionne les joueurs de la partie multijoueur en cours (auto, non supprimables)
+  // et les joueurs ajoutés à la main (pour une partie en local entre amis), utile
+  // dans les deux cas pour prendre des notes séparées sur chaque adversaire.
+  function notepadAllPlayers(){
+    const mp = notepadMpPlayers.map(p => ({ key: "mp:" + p.id, name: p.name, removable: false }));
+    const manual = notepadState.manualPlayers.map(p => ({ key: "manual:" + p.key, name: p.name, removable: true }));
+    return mp.concat(manual);
+  }
+
+  function notepadEnsureData(key){
+    if(!notepadState.data[key]) notepadState.data[key] = { note: "", checks: {} };
+    return notepadState.data[key];
+  }
+
+  // Appelée par le sondage multijoueur : garde la liste de joueurs à jour (sans
+  // jamais toucher aux notes déjà prises, qui restent associées à l'id du joueur).
+  function notepadSyncMpPlayers(state){
+    notepadMpPlayers = (state && state.players)
+      ? state.players.filter(p => p.id !== mpPlayerId).map(p => ({ id: p.id, name: p.name }))
+      : [];
+    if(notepadOverlay.classList.contains("open")) renderNotepadAll();
+  }
+
+  function notepadPickActive(){
+    const players = notepadAllPlayers();
+    if(!players.length){ notepadState.activePlayerKey = null; return; }
+    if(!players.find(p => p.key === notepadState.activePlayerKey)){
+      notepadState.activePlayerKey = players[0].key;
+    }
+  }
+
+  function renderNotepadAll(){
+    notepadPickActive();
+    renderNotepadPlayers();
+    renderNotepadActivePlayer();
+  }
+
+  function renderNotepadPlayers(){
+    const players = notepadAllPlayers();
+    notepadPlayersRow.innerHTML = players.map(p => `
+      <button type="button" class="notepad-player-tab${p.key === notepadState.activePlayerKey ? " active" : ""}" data-key="${mpEscapeHtml(p.key)}">
+        ${mpEscapeHtml(p.name)}${p.removable ? `<span class="notepad-player-remove" data-remove-key="${mpEscapeHtml(p.key)}" title="Retirer ce joueur">✕</span>` : ""}
+      </button>
+    `).join("");
+
+    notepadPlayersRow.querySelectorAll(".notepad-player-tab").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        if(e.target.closest(".notepad-player-remove")) return; // géré séparément
+        notepadState.activePlayerKey = btn.dataset.key;
+        saveNotepadState();
+        renderNotepadPlayers();
+        renderNotepadActivePlayer();
+      });
+    });
+    notepadPlayersRow.querySelectorAll(".notepad-player-remove").forEach(el => {
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const key = el.dataset.removeKey; // ex: "manual:abc123"
+        const rawKey = key.replace(/^manual:/, "");
+        notepadState.manualPlayers = notepadState.manualPlayers.filter(p => p.key !== rawKey);
+        delete notepadState.data[key];
+        saveNotepadState();
+        renderNotepadAll();
+      });
+    });
+  }
+
+  function notepadCatCounts(catItems, checks){
+    let known = 0;
+    catItems.forEach(it => { if(checks[it.id]) known++; });
+    return known;
+  }
+
+  function renderNotepadActivePlayer(){
+    const key = notepadState.activePlayerKey;
+    if(!key){
+      notepadEmptyState.style.display = "block";
+      notepadActiveArea.style.display = "none";
+      return;
+    }
+    notepadEmptyState.style.display = "none";
+    notepadActiveArea.style.display = "flex";
+
+    const entry = notepadEnsureData(key);
+    notepadText.value = entry.note || "";
+
+    notepadCategories.innerHTML = NOTE_CATEGORIES.map(cat => `
+      <details class="notepad-cat" open>
+        <summary>
+          <span>${mpEscapeHtml(cat.label)}</span>
+          <span class="notepad-cat-count" data-cat-count="${cat.key}">${notepadCatCounts(cat.items, entry.checks)}/${cat.items.length}</span>
+        </summary>
+        <div class="notepad-grid">
+          ${cat.items.map(it => `
+            <button type="button" class="notepad-chip${entry.checks[it.id] === "yes" ? " is-yes" : ""}${entry.checks[it.id] === "no" ? " is-no" : ""}"
+              data-item-id="${mpEscapeHtml(it.id)}" data-cat="${cat.key}"
+              ${it.accent ? `style="border-left:4px solid ${it.accent}"` : ""}>${mpEscapeHtml(it.label)}</button>
+          `).join("")}
+        </div>
+      </details>
+    `).join("");
+
+    notepadCategories.querySelectorAll(".notepad-chip").forEach(chip => {
+      chip.addEventListener("click", () => notepadHandleChipClick(chip));
+    });
+  }
+
+  // Un clic = "je sais que c'est vrai" (case verte) ; un second clic rapproché =
+  // "je sais que c'est faux" (case rouge). On distingue les deux à la main (plutôt
+  // que d'utiliser dblclick) pour un comportement fiable au clavier/souris/tactile.
+  function notepadHandleChipClick(chip){
+    const id = chip.dataset.itemId;
+    if(!notepadChipTimers[id]) notepadChipTimers[id] = { count: 0, timer: null };
+    const t = notepadChipTimers[id];
+    t.count++;
+    if(t.count === 1){
+      t.timer = setTimeout(() => {
+        notepadApplyChip(chip, "single");
+        t.count = 0;
+      }, 280);
+    }else{
+      clearTimeout(t.timer);
+      t.count = 0;
+      notepadApplyChip(chip, "double");
+    }
+  }
+
+  function notepadApplyChip(chip, kind){
+    const key = notepadState.activePlayerKey;
+    if(!key) return;
+    const entry = notepadEnsureData(key);
+    const id = chip.dataset.itemId;
+    const cur = entry.checks[id] || null;
+    let next;
+    if(kind === "single"){
+      next = cur === "yes" ? null : "yes";
+    }else{
+      next = cur === "no" ? null : "no";
+    }
+    if(next) entry.checks[id] = next; else delete entry.checks[id];
+    saveNotepadState();
+
+    chip.classList.toggle("is-yes", next === "yes");
+    chip.classList.toggle("is-no", next === "no");
+    const catKey = chip.dataset.cat;
+    const cat = NOTE_CATEGORIES.find(c => c.key === catKey);
+    const countEl = notepadCategories.querySelector(`[data-cat-count="${catKey}"]`);
+    if(cat && countEl) countEl.textContent = notepadCatCounts(cat.items, entry.checks) + "/" + cat.items.length;
+  }
+
+  function notepadHandleAddPlayer(e){
+    e.preventDefault();
+    const name = notepadAddPlayerInput.value.trim().slice(0, 16);
+    if(!name) return;
+    const key = "m" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    notepadState.manualPlayers.push({ key, name });
+    notepadState.activePlayerKey = "manual:" + key;
+    saveNotepadState();
+    notepadAddPlayerInput.value = "";
+    renderNotepadAll();
+  }
+
   function openNotepad(){
-    notepadText.value = loadNotepad();
     notepadOverlay.classList.add("open");
     notepadStatus.textContent = "";
-    setTimeout(() => notepadText.focus(), 0);
+    renderNotepadAll();
   }
   function closeNotepad(){
     notepadOverlay.classList.remove("open");
   }
+  // Vide les infos récoltées (cases + notes libres) pour tous les joueurs, sans
+  // supprimer la liste des joueurs elle-même : à chaque nouveau tirage/manche, les
+  // secrets changent mais on garde le même groupe de joueurs sous la main.
   function clearNotepad(){
-    notepadText.value = "";
-    saveNotepad("");
+    notepadState.data = {};
+    saveNotepadState();
+    if(notepadOverlay.classList.contains("open")) renderNotepadActivePlayer();
     notepadStatus.textContent = "Bloc-note vidé.";
   }
   function onNotepadInput(){
+    const key = notepadState.activePlayerKey;
+    if(!key) return;
     clearTimeout(notepadSaveTimer);
     notepadStatus.textContent = "Écriture…";
     notepadSaveTimer = setTimeout(() => {
-      saveNotepad(notepadText.value);
+      notepadEnsureData(key).note = notepadText.value;
+      saveNotepadState();
       notepadStatus.textContent = "Enregistré ✓";
     }, 350);
   }
@@ -2524,6 +2910,7 @@
       mpCurrentStatus = null;
       mpUpdateDrawAvailability();
       mpRenderQuickBar(null);
+      notepadSyncMpPlayers(null);
       mpRenderEntry("La partie n'existe plus ou tu n'en fais plus partie.");
       return;
     }
@@ -2574,6 +2961,7 @@
     // Barre rapide sur l'écran principal : toujours mise à jour, même si l'onglet
     // Multijoueur n'est pas ouvert, pour pouvoir deviner sans jamais y aller.
     mpRenderQuickBar(state);
+    notepadSyncMpPlayers(state);
 
     const list = document.getElementById("mpPlayersList");
     if(!list) return;
@@ -2841,6 +3229,7 @@
     mpCurrentStatus = null;
     mpUpdateDrawAvailability();
     mpClearSession();
+    notepadSyncMpPlayers(null);
     mpRenderEntry();
     if(code && pid){
       try{ await mpApiPost("leave", { code, playerId: pid }); }catch(e){}
@@ -2878,6 +3267,7 @@
   btnNotepadClose.addEventListener("click", closeNotepad);
   btnNotepadClear.addEventListener("click", clearNotepad);
   notepadText.addEventListener("input", onNotepadInput);
+  notepadAddPlayerForm.addEventListener("submit", notepadHandleAddPlayer);
   notepadOverlay.addEventListener("click", (e) => { if(e.target === notepadOverlay) closeNotepad(); });
   document.addEventListener("keydown", (e) => {
     if(e.key !== "Escape") return;
