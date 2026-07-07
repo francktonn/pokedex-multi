@@ -3,9 +3,14 @@
 // Redis, Redis Cloud, un Redis auto-hébergé, etc.), via l'URL de connexion fournie
 // dans la variable d'environnement REDIS_URL (voir README.md pour les instructions).
 const Redis = require('ioredis');
+const POKEDEX_QUESTIONS = require('../public/questions.js');
 
 const MAX_DEX_ID = 807; // Génération I à VII
 const ROOM_TTL_SECONDS = 60 * 60 * 24; // les parties expirent après 24h d'inactivité
+const QUIZ_ANSWER_DELAY_MS = 30 * 1000; // clôture auto d'un tour si tout le monde n'a pas répondu
+
+const QUESTIONS_BY_ID = {};
+POKEDEX_QUESTIONS.forEach(q => { QUESTIONS_BY_ID[q.id] = q; });
 
 // En serverless, une même instance de fonction peut traiter plusieurs requêtes :
 // on réutilise donc la connexion Redis d'un appel à l'autre au lieu d'en ouvrir
@@ -65,6 +70,63 @@ async function fetchFrenchName(id) {
   return frEntry ? frEntry.name : formatSlugName(data.name);
 }
 
+function shuffle(arr) {
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// Renvoie le prochain joueur du tour (dans l'ordre figé room.quiz.turnOrder) qui est
+// toujours présent dans la partie. Si tout le monde a quitté sauf un, ce dernier
+// redevient l'asker suivant (il posera une question à lui-même n'a pas de sens, mais
+// dans ce cas de figure la partie est de toute façon terminée en pratique).
+function nextAsker(quiz, room) {
+  const order = quiz.turnOrder.filter(pid => room.players[pid]);
+  if (order.length === 0) return null;
+  const currentIdx = order.indexOf(quiz.currentAskerId);
+  const nextIdx = currentIdx === -1 ? 0 : (currentIdx + 1) % order.length;
+  return order[nextIdx];
+}
+
+// Si une question est en attente de réponses et que (a) tous les joueurs concernés ont
+// répondu, ou (b) le délai configurable est dépassé : on clôt le tour, on l'archive
+// dans l'historique, on passe au joueur suivant. Renvoie true si l'état a changé (pour
+// savoir s'il faut re-sauvegarder la room).
+function maybeFinalizeQuizTurn(room) {
+  const quiz = room.quiz;
+  if (!quiz || !quiz.pending) return false;
+
+  const pending = quiz.pending;
+  const targetIds = Object.keys(room.players).filter(pid => pid !== quiz.currentAskerId);
+  const answeredIds = Object.keys(pending.answers);
+  const allAnswered = targetIds.length > 0 && targetIds.every(pid => answeredIds.includes(pid));
+  const deadlinePassed = Date.now() >= pending.deadlineAt;
+
+  if (!allAnswered && !deadlinePassed) return false;
+
+  const askerName = room.players[quiz.currentAskerId] ? room.players[quiz.currentAskerId].name : '(parti)';
+  quiz.history.push({
+    turn: quiz.turnNumber,
+    askerId: quiz.currentAskerId,
+    askerName,
+    questionId: pending.questionId,
+    questionText: pending.questionText,
+    answers: targetIds.map(pid => ({
+      pid,
+      name: room.players[pid] ? room.players[pid].name : '(parti)',
+      answer: pending.answers[pid] || null // null = n'a pas répondu à temps
+    }))
+  });
+  quiz.usedQuestionIds.push(pending.questionId);
+  quiz.pending = null;
+  quiz.currentAskerId = nextAsker(quiz, room);
+  quiz.turnNumber += 1;
+  return true;
+}
+
 function roomKey(code) {
   return `room:${code}`;
 }
@@ -111,13 +173,36 @@ function sanitizeRoom(room, playerId) {
     };
   });
   const me = playerId && room.players[playerId] ? room.players[playerId] : null;
+
+  let quiz = null;
+  if (room.quiz) {
+    const q = room.quiz;
+    quiz = {
+      turnNumber: q.turnNumber,
+      currentAskerId: q.currentAskerId,
+      isMyTurn: !!(playerId && q.currentAskerId === playerId),
+      usedQuestionIds: q.usedQuestionIds,
+      pending: q.pending ? {
+        questionId: q.pending.questionId,
+        questionText: q.pending.questionText,
+        askerId: q.currentAskerId,
+        deadlineAt: q.pending.deadlineAt,
+        targetIds: Object.keys(room.players).filter(pid => pid !== q.currentAskerId),
+        answeredIds: Object.keys(q.pending.answers),
+        myAnswer: (playerId && q.pending.answers[playerId]) || null
+      } : null,
+      history: q.history
+    };
+  }
+
   return {
     code: room.code,
     status: room.status || 'lobby',
     hostId: room.hostId || null,
     isHost: !!(playerId && room.hostId === playerId),
     players,
-    me: me ? { pokemonId: me.pokemonId || null, pokemonName: me.pokemonName || null } : null
+    me: me ? { pokemonId: me.pokemonId || null, pokemonName: me.pokemonName || null } : null,
+    quiz
   };
 }
 
@@ -145,6 +230,12 @@ module.exports = async (req, res) => {
       if (!room) {
         res.status(404).json({ error: 'Partie introuvable' });
         return;
+      }
+      // Clôture paresseuse : si le délai de réponse est dépassé depuis le dernier
+      // appel, on fait avancer le tour ici même (pas besoin de cron, le sondage
+      // périodique du client s'en charge).
+      if (maybeFinalizeQuizTurn(room)) {
+        await saveRoom(code, room);
       }
       res.status(200).json(sanitizeRoom(room, playerId));
       return;
@@ -289,6 +380,108 @@ module.exports = async (req, res) => {
           }
           await saveRoom(code, room);
         }
+        res.status(200).json({ ok: true });
+        return;
+      }
+
+      // ---- Lancer le mode "Devinette par questions" (réservé à l'hôte) ----
+      // Indépendant du mode "deviner le nom" : les deux peuvent tourner en même temps
+      // dans la même partie, sans se marcher dessus.
+      if (action === 'quiz_start') {
+        const code = (body.code || '').toString().trim().toUpperCase();
+        const playerId = body.playerId;
+        const room = await getRoom(code);
+        if (!room || !room.players[playerId]) {
+          res.status(404).json({ error: 'Partie ou joueur introuvable' });
+          return;
+        }
+        if (room.hostId !== playerId) {
+          res.status(403).json({ error: "Seul l'hôte de la partie peut lancer le mode questions" });
+          return;
+        }
+        const turnOrder = shuffle(Object.keys(room.players));
+        room.quiz = {
+          turnOrder,
+          turnNumber: 1,
+          currentAskerId: turnOrder[0] || null,
+          pending: null,
+          usedQuestionIds: [],
+          history: []
+        };
+        await saveRoom(code, room);
+        res.status(200).json({ ok: true });
+        return;
+      }
+
+      // ---- Le joueur dont c'est le tour pose une question ----
+      if (action === 'quiz_ask') {
+        const code = (body.code || '').toString().trim().toUpperCase();
+        const { playerId, questionId } = body;
+        const room = await getRoom(code);
+        if (!room || !room.players[playerId]) {
+          res.status(404).json({ error: 'Partie ou joueur introuvable' });
+          return;
+        }
+        if (!room.quiz) {
+          res.status(400).json({ error: "Le mode questions n'a pas encore été lancé" });
+          return;
+        }
+        // Au cas où un tour précédent aurait expiré sans qu'aucun sondage ne soit
+        // passé entre-temps (ne devrait pas arriver en pratique, mais on sécurise).
+        maybeFinalizeQuizTurn(room);
+        if (room.quiz.currentAskerId !== playerId) {
+          res.status(403).json({ error: "Ce n'est pas ton tour de poser une question" });
+          return;
+        }
+        if (room.quiz.pending) {
+          res.status(409).json({ error: 'Une question est déjà en cours pour ce tour' });
+          return;
+        }
+        const question = QUESTIONS_BY_ID[questionId];
+        if (!question) {
+          res.status(400).json({ error: 'Question inconnue' });
+          return;
+        }
+        if (room.quiz.usedQuestionIds.includes(questionId)) {
+          res.status(409).json({ error: 'Cette question a déjà été posée pendant cette partie' });
+          return;
+        }
+        room.quiz.pending = {
+          questionId: question.id,
+          questionText: question.text,
+          askedAt: Date.now(),
+          deadlineAt: Date.now() + QUIZ_ANSWER_DELAY_MS,
+          answers: {}
+        };
+        await saveRoom(code, room);
+        res.status(200).json({ ok: true });
+        return;
+      }
+
+      // ---- Un joueur interrogé répond Oui/Non à la question en cours ----
+      if (action === 'quiz_answer') {
+        const code = (body.code || '').toString().trim().toUpperCase();
+        const { playerId, answer } = body;
+        const room = await getRoom(code);
+        if (!room || !room.players[playerId]) {
+          res.status(404).json({ error: 'Partie ou joueur introuvable' });
+          return;
+        }
+        if (!room.quiz || !room.quiz.pending) {
+          res.status(400).json({ error: 'Aucune question en cours' });
+          return;
+        }
+        if (room.quiz.currentAskerId === playerId) {
+          res.status(403).json({ error: "Le joueur qui pose la question ne répond pas" });
+          return;
+        }
+        if (answer !== 'oui' && answer !== 'non') {
+          res.status(400).json({ error: 'Réponse invalide' });
+          return;
+        }
+        room.quiz.pending.answers[playerId] = answer;
+        maybeFinalizeQuizTurn(room); // clôture immédiatement si c'était le dernier joueur attendu
+        await saveRoom(code, room);
         res.status(200).json({ ok: true });
         return;
       }
