@@ -1084,7 +1084,7 @@
   .notepad-pct-wrap{
     display:inline-flex;
     align-items:center;
-    gap:1px;
+    gap:2px;
     font-family:'Nunito';
     font-weight:700;
     font-size:11px;
@@ -1092,20 +1092,33 @@
     background:#fff;
     border:1px solid rgba(0,0,0,.14);
     border-radius:7px;
-    padding:4px 6px;
+    padding:2px;
   }
-  .notepad-pct-input{
-    width:30px;
+  .notepad-pct-btn{
+    width:24px;
+    height:24px;
+    flex-shrink:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
     border:none;
-    background:transparent;
+    border-radius:6px;
+    background:#f4f1ea;
+    color:var(--red-dark);
     font-family:'Nunito';
-    font-weight:700;
-    font-size:11px;
-    color:var(--ink);
-    text-align:right;
-    padding:0;
+    font-weight:800;
+    font-size:14px;
+    line-height:1;
+    cursor:pointer;
+    touch-action:manipulation;
+    user-select:none;
   }
-  .notepad-pct-input:focus{ outline:none; }
+  .notepad-pct-btn:active{ background:var(--gold); }
+  .notepad-pct-value{
+    min-width:30px;
+    text-align:center;
+    padding:0 2px;
+  }
   .notepad-active-area .notepad-textarea{
     flex:none;
     min-height:80px;
@@ -1523,40 +1536,50 @@
 
   // Catégories du bloc-note "à cocher" : chaque item a un id stable (utilisé comme
   // clé de sauvegarde), un label affiché, et pour les types une couleur d'accent.
-  const NOTE_CATEGORIES = [
-    { key:"type", label:"Types", items: Object.keys(TYPE_FR).map(k => ({ id:"type:"+k, label:TYPE_FR[k], accent:TYPE_COLORS[k] })) },
-    { key:"gen", label:"Générations", items: [1,2,3,4,5,6,7,8,9].map(n => ({ id:"gen:"+n, label:"Génération "+n })) },
-    { key:"cat", label:"Catégorie", items: [
-      { id:"cat:sauvage", label:"Sauvage" },
-      { id:"cat:legendaire", label:"Légendaire" },
-      { id:"cat:mythique", label:"Fabuleux (mythique)" },
-      { id:"cat:ultra", label:"Ultra-Chimère" },
-      { id:"cat:paradoxe", label:"Paradoxe" },
-      { id:"cat:fossile", label:"Fossile" },
-      { id:"cat:starter", label:"Starter" },
-      { id:"cat:bebe", label:"Bébé" }
-    ]},
-    { key:"color", label:"Couleur", items: Object.keys(COLOR_FR).map(k => ({ id:"color:"+k, label:COLOR_FR[k], hasPercent:true })) },
-    { key:"habitat", label:"Habitat", items: Object.keys(HABITAT_FR).map(k => ({ id:"habitat:"+k, label:HABITAT_FR[k] })) },
-    { key:"size", label:"Taille & poids", items: [
-      { id:"size:grand", label:"Plus d'1 m" },
-      { id:"size:petit", label:"Moins de 50 cm" },
-      { id:"size:lourd", label:"Plus de 50 kg" },
-      { id:"size:leger", label:"Moins de 10 kg" }
-    ]},
-    { key:"divers", label:"Divers", items: [
-      { id:"divers:double_types", label:"Double types" },
-      { id:"divers:monotype", label:"Monotype" },
-      { id:"divers:capture_facile", label:"Capture facile" },
-      { id:"divers:capture_difficile", label:"Capture difficile" },
-      { id:"divers:peut_evoluer", label:"Peut encore évoluer" },
-      { id:"divers:evo_finale", label:"Fin d'évolution" },
-      { id:"divers:pokemon_base", label:"Pokémon de base" },
-      { id:"divers:pokemon_forme", label:"Pokémon avec une forme" },
-      { id:"divers:nom_long", label:"Nom de +8 lettres" },
-      { id:"divers:genre_mf", label:"Mâle et femelle" }
-    ]}
-  ];
+  // C'est une fonction (et non une constante figée) car la liste des générations
+  // affichées dépend de la configuration de partie actuellement en vigueur
+  // (activeSearchSettings, définie plus bas dans ce même fichier) : pas la peine
+  // d'afficher une case "Génération 8" si la partie en cours ne tire que dans les
+  // générations 1 à 7.
+  function noteCategories(){
+    const allowedGens = activeSearchSettings().generations;
+    return [
+      { key:"type", label:"Types", items: Object.keys(TYPE_FR).map(k => ({ id:"type:"+k, label:TYPE_FR[k], accent:TYPE_COLORS[k] })).concat([
+        { id:"divers:monotype", label:"Monotype" },
+        { id:"divers:double_types", label:"Double types" }
+      ])},
+      { key:"gen", label:"Générations", items: [1,2,3,4,5,6,7,8,9].filter(n => allowedGens.includes(n)).map(n => ({ id:"gen:"+n, label:"Génération "+n })) },
+      { key:"cat", label:"Catégorie", items: [
+        { id:"cat:sauvage", label:"Sauvage" },
+        { id:"cat:legendaire", label:"Légendaire" },
+        { id:"cat:mythique", label:"Fabuleux (mythique)" },
+        { id:"cat:ultra", label:"Ultra-Chimère" },
+        { id:"cat:paradoxe", label:"Paradoxe" },
+        { id:"cat:fossile", label:"Fossile" },
+        { id:"cat:starter", label:"Starter" },
+        { id:"cat:bebe", label:"Bébé" }
+      ]},
+      { key:"color", label:"Couleur", items: Object.keys(COLOR_FR).map(k => ({ id:"color:"+k, label:COLOR_FR[k], hasPercent:true })) },
+      { key:"habitat", label:"Habitat", items: Object.keys(HABITAT_FR).map(k => ({ id:"habitat:"+k, label:HABITAT_FR[k] })) },
+      { key:"size", label:"Taille & poids", items: [
+        { id:"size:grand", label:"Plus d'1 m" },
+        { id:"size:petit", label:"Moins de 50 cm" },
+        { id:"size:lourd", label:"Plus de 50 kg" },
+        { id:"size:leger", label:"Moins de 10 kg" }
+      ]},
+      { key:"divers", label:"Divers", items: [
+        { id:"divers:capture_facile", label:"Capture facile" },
+        { id:"divers:capture_difficile", label:"Capture difficile" },
+        { id:"divers:peut_evoluer", label:"Peut encore évoluer" },
+        { id:"divers:evo_finale", label:"Fin d'évolution" },
+        { id:"divers:evo_objet", label:"Évoluable avec objet" },
+        { id:"divers:pokemon_base", label:"Pokémon de base" },
+        { id:"divers:pokemon_forme", label:"Pokémon avec une forme" },
+        { id:"divers:nom_long", label:"Nom de +8 lettres" },
+        { id:"divers:genre_mf", label:"Mâle et femelle" }
+      ]}
+    ];
+  }
 
   // Tableau des relations de type (défense) : pour chaque type, quels types attaquants
   // font x2 (weak), x0.5 (resist) ou x0 (immune). Sert à calculer les faiblesses/résistances
@@ -2961,7 +2984,8 @@
     const entry = notepadEnsureData(key);
     notepadText.value = entry.note || "";
 
-    notepadCategories.innerHTML = NOTE_CATEGORIES.map(cat => `
+    const categories = noteCategories();
+    notepadCategories.innerHTML = categories.map(cat => `
       <details class="notepad-cat" open>
         <summary>
           <span>${mpEscapeHtml(cat.label)}</span>
@@ -2978,7 +3002,9 @@
                 data-item-id="${mpEscapeHtml(it.id)}" data-cat="${cat.key}"
                 ${it.accent ? `style="border-left:4px solid ${it.accent}"` : ""}>${mpEscapeHtml(it.label)}</button>
               ${it.hasPercent ? `<span class="notepad-pct-wrap" data-pct-wrap="${mpEscapeHtml(it.id)}" style="display:${showPct ? "inline-flex" : "none"}">
-                <input type="number" class="notepad-pct-input" data-pct-id="${mpEscapeHtml(it.id)}" min="0" max="100" step="5" value="${pctVal}">%
+                <button type="button" class="notepad-pct-btn" data-pct-id="${mpEscapeHtml(it.id)}" data-pct-delta="-10" aria-label="Diminuer">−</button>
+                <span class="notepad-pct-value" data-pct-value="${mpEscapeHtml(it.id)}">${pctVal}%</span>
+                <button type="button" class="notepad-pct-btn" data-pct-id="${mpEscapeHtml(it.id)}" data-pct-delta="10" aria-label="Augmenter">+</button>
               </span>` : ""}
             </span>`;
           }).join("")}
@@ -2989,9 +3015,11 @@
     notepadCategories.querySelectorAll(".notepad-chip").forEach(chip => {
       chip.addEventListener("click", () => notepadHandleChipClick(chip));
     });
-    notepadCategories.querySelectorAll(".notepad-pct-input").forEach(inp => {
-      inp.addEventListener("click", (e) => e.stopPropagation());
-      inp.addEventListener("input", () => notepadHandlePctChange(inp));
+    notepadCategories.querySelectorAll(".notepad-pct-btn").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        notepadHandlePctBtnClick(btn);
+      });
     });
   }
 
@@ -3036,8 +3064,8 @@
     if(pctWrap){
       if(next === "yes"){
         if(entry.pct[id] == null) entry.pct[id] = 100;
-        const inp = pctWrap.querySelector(".notepad-pct-input");
-        if(inp) inp.value = entry.pct[id];
+        const valueEl = pctWrap.querySelector(".notepad-pct-value");
+        if(valueEl) valueEl.textContent = entry.pct[id] + "%";
         pctWrap.style.display = "inline-flex";
       }else{
         delete entry.pct[id];
@@ -3050,22 +3078,24 @@
     chip.classList.toggle("is-yes", next === "yes");
     chip.classList.toggle("is-no", next === "no");
     const catKey = chip.dataset.cat;
-    const cat = NOTE_CATEGORIES.find(c => c.key === catKey);
+    const cat = noteCategories().find(c => c.key === catKey);
     const countEl = notepadCategories.querySelector(`[data-cat-count="${catKey}"]`);
     if(cat && countEl) countEl.textContent = notepadCatCounts(cat.items, entry.checks) + "/" + cat.items.length;
   }
 
-  function notepadHandlePctChange(inp){
+  function notepadHandlePctBtnClick(btn){
     const key = notepadState.activePlayerKey;
     if(!key) return;
     const entry = notepadEnsureData(key);
-    const id = inp.dataset.pctId;
-    let v = parseInt(inp.value, 10);
-    if(isNaN(v)) v = 100;
-    v = Math.max(0, Math.min(100, v));
-    inp.value = v;
+    const id = btn.dataset.pctId;
+    const delta = parseInt(btn.dataset.pctDelta, 10) || 0;
+    let v = entry.pct[id] != null ? entry.pct[id] : 100;
+    v = Math.max(0, Math.min(100, v + delta));
     entry.pct[id] = v;
     saveNotepadState();
+    const wrap = btn.closest(".notepad-pct-wrap");
+    const valueEl = wrap ? wrap.querySelector(".notepad-pct-value") : null;
+    if(valueEl) valueEl.textContent = v + "%";
   }
 
   function notepadHandleAddPlayer(e){
