@@ -784,21 +784,26 @@
   }
   .mp-ally-box img{ width:34px; height:34px; object-fit:contain; }
   .mp-ally-box .mp-ally-name{ font-weight:700; color:var(--ink); text-transform:capitalize; }
-  .mp-ally-view-btn{
-    margin-left:auto;
+  /* ---- Bouton (écran principal) pour intervertir entre sa propre fiche et celle
+     de son équipier, en mode 2v2 ---- */
+  .mp-ally-toggle-btn{
+    display:none;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+    width:100%;
     font-family:'Baloo 2', sans-serif;
     font-weight:700;
-    font-size:11px;
+    font-size:12.5px;
     color:#fff;
     background:#2670be;
     border:none;
     border-radius:999px;
-    padding:6px 10px;
+    padding:9px 10px;
     cursor:pointer;
     box-shadow: 0 3px 0 #1d5fa8;
-    flex-shrink:0;
   }
-  .mp-ally-view-btn:active{ transform:translateY(2px); box-shadow:0 1px 0 #1d5fa8; }
+  .mp-ally-toggle-btn:active{ transform:translateY(2px); box-shadow:0 1px 0 #1d5fa8; }
   .mp-ally-tag{
     margin-left:auto;
     font-size:11px;
@@ -1387,6 +1392,7 @@
         <span class="mp-quickbar-code">👥 <span id="mpQuickCode">----</span></span>
         <span class="mp-quickbar-status" id="mpQuickStatus"></span>
       </div>
+      <button class="mp-ally-toggle-btn" id="mpAllyToggleBtn" type="button"></button>
       <div class="mp-quickbar-players" id="mpQuickPlayers"></div>
       <div id="mpQuickGuessArea"></div>
     </div>
@@ -1839,6 +1845,7 @@
   const mpBody = document.getElementById("mpBody");
   const mpQuickBar = document.getElementById("mpQuickBar");
   const mpQuickGuessArea = document.getElementById("mpQuickGuessArea");
+  const mpAllyToggleBtn = document.getElementById("mpAllyToggleBtn");
 
   const btnGuess = document.getElementById("btnGuess");
   const btnGuessClose = document.getElementById("btnGuessClose");
@@ -3627,6 +3634,9 @@
   let mpGuessAreaId = "mpGuessArea"; // "mpGuessArea" (onglet Multijoueur) ou "mpQuickGuessArea" (écran principal)
   let mpBusy = false;
   let mpLastRenderedPokemonId = null; // dernier secret déjà affiché sur l'écran principal du Pokédex
+  let mpMyLastPokemonId = null; // dernier id de secret connu comme "le mien" (conservé même après avoir été trouvé, pour pouvoir y revenir depuis la fiche de l'équipier)
+  let mpAllyInfo = null; // dernier { id, name, pokemonId, pokemonName } de l'équipier reçu (mode 2v2), sinon null
+  let mpViewingAlly = false; // true quand l'écran principal affiche actuellement la fiche de l'équipier plutôt que la sienne
   let mpCurrentStatus = null; // statut de la manche en cours ('lobby' | 'playing' | null si pas en partie)
   let mpIsHost = false; // suis-je l'hôte de la partie en cours ? (seul lui peut modifier la config)
   let mpRoomConfig = null; // dernière configuration connue de la partie (générations/catégories/formes)
@@ -3860,6 +3870,7 @@
       mpRenderQuickBar(null);
       guessRenderPanel(null);
       notepadSyncMpPlayers(null);
+      mpUpdateAllyToggleButton(null);
       mpRenderEntry("La partie n'existe plus ou tu n'en fais plus partie.");
       return;
     }
@@ -3926,6 +3937,7 @@
     mpRenderQuickBar(state);
     guessRenderPanel(state);
     notepadSyncMpPlayers(state);
+    mpUpdateAllyToggleButton(state);
 
     // La liste dans l'onglet Multijoueur sert désormais uniquement à voir les scores
     // et le statut de chacun ; deviner se fait via le bouton dédié 🎯 « Deviner ».
@@ -4006,8 +4018,9 @@
     }
   }
 
-  // ---- Boîte "équipier" (mode 2v2) : affiche son secret et permet de voir sa fiche
-  // complète sur l'écran principal du Pokédex, comme pour son propre Pokémon. ----
+  // ---- Boîte "équipier" (mode 2v2) : affiche son secret (sprite + nom) sur l'écran
+  // de l'onglet Multijoueur. Pour voir sa fiche complète, l'écran principal propose
+  // désormais un bouton dédié (voir mpUpdateAllyToggleButton / mpToggleAllyView). ----
   function mpRenderAllyBox(state){
     const box = document.getElementById("mpAllyBox");
     if(!box) return;
@@ -4021,20 +4034,7 @@
     box.innerHTML = `
       <img src="${smallSpriteUrl(ally.pokemonId)}" alt="">
       <span>Secret de ton équipier <span class="mp-ally-name">${mpEscapeHtml(ally.name)}</span> : <span class="mp-ally-name">${mpEscapeHtml(ally.pokemonName)}</span></span>
-      <button class="mp-ally-view-btn" id="mpAllyViewBtn" type="button">Voir sa fiche</button>
     `;
-    const viewBtn = document.getElementById("mpAllyViewBtn");
-    if(viewBtn) viewBtn.addEventListener("click", () => mpViewAllyCard(ally.pokemonId));
-  }
-
-  // Affiche la fiche complète (caractéristiques) du Pokémon de son équipier sur
-  // l'écran principal du Pokédex, exactement comme pour son propre secret.
-  async function mpViewAllyCard(pokemonId){
-    try{
-      mpClose();
-      const data = await loadPokemon(pokemonId);
-      renderPokemon(data);
-    }catch(e){}
   }
 
   // ---- Panneau dédié "Deviner" (accessible via le bouton flottant 🎯, sans avoir
@@ -4185,8 +4185,11 @@
   async function mpSyncMainScreen(state){
     if(!state || !state.me) return;
     const newId = state.me.pokemonId || null;
+    if(newId) mpMyLastPokemonId = newId; // conservé même une fois trouvé, pour le bouton "revenir à mon Pokémon"
     if(newId && newId !== mpLastRenderedPokemonId){
       mpLastRenderedPokemonId = newId;
+      // Une nouvelle manche vient de démarrer : on revient sur sa propre fiche.
+      mpViewingAlly = false;
       try{
         const data = await loadPokemon(newId);
         renderPokemon(data);
@@ -4198,6 +4201,35 @@
     }else if(!newId){
       mpLastRenderedPokemonId = null;
     }
+  }
+
+  // ---- Bouton (écran principal) pour intervertir entre sa fiche et celle de son
+  // équipier, en mode 2v2. ----
+  function mpUpdateAllyToggleButton(state){
+    if(!mpAllyToggleBtn) return;
+    const ally = state && state.ally;
+    mpAllyInfo = (ally && ally.pokemonId) ? ally : null;
+    if(!mpAllyInfo){
+      mpAllyToggleBtn.style.display = "none";
+      mpViewingAlly = false;
+      return;
+    }
+    mpAllyToggleBtn.style.display = "flex";
+    mpAllyToggleBtn.textContent = mpViewingAlly
+      ? "🔄 Revenir à mon Pokémon"
+      : `🔄 Voir le Pokémon de ${mpAllyInfo.name}`;
+  }
+
+  async function mpToggleAllyView(){
+    if(!mpAllyInfo) return;
+    mpViewingAlly = !mpViewingAlly;
+    const targetId = mpViewingAlly ? mpAllyInfo.pokemonId : mpMyLastPokemonId;
+    mpUpdateAllyToggleButton(mpLastKnownState);
+    if(!targetId) return;
+    try{
+      const data = await loadPokemon(targetId);
+      renderPokemon(data);
+    }catch(e){}
   }
 
   function mpShowRoundBanner(text){
@@ -4381,6 +4413,7 @@
     mpRenderQuickBar(null);
     guessRenderPanel(null);
     notepadSyncMpPlayers(null);
+    mpUpdateAllyToggleButton(null);
     mpRenderEntry();
     if(code && pid){
       try{ await mpApiPost("leave", { code, playerId: pid }); }catch(e){}
@@ -4435,6 +4468,7 @@
 
   btnMultiplayer.addEventListener("click", mpOpen);
   btnMpClose.addEventListener("click", mpClose);
+  if(mpAllyToggleBtn) mpAllyToggleBtn.addEventListener("click", mpToggleAllyView);
   mpOverlay.addEventListener("click", (e) => { if(e.target === mpOverlay) mpClose(); });
   document.addEventListener("keydown", (e) => {
     if(e.key === "Escape" && mpOverlay.classList.contains("open")) mpClose();
