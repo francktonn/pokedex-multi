@@ -61,7 +61,8 @@ function defaultConfig() {
   return {
     generations: [1, 2, 3, 4, 5, 6, 7, 8, 9],
     categories: { legendary: true, mythical: true, ultrabeast: true, paradox: true, starter: true, baby: true },
-    forms: { regional: true, mega: true, gmax: true }
+    forms: { regional: true, mega: true, gmax: true },
+    mode: 'ffa' // 'ffa' (chacun pour soi) ou 'team2v2' (équipes de 2 tirées au sort, dès 4 joueurs)
   };
 }
 
@@ -90,7 +91,9 @@ function normalizeConfig(raw) {
     });
   }
 
-  return { generations, categories, forms };
+  const mode = raw.mode === 'team2v2' ? 'team2v2' : 'ffa';
+
+  return { generations, categories, forms, mode };
 }
 
 // Reprend le même ordre de priorité que côté client pour rester cohérent avec l'étiquette
@@ -285,12 +288,56 @@ async function saveRoom(code, room) {
   await getRedis().set(roomKey(code), JSON.stringify(room), 'EX', ROOM_TTL_SECONDS);
 }
 
+// Répartit aléatoirement une liste de joueurs en binômes (mode 2v2). Suppose que
+// `pids.length` est pair (vérifié par l'appelant). Retourne un objet
+// { [playerId]: teamIndex } où teamIndex est un entier commençant à 0.
+function assignTeams(pids) {
+  const shuffled = pids.slice();
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const tmp = shuffled[i]; shuffled[i] = shuffled[j]; shuffled[j] = tmp;
+  }
+  const teams = {};
+  for (let i = 0; i < shuffled.length; i += 2) {
+    const teamIndex = i / 2;
+    teams[shuffled[i]] = teamIndex;
+    teams[shuffled[i + 1]] = teamIndex;
+  }
+  return teams;
+}
+
 // Tire un nouveau Pokémon secret pour CHAQUE joueur présent dans la partie, en
 // parallèle (une seule "manche" démarre pour tout le monde en même temps). Ne
 // touche pas aux scores. Met le statut de la partie à "playing".
-async function startNewRound(room) {
+//
+// Mode 2v2 : si la config le demande ET qu'il y a au moins 4 joueurs (nombre pair),
+// des binômes sont tirés au sort. `opts.forceReshuffleTeams` force un nouveau tirage
+// des binômes même si des équipes existaient déjà (utilisé quand l'hôte lance/relance
+// explicitement une manche) ; sinon les équipes en place sont conservées tant que la
+// liste des joueurs n'a pas changé (utilisé lors de l'enchaînement automatique d'une
+// manche après une victoire d'équipe, pour ne pas rebattre les binômes en pleine partie).
+// Si l'effectif ne permet pas le 2v2 (moins de 4 joueurs, ou nombre impair), on retombe
+// silencieusement sur le mode classique pour cette manche.
+async function startNewRound(room, opts) {
+  opts = opts || {};
   const pids = Object.keys(room.players);
   const config = normalizeConfig(room.config);
+  const wantsTeams = config.mode === 'team2v2' && pids.length >= 4 && pids.length % 2 === 0;
+
+  if (wantsTeams) {
+    const currentKey = pids.slice().sort().join(',');
+    const needsReshuffle = !!opts.forceReshuffleTeams || !room.teams || room.teamsPlayerKey !== currentKey;
+    if (needsReshuffle) {
+      room.teams = assignTeams(pids);
+      room.teamsPlayerKey = currentKey;
+    }
+    room.activeMode = 'team2v2';
+  } else {
+    room.teams = null;
+    room.teamsPlayerKey = null;
+    room.activeMode = 'ffa';
+  }
+
   const metaList = await getSpeciesMetaServer().catch(() => null);
   let pool = buildDrawPoolServer(metaList, config);
   if (!pool.length) {
@@ -314,16 +361,32 @@ async function startNewRound(room) {
 // (via `me`) et un booléen `hasPokemon` pour les autres. C'est le serveur qui tranche
 // les devinettes, donc personne ne peut "tricher" en lisant les données brutes.
 function sanitizeRoom(room, playerId) {
+  const teams = room.teams || null;
   const players = Object.keys(room.players).map(pid => {
     const p = room.players[pid];
     return {
       id: pid,
       name: p.name,
       score: p.score || 0,
-      hasPokemon: !!p.pokemonId
+      hasPokemon: !!p.pokemonId,
+      // Index du binôme (0, 1, 2…) en mode 2v2, sinon null.
+      team: teams && teams[pid] !== undefined ? teams[pid] : null
     };
   });
   const me = playerId && room.players[playerId] ? room.players[playerId] : null;
+
+  // En mode 2v2 : on révèle le Pokémon (et donc les caractéristiques, via son id) de
+  // son propre équipier — et uniquement du sien — au joueur qui demande son état.
+  let ally = null;
+  if (teams && playerId && teams[playerId] !== undefined) {
+    const myTeam = teams[playerId];
+    const allyId = Object.keys(teams).find(pid => pid !== playerId && teams[pid] === myTeam && room.players[pid]);
+    if (allyId) {
+      const a = room.players[allyId];
+      ally = { id: allyId, name: a.name, pokemonId: a.pokemonId || null, pokemonName: a.pokemonName || null };
+    }
+  }
+
   return {
     code: room.code,
     status: room.status || 'lobby',
@@ -331,6 +394,8 @@ function sanitizeRoom(room, playerId) {
     isHost: !!(playerId && room.hostId === playerId),
     players,
     me: me ? { pokemonId: me.pokemonId || null, pokemonName: me.pokemonName || null } : null,
+    ally, // ton équipier en mode 2v2 (id/nom/pokémon), sinon null
+    activeMode: room.activeMode || 'ffa', // mode réellement utilisé pour la manche en cours
     // Visible par tous (pour affichage), mais seul l'hôte peut la modifier — voir l'action 'config'.
     config: normalizeConfig(room.config)
   };
@@ -435,9 +500,37 @@ module.exports = async (req, res) => {
           res.status(403).json({ error: "Seul l'hôte de la partie peut lancer une manche" });
           return;
         }
-        await startNewRound(room);
+        // Un lancement/relancement manuel par l'hôte rebat aussi les binômes en mode 2v2.
+        await startNewRound(room, { forceReshuffleTeams: true });
         await saveRoom(code, room);
         res.status(200).json({ ok: true });
+        return;
+      }
+
+      // ---- Changer le mode de jeu : 'ffa' (chacun pour soi) ou 'team2v2' (équipes de 2)
+      // (réservé à l'hôte). S'applique à partir de la prochaine manche lancée par l'hôte,
+      // comme pour la configuration du pool de Pokémon.
+      if (action === 'setMode') {
+        const code = (body.code || '').toString().trim().toUpperCase();
+        const playerId = body.playerId;
+        const room = await getRoom(code);
+        if (!room || !room.players[playerId]) {
+          res.status(404).json({ error: 'Partie ou joueur introuvable' });
+          return;
+        }
+        if (room.hostId !== playerId) {
+          res.status(403).json({ error: "Seul l'hôte de la partie peut changer le mode de jeu" });
+          return;
+        }
+        const mode = body.mode === 'team2v2' ? 'team2v2' : 'ffa';
+        const playerCount = Object.keys(room.players).length;
+        if (mode === 'team2v2' && playerCount < 4) {
+          res.status(400).json({ error: 'Il faut au moins 4 joueurs pour activer le mode 2v2.' });
+          return;
+        }
+        room.config = normalizeConfig(Object.assign({}, room.config, { mode }));
+        await saveRoom(code, room);
+        res.status(200).json(sanitizeRoom(room, playerId));
         return;
       }
 
@@ -457,7 +550,10 @@ module.exports = async (req, res) => {
           res.status(403).json({ error: "Seul l'hôte de la partie peut modifier la configuration" });
           return;
         }
-        room.config = normalizeConfig(body.config);
+        // Ce formulaire ne porte que sur le pool de Pokémon (générations/catégories/formes) :
+        // on conserve le mode de jeu (ffa/team2v2) actuel, qui se change séparément (action 'setMode').
+        const currentMode = normalizeConfig(room.config).mode;
+        room.config = normalizeConfig(Object.assign({}, body.config, { mode: currentMode }));
         await saveRoom(code, room);
         res.status(200).json(sanitizeRoom(room, playerId));
         return;
@@ -472,6 +568,13 @@ module.exports = async (req, res) => {
           res.status(404).json({ error: 'Partie ou joueur introuvable' });
           return;
         }
+        // En mode 2v2 : on ne peut pas "deviner" le Pokémon de son propre équipier —
+        // il est déjà révélé (voir `ally` dans sanitizeRoom), le deviner n'aurait aucun sens.
+        if (room.teams && room.teams[playerId] !== undefined && room.teams[targetId] === room.teams[playerId]) {
+          res.status(400).json({ error: "Tu ne peux pas deviner le Pokémon de ton propre équipier." });
+          return;
+        }
+
         const target = room.players[targetId];
         if (!target || !target.pokemonId) {
           res.status(200).json({ correct: false, gone: true });
@@ -488,27 +591,48 @@ module.exports = async (req, res) => {
         target.pokemonId = null;
         target.pokemonName = null;
 
-        // La manche ne se termine pas dès qu'un Pokémon est trouvé : elle continue
-        // jusqu'à ce qu'il ne reste plus qu'UN SEUL joueur non trouvé. À ce moment,
-        // la partie relance automatiquement une nouvelle manche pour tout le monde,
-        // en conservant les scores, et le dernier joueur restant reçoit +1 point
-        // bonus pour avoir survécu jusqu'au bout de la manche.
+        // Fin de manche :
+        // - Mode classique (ffa) : la manche continue jusqu'à ce qu'il ne reste plus
+        //   qu'UN SEUL joueur non trouvé, qui reçoit +1 point bonus pour avoir survécu.
+        // - Mode 2v2 : la manche continue jusqu'à ce qu'une seule équipe ait encore un
+        //   membre non trouvé (l'autre/les autres équipes ont donc toutes été
+        //   entièrement découvertes) ; chaque membre de l'équipe gagnante reçoit +1
+        //   point bonus. Avec exactement 2 équipes (le cas 2v2 classique), ça revient
+        //   bien à "trouver le Pokémon des deux adversaires".
+        // Dans les deux cas, une nouvelle manche démarre alors automatiquement pour
+        // tout le monde, scores conservés (et binômes conservés en mode 2v2).
         let roundEnded = false;
         let lastPlayerName = null;
+        let winningTeamNames = null;
         const allPids = Object.keys(room.players);
         if (room.status === 'playing' && allPids.length >= 2) {
-          const stillHiding = allPids.filter(pid => room.players[pid].pokemonId);
-          if (stillHiding.length === 1) {
-            roundEnded = true;
-            const lastPid = stillHiding[0];
-            room.players[lastPid].score = (room.players[lastPid].score || 0) + 1;
-            lastPlayerName = room.players[lastPid].name;
-            await startNewRound(room); // ré-attribue un secret à tout le monde, scores conservés
+          const teams = room.teams;
+          const teamModeActive = teams && allPids.every(pid => teams[pid] !== undefined);
+          if (teamModeActive) {
+            const teamsHiding = new Set();
+            allPids.forEach(pid => { if (room.players[pid].pokemonId) teamsHiding.add(teams[pid]); });
+            if (teamsHiding.size === 1) {
+              roundEnded = true;
+              const winningTeam = Array.from(teamsHiding)[0];
+              const winners = allPids.filter(pid => teams[pid] === winningTeam);
+              winners.forEach(pid => { room.players[pid].score = (room.players[pid].score || 0) + 1; });
+              winningTeamNames = winners.map(pid => room.players[pid].name);
+              await startNewRound(room); // ré-attribue un secret à tout le monde, scores et binômes conservés
+            }
+          } else {
+            const stillHiding = allPids.filter(pid => room.players[pid].pokemonId);
+            if (stillHiding.length === 1) {
+              roundEnded = true;
+              const lastPid = stillHiding[0];
+              room.players[lastPid].score = (room.players[lastPid].score || 0) + 1;
+              lastPlayerName = room.players[lastPid].name;
+              await startNewRound(room); // ré-attribue un secret à tout le monde, scores conservés
+            }
           }
         }
 
         await saveRoom(code, room);
-        res.status(200).json({ correct: true, name: revealedName, roundEnded, lastPlayerName });
+        res.status(200).json({ correct: true, name: revealedName, roundEnded, lastPlayerName, winningTeamNames });
         return;
       }
 
@@ -519,6 +643,7 @@ module.exports = async (req, res) => {
         const room = await getRoom(code);
         if (room && room.players[playerId]) {
           delete room.players[playerId];
+          if (room.teams && room.teams[playerId] !== undefined) delete room.teams[playerId];
           // Si l'hôte quitte, on transfère le rôle au joueur restant le plus ancien
           // pour que la partie ne reste pas bloquée sans personne pour lancer de manche.
           if (room.hostId === playerId) {
