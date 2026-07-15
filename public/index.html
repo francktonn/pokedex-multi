@@ -725,6 +725,88 @@
     box-shadow: inset 0 0 0 1px rgba(0,0,0,.06);
   }
 
+  /* ---- Mode de jeu (classique / 2v2) ---- */
+  .mp-mode-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    background:#fff;
+    border-radius:12px;
+    padding:8px 12px;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.06);
+  }
+  .mp-mode-label{ font-size:12.5px; font-weight:700; color:var(--ink); }
+  .mp-mode-switch{ display:flex; gap:4px; }
+  .mp-mode-btn{
+    font-family:'Baloo 2', sans-serif;
+    font-weight:700;
+    font-size:11.5px;
+    color:var(--ink);
+    background:#f2ece0;
+    border:none;
+    border-radius:999px;
+    padding:6px 12px;
+    cursor:pointer;
+  }
+  .mp-mode-btn.active{
+    color:#fff;
+    background:var(--red);
+    box-shadow: 0 2px 0 var(--red-darker);
+  }
+  .mp-mode-btn:disabled{ opacity:.45; cursor:not-allowed; }
+  .mp-mode-static{ font-size:12.5px; color:#6b6357; }
+
+  /* ---- Badges d'équipe (mode 2v2) ---- */
+  .mp-team-badge{
+    font-family:'Silkscreen', monospace;
+    font-size:9.5px;
+    border-radius:999px;
+    padding:2px 7px;
+    margin-left:4px;
+  }
+  .mp-team-badge.team-0{ color:#1d5fa8; background:rgba(38,112,190,.12); }
+  .mp-team-badge.team-1{ color:#b8460d; background:rgba(214,90,30,.12); }
+  .mp-team-badge.team-2{ color:#2a7a3d; background:rgba(42,122,61,.12); }
+  .mp-team-badge.team-3{ color:#7a3d9e; background:rgba(122,61,158,.12); }
+
+  /* ---- Ton équipier (mode 2v2) : son secret t'est révélé ---- */
+  .mp-ally-box{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    background:#eef6ff;
+    border-radius:12px;
+    padding:8px 12px;
+    box-shadow: inset 0 0 0 1px rgba(29,95,168,.18);
+    font-size:12.5px;
+    color:#6b6357;
+  }
+  .mp-ally-box img{ width:34px; height:34px; object-fit:contain; }
+  .mp-ally-box .mp-ally-name{ font-weight:700; color:var(--ink); text-transform:capitalize; }
+  .mp-ally-view-btn{
+    margin-left:auto;
+    font-family:'Baloo 2', sans-serif;
+    font-weight:700;
+    font-size:11px;
+    color:#fff;
+    background:#2670be;
+    border:none;
+    border-radius:999px;
+    padding:6px 10px;
+    cursor:pointer;
+    box-shadow: 0 3px 0 #1d5fa8;
+    flex-shrink:0;
+  }
+  .mp-ally-view-btn:active{ transform:translateY(2px); box-shadow:0 1px 0 #1d5fa8; }
+  .mp-ally-tag{
+    margin-left:auto;
+    font-size:11px;
+    color:#2670be;
+    font-weight:700;
+    font-style:italic;
+  }
+
   /* barre rapide multijoueur, affichée directement sur l'écran principal du
      Pokédex (pas besoin d'ouvrir l'onglet Multijoueur pour deviner) */
   .mp-quickbar{
@@ -3739,9 +3821,11 @@
         <span>Code : <span class="mp-code-value" id="mpCodeValue">${mpEscapeHtml(mpRoomCode)}</span></span>
         <button class="mp-copy-code-btn" id="mpCopyCodeBtn" title="Copier le code">📋</button>
       </div>
+      <div id="mpModeRow"></div>
       <button class="btn btn-config" id="mpConfigBtn">⚙️ Configuration</button>
       <div id="mpHostControls"></div>
       <div class="mp-my-secret" id="mpMySecret" style="display:none;"></div>
+      <div class="mp-ally-box" id="mpAllyBox" style="display:none;"></div>
       <div class="mp-round-banner" id="mpRoundBanner" style="display:none;"></div>
       <div class="mp-section-label">Joueurs</div>
       <div class="mp-players-list" id="mpPlayersList"></div>
@@ -3787,6 +3871,9 @@
     mpIsHost = isHost;
     mpRoomConfig = state.config || mpRoomConfig;
 
+    mpRenderModeRow(state);
+    mpRenderAllyBox(state);
+
     // ---- Zone réservée à l'hôte : lancer / relancer une manche pour tout le monde ----
     const hostControls = document.getElementById("mpHostControls");
     if(hostControls){
@@ -3816,11 +3903,20 @@
       }
     }
 
+    const isTeamMode = state.activeMode === "team2v2";
+    const myTeam = (state.players.find(p => p.id === mpPlayerId) || {}).team;
+
     const noteText = document.getElementById("mpNoteText");
     if(noteText){
-      noteText.textContent = isPlaying
-        ? "Utilise le bouton 🎯 « Deviner » (dans les boutons flottants) pour deviner le Pokémon secret des autres joueurs, même si le tien a déjà été trouvé ! La manche se termine quand il ne reste plus qu'un seul joueur non trouvé — une nouvelle manche démarre alors automatiquement pour tout le monde, scores conservés."
-        : "Une fois que l'hôte aura lancé la partie, chacun reçoit un Pokémon secret en même temps.";
+      if(isTeamMode){
+        noteText.textContent = isPlaying
+          ? "Mode 2v2 : tu vois le Pokémon de ton équipier (ci-dessus) — utilise le bouton 🎯 « Deviner » pour trouver ceux des deux adversaires. La manche se termine quand une seule équipe a encore un secret à protéger — nouvelle manche automatique, scores conservés, mêmes binômes."
+          : "Mode 2v2 activé : une fois que l'hôte aura lancé la partie, des binômes seront tirés au sort et chacun verra le secret de son équipier.";
+      }else{
+        noteText.textContent = isPlaying
+          ? "Utilise le bouton 🎯 « Deviner » (dans les boutons flottants) pour deviner le Pokémon secret des autres joueurs, même si le tien a déjà été trouvé ! La manche se termine quand il ne reste plus qu'un seul joueur non trouvé — une nouvelle manche démarre alors automatiquement pour tout le monde, scores conservés."
+          : "Une fois que l'hôte aura lancé la partie, chacun reçoit un Pokémon secret en même temps.";
+      }
     }
 
     const entries = state.players.slice().sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
@@ -3837,9 +3933,12 @@
     if(!list) return;
     list.innerHTML = entries.map(p => {
       const isMe = p.id === mpPlayerId;
+      const isAlly = isTeamMode && !isMe && p.team !== null && p.team === myTeam;
       let rightPart;
       if(isMe){
         rightPart = "";
+      }else if(isAlly){
+        rightPart = `<span class="mp-ally-tag">équipier</span>`;
       }else if(p.hasPokemon){
         rightPart = `<span class="mp-player-waiting">à deviner</span>`;
       }else if(isPlaying){
@@ -3847,13 +3946,95 @@
       }else{
         rightPart = `<span class="mp-player-waiting">en attente</span>`;
       }
+      const teamBadge = isTeamMode && p.team !== null
+        ? `<span class="mp-team-badge team-${p.team}">Équipe ${p.team + 1}</span>`
+        : "";
       return `
         <div class="mp-player-row${isMe ? " is-me" : ""}">
-          <span class="mp-player-name">${mpEscapeHtml(p.name)}${isMe ? " (toi)" : ""}${p.id === state.hostId ? " 👑" : ""}</span>
+          <span class="mp-player-name">${mpEscapeHtml(p.name)}${isMe ? " (toi)" : ""}${p.id === state.hostId ? " 👑" : ""}${teamBadge}</span>
           <span class="mp-player-score">${p.score} pt${p.score > 1 ? "s" : ""}</span>
           ${rightPart}
         </div>`;
     }).join("");
+  }
+
+  // ---- Ligne "Mode de jeu" : classique vs 2v2. Modifiable par l'hôte uniquement,
+  // et seulement activable si au moins 4 joueurs sont présents. ----
+  function mpRenderModeRow(state){
+    const row = document.getElementById("mpModeRow");
+    if(!row) return;
+    const isTeamMode = (state.config && state.config.mode) === "team2v2";
+    const playerCount = state.players.length;
+    const canEnable2v2 = playerCount >= 4;
+    if(state.isHost){
+      row.innerHTML = `
+        <div class="mp-mode-row">
+          <span class="mp-mode-label">Mode de jeu</span>
+          <div class="mp-mode-switch">
+            <button class="mp-mode-btn${!isTeamMode ? " active" : ""}" id="mpModeFfaBtn" type="button">Classique</button>
+            <button class="mp-mode-btn${isTeamMode ? " active" : ""}" id="mpMode2v2Btn" type="button" ${canEnable2v2 ? "" : "disabled"} title="${canEnable2v2 ? "" : "Il faut au moins 4 joueurs"}">2v2</button>
+          </div>
+        </div>
+        ${canEnable2v2 ? "" : `<div class="mp-note">Le mode 2v2 nécessite au moins 4 joueurs (actuellement ${playerCount}).</div>`}
+      `;
+      const ffaBtn = document.getElementById("mpModeFfaBtn");
+      const teamBtn = document.getElementById("mpMode2v2Btn");
+      if(ffaBtn) ffaBtn.addEventListener("click", () => mpHandleSetMode("ffa"));
+      if(teamBtn) teamBtn.addEventListener("click", () => mpHandleSetMode("team2v2"));
+    }else{
+      row.innerHTML = `
+        <div class="mp-mode-row">
+          <span class="mp-mode-label">Mode de jeu</span>
+          <span class="mp-mode-static">${isTeamMode ? "👥 2v2" : "🎯 Classique"}</span>
+        </div>
+      `;
+    }
+  }
+
+  async function mpHandleSetMode(mode){
+    if(mpBusy || !mpRoomCode) return;
+    mpBusy = true;
+    try{
+      const state = await mpApiPost("setMode", { code: mpRoomCode, playerId: mpPlayerId, mode });
+      mpRoomConfig = state.config || mpRoomConfig;
+      mpRenderPlayersList(state);
+    }catch(e){
+      if(mpLastKnownState) mpRenderModeRow(mpLastKnownState);
+      alert(e.message || "Impossible de changer le mode de jeu.");
+    }finally{
+      mpBusy = false;
+    }
+  }
+
+  // ---- Boîte "équipier" (mode 2v2) : affiche son secret et permet de voir sa fiche
+  // complète sur l'écran principal du Pokédex, comme pour son propre Pokémon. ----
+  function mpRenderAllyBox(state){
+    const box = document.getElementById("mpAllyBox");
+    if(!box) return;
+    const ally = state.ally;
+    if(!ally || !ally.pokemonId){
+      box.style.display = "none";
+      box.innerHTML = "";
+      return;
+    }
+    box.style.display = "flex";
+    box.innerHTML = `
+      <img src="${smallSpriteUrl(ally.pokemonId)}" alt="">
+      <span>Secret de ton équipier <span class="mp-ally-name">${mpEscapeHtml(ally.name)}</span> : <span class="mp-ally-name">${mpEscapeHtml(ally.pokemonName)}</span></span>
+      <button class="mp-ally-view-btn" id="mpAllyViewBtn" type="button">Voir sa fiche</button>
+    `;
+    const viewBtn = document.getElementById("mpAllyViewBtn");
+    if(viewBtn) viewBtn.addEventListener("click", () => mpViewAllyCard(ally.pokemonId));
+  }
+
+  // Affiche la fiche complète (caractéristiques) du Pokémon de son équipier sur
+  // l'écran principal du Pokédex, exactement comme pour son propre secret.
+  async function mpViewAllyCard(pokemonId){
+    try{
+      mpClose();
+      const data = await loadPokemon(pokemonId);
+      renderPokemon(data);
+    }catch(e){}
   }
 
   // ---- Panneau dédié "Deviner" (accessible via le bouton flottant 🎯, sans avoir
@@ -3891,12 +4072,17 @@
         : "En attente que l'hôte lance la partie…";
     }
     const entries = state.players.slice().sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+    const isTeamMode = state.activeMode === "team2v2";
+    const myTeam = (state.players.find(p => p.id === mpPlayerId) || {}).team;
     if(!list) return;
     list.innerHTML = entries.map(p => {
       const isMe = p.id === mpPlayerId;
+      const isAlly = isTeamMode && !isMe && p.team !== null && p.team === myTeam;
       let rightPart;
       if(isMe){
         rightPart = "";
+      }else if(isAlly){
+        rightPart = `<span class="mp-ally-tag">équipier</span>`;
       }else if(p.hasPokemon){
         rightPart = `<button class="mp-guess-btn" data-pid="${mpEscapeHtml(p.id)}" data-name="${mpEscapeHtml(p.name)}">🔎 Deviner</button>`;
       }else if(isPlaying){
@@ -3904,9 +4090,12 @@
       }else{
         rightPart = `<span class="mp-player-waiting">en attente</span>`;
       }
+      const teamBadge = isTeamMode && p.team !== null
+        ? `<span class="mp-team-badge team-${p.team}">Équipe ${p.team + 1}</span>`
+        : "";
       return `
         <div class="mp-player-row${isMe ? " is-me" : ""}">
-          <span class="mp-player-name">${mpEscapeHtml(p.name)}${isMe ? " (toi)" : ""}${p.id === state.hostId ? " 👑" : ""}</span>
+          <span class="mp-player-name">${mpEscapeHtml(p.name)}${isMe ? " (toi)" : ""}${p.id === state.hostId ? " 👑" : ""}${teamBadge}</span>
           <span class="mp-player-score">${p.score} pt${p.score > 1 ? "s" : ""}</span>
           ${rightPart}
         </div>`;
@@ -3951,13 +4140,18 @@
     if(statusEl) statusEl.textContent = isPlaying ? "manche en cours" : "en attente…";
 
     const entries = state.players.slice().sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+    const isTeamMode = state.activeMode === "team2v2";
+    const myTeam = (state.players.find(p => p.id === mpPlayerId) || {}).team;
     const players = document.getElementById("mpQuickPlayers");
     if(!players) return;
     players.innerHTML = entries.map(p => {
       const isMe = p.id === mpPlayerId;
+      const isAlly = isTeamMode && !isMe && p.team !== null && p.team === myTeam;
       let action = "";
       if(!isMe){
-        if(p.hasPokemon){
+        if(isAlly){
+          action = `<span class="mp-quick-waiting" title="Ton équipier">🤝</span>`;
+        }else if(p.hasPokemon){
           action = `<button class="mp-quick-guess-btn" data-pid="${mpEscapeHtml(p.id)}" data-name="${mpEscapeHtml(p.name)}" title="Deviner le secret de ${mpEscapeHtml(p.name)}">🔎</button>`;
         }else if(isPlaying){
           action = `<span class="mp-quick-check" title="Déjà trouvé">✅</span>`;
@@ -3965,9 +4159,12 @@
           action = `<span class="mp-quick-waiting">en attente</span>`;
         }
       }
+      const teamBadge = isTeamMode && p.team !== null
+        ? `<span class="mp-team-badge team-${p.team}">É${p.team + 1}</span>`
+        : "";
       return `
         <div class="mp-quick-chip${isMe ? " is-me" : ""}">
-          <span class="mp-quick-name">${mpEscapeHtml(p.name)}${isMe ? " (toi)" : ""}${p.id === state.hostId ? " 👑" : ""}</span>
+          <span class="mp-quick-name">${mpEscapeHtml(p.name)}${isMe ? " (toi)" : ""}${p.id === state.hostId ? " 👑" : ""}${teamBadge}</span>
           <span class="mp-quick-score">${p.score} pt${p.score > 1 ? "s" : ""}</span>
           ${action}
         </div>`;
@@ -4141,7 +4338,11 @@
         const state = await mpApiGetState(mpRoomCode, mpPlayerId);
         if(state) mpRenderPlayersList(state);
         if(result.roundEnded){
-          mpShowRoundBanner(`🏆 ${result.lastPlayerName} était le dernier non trouvé (+1 point bonus) ! Nouvelle manche lancée, scores conservés.`);
+          if(result.winningTeamNames && result.winningTeamNames.length){
+            mpShowRoundBanner(`🏆 Équipe ${result.winningTeamNames.join(" & ")} a trouvé les deux adversaires (+1 point bonus chacun) ! Nouvelle manche lancée, mêmes équipes, scores conservés.`);
+          }else{
+            mpShowRoundBanner(`🏆 ${result.lastPlayerName} était le dernier non trouvé (+1 point bonus) ! Nouvelle manche lancée, scores conservés.`);
+          }
         }
         // Que la manche continue ou qu'elle vienne de redémarrer, si mon secret a
         // changé, on l'affiche sur l'écran principal (comme pour un tirage classique).
