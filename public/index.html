@@ -1705,6 +1705,24 @@
     return "other";
   }
 
+  // Génération dans laquelle CETTE FORME (pas l'espèce de base !) a été introduite. Une
+  // espèce peut venir d'une génération ancienne tout en ayant une forme (méga-évolution,
+  // forme régionale, G-Max…) apparue bien plus tard — par ex. Amphinobi (Greninja) vient
+  // de la génération 6, mais sa méga-évolution n'existe que depuis une génération
+  // ultérieure. Si cette génération-là n'est pas sélectionnée dans la configuration, la
+  // forme ne doit jamais pouvoir être tirée/recherchée, même si l'espèce de base reste
+  // éligible. NB : à mettre à jour si de nouvelles formes changent cet historique.
+  function formMinGenFromSuffix(fullName, baseName){
+    const suffix = fullName.length > baseName.length ? fullName.slice(baseName.length + 1) : fullName;
+    if(suffix.startsWith("mega") || suffix === "primal") return 6; // Méga-Évolutions : génération 6 (X/Y, ROSA)
+    if(suffix.includes("gmax") || suffix.includes("eternamax")) return 8; // Dynamax Géant : génération 8 (Épée/Bouclier)
+    if(suffix.includes("alola")) return 7; // Formes d'Alola : génération 7
+    if(suffix.includes("galar")) return 8; // Formes de Galar : génération 8
+    if(suffix.includes("hisui")) return 8; // Formes de Hisui : génération 8 (Légendes Arceus)
+    if(suffix.includes("paldea")) return 9; // Formes de Paldea : génération 9
+    return null;
+  }
+
   // Construit un libellé français lisible pour une forme alternative, à partir du suffixe
   // de son nom technique (tout ce qui suit "<nom-de-base>-").
   function formLabelFromSuffix(fullName, baseName){
@@ -2353,7 +2371,7 @@
   // (régionales, Méga-Évolutions, Gigamax). Sauvegardé dans le localStorage pour être
   // restauré au prochain lancement, et utilisé par le randomiseur avant chaque tirage.
   const GAME_SETTINGS_KEY = "pokedex_devinette_game_settings_v1";
-  const SPECIES_META_CACHE_KEY = "pokedex_devinette_species_meta_v1";
+  const SPECIES_META_CACHE_KEY = "pokedex_devinette_species_meta_v2"; // v2 : les formes portent aussi leur génération d'apparition
 
   // Un seul et même objet pour toute la configuration : facilite l'ajout de futures options
   // (il suffit d'ajouter une clé ici, dans defaultGameSettings(), et de l'utiliser dans
@@ -2453,7 +2471,7 @@
     varieties.forEach(v => {
       if(v.is_default) return;
       const kind = formKindFromSuffix(v.name, row.name);
-      if(forms[kind]) forms[kind].push(v.id);
+      if(forms[kind]) forms[kind].push({ id: v.id, minGen: formMinGenFromSuffix(v.name, row.name) });
     });
     return {
       id: row.id,
@@ -2500,6 +2518,17 @@
 
   // Construit la liste des identifiants "tirables" (un par Pokémon de base, plus un par
   // forme spéciale autorisée) à partir des métadonnées et de la configuration actuelle.
+  // Ajoute au pool les formes d'une liste (mega/gmax/regional) qui sont éligibles : il ne
+  // suffit pas que l'espèce de base soit dans une génération sélectionnée, il faut AUSSI
+  // que la génération d'apparition de LA FORME elle-même soit sélectionnée (voir
+  // formMinGenFromSuffix ci-dessus pour le détail des générations par type de forme).
+  function pushEligibleForms(list, settings, pool){
+    list.forEach(f => {
+      if(f.minGen != null && !settings.generations.includes(f.minGen)) return;
+      pool.push(f.id);
+    });
+  }
+
   function buildDrawPool(metaMap, settings){
     const pool = [];
     if(!metaMap){
@@ -2515,9 +2544,9 @@
     metaMap.forEach(meta => {
       if(!isSpeciesEligible(meta, settings)) return;
       pool.push(meta.defaultPokemonId);
-      if(settings.forms.regional) meta.forms.regional.forEach(pid => pool.push(pid));
-      if(settings.forms.mega) meta.forms.mega.forEach(pid => pool.push(pid));
-      if(settings.forms.gmax) meta.forms.gmax.forEach(pid => pool.push(pid));
+      if(settings.forms.regional) pushEligibleForms(meta.forms.regional, settings, pool);
+      if(settings.forms.mega) pushEligibleForms(meta.forms.mega, settings, pool);
+      if(settings.forms.gmax) pushEligibleForms(meta.forms.gmax, settings, pool);
     });
     return pool;
   }
