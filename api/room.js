@@ -6,7 +6,7 @@ const Redis = require('ioredis');
 
 const MAX_DEX_ID = 1025; // Génération I à IX (aligné sur la config partagée par le client)
 const ROOM_TTL_SECONDS = 60 * 60 * 24; // les parties expirent après 24h d'inactivité
-const SPECIES_META_REDIS_KEY = 'species_meta_v1';
+const SPECIES_META_REDIS_KEY = 'species_meta_v2'; // v2 : les formes portent désormais aussi leur génération d'apparition (voir plus bas)
 const SPECIES_META_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 jours : ces métadonnées bougent extrêmement rarement
 
 // Bornes (numéro de Pokédex national) de chaque génération, identiques à celles utilisées
@@ -43,13 +43,25 @@ const PARADOX_SPECIES_IDS = new Set([
 ]);
 
 // Détecte le "type" d'une forme alternative à partir du suffixe de son nom technique,
-// pour savoir si elle doit être proposée par le tirage selon la configuration de la partie.
-function formKindFromSuffix(fullName, baseName) {
+// ET la génération dans laquelle CETTE FORME (pas l'espèce de base !) a été introduite.
+// C'est essentiel : une espèce peut venir d'une génération ancienne tout en ayant une
+// forme (méga-évolution, forme régionale, G-Max…) apparue bien plus tard — par exemple
+// Amphinobi (Greninja) vient de la génération 6, mais sa méga-évolution n'existe que
+// depuis une génération ultérieure. Si cette génération-là n'est pas sélectionnée dans
+// la config de la partie, la forme ne doit donc jamais pouvoir être tirée, même si
+// l'espèce de base, elle, reste éligible.
+// NB : ces bornes reflètent l'historique des jeux au moment de l'écriture. Si de
+// nouvelles formes apparaissent dans de futurs jeux avec une génération différente de
+// ce qui est indiqué ici, il faudra mettre à jour cette fonction en conséquence.
+function formInfoFromSuffix(fullName, baseName) {
   const suffix = fullName.length > baseName.length ? fullName.slice(baseName.length + 1) : fullName;
-  if (suffix.startsWith('mega') || suffix === 'primal') return 'mega';
-  if (suffix.includes('gmax') || suffix.includes('eternamax')) return 'gmax';
-  if (suffix.includes('alola') || suffix.includes('galar') || suffix.includes('hisui') || suffix.includes('paldea')) return 'regional';
-  return 'other';
+  if (suffix.startsWith('mega') || suffix === 'primal') return { kind: 'mega', minGen: 6 }; // Méga-Évolutions : génération 6 (X/Y, ROSA)
+  if (suffix.includes('gmax') || suffix.includes('eternamax')) return { kind: 'gmax', minGen: 8 }; // Dynamax Géant : génération 8 (Épée/Bouclier)
+  if (suffix.includes('alola')) return { kind: 'regional', minGen: 7 }; // Formes d'Alola : génération 7
+  if (suffix.includes('galar')) return { kind: 'regional', minGen: 8 }; // Formes de Galar : génération 8
+  if (suffix.includes('hisui')) return { kind: 'regional', minGen: 8 }; // Formes de Hisui : génération 8 (Légendes Arceus)
+  if (suffix.includes('paldea')) return { kind: 'regional', minGen: 9 }; // Formes de Paldea : génération 9
+  return { kind: 'other', minGen: null };
 }
 
 // ---------- Configuration de la partie (Pokémon disponibles) ----------
@@ -113,6 +125,17 @@ function isSpeciesEligible(meta, settings) {
 // actuelle. Chaque entrée porte à la fois l'id technique "pokemon" (utilisé pour l'image
 // et pour redemander exactement cette forme) et l'id d'espèce (utilisé pour le nom
 // français, identique quelle que soit la forme).
+// Ajoute au pool les formes d'une liste (mega/gmax/regional) qui sont éligibles :
+// il ne suffit pas que l'espèce de base soit dans une génération sélectionnée, il faut
+// AUSSI que la génération d'apparition de LA FORME elle-même soit sélectionnée (voir
+// formInfoFromSuffix ci-dessus pour le détail des générations par type de forme).
+function pushEligibleForms(list, settings, pool, speciesId) {
+  list.forEach(f => {
+    if (f.minGen != null && !settings.generations.includes(f.minGen)) return;
+    pool.push({ pokemonId: f.id, speciesId });
+  });
+}
+
 function buildDrawPoolServer(metaList, settings) {
   const pool = [];
   if (!metaList) {
@@ -128,9 +151,9 @@ function buildDrawPoolServer(metaList, settings) {
   metaList.forEach(meta => {
     if (!isSpeciesEligible(meta, settings)) return;
     pool.push({ pokemonId: meta.defaultPokemonId, speciesId: meta.id });
-    if (settings.forms.regional) meta.forms.regional.forEach(pid => pool.push({ pokemonId: pid, speciesId: meta.id }));
-    if (settings.forms.mega) meta.forms.mega.forEach(pid => pool.push({ pokemonId: pid, speciesId: meta.id }));
-    if (settings.forms.gmax) meta.forms.gmax.forEach(pid => pool.push({ pokemonId: pid, speciesId: meta.id }));
+    if (settings.forms.regional) pushEligibleForms(meta.forms.regional, settings, pool, meta.id);
+    if (settings.forms.mega) pushEligibleForms(meta.forms.mega, settings, pool, meta.id);
+    if (settings.forms.gmax) pushEligibleForms(meta.forms.gmax, settings, pool, meta.id);
   });
   return pool;
 }
@@ -141,8 +164,8 @@ function buildSpeciesMetaRecord(row) {
   const forms = { mega: [], gmax: [], regional: [] };
   varieties.forEach(v => {
     if (v.is_default) return;
-    const kind = formKindFromSuffix(v.name, row.name);
-    if (forms[kind]) forms[kind].push(v.id);
+    const info = formInfoFromSuffix(v.name, row.name);
+    if (forms[info.kind]) forms[info.kind].push({ id: v.id, minGen: info.minGen });
   });
   return {
     id: row.id,
