@@ -1169,53 +1169,7 @@
     gap:3px;
   }
 
-  /* ---- "Qui a posé la question ?" : liste d'amis + bouton étiquette par question ---- */
-  .notepad-askers-block{
-    padding:0 10px 8px;
-    border-bottom:1px dashed rgba(0,0,0,.14);
-    margin-bottom:6px;
-  }
-  .notepad-askers-label{
-    font-size:11px;
-    font-weight:700;
-    color:var(--ink);
-    margin-bottom:5px;
-  }
-  .notepad-askers-sub{
-    font-weight:600;
-    color:#8a8375;
-    font-size:10px;
-  }
-  .notepad-askers-row{
-    display:flex;
-    flex-wrap:wrap;
-    gap:6px;
-    margin-bottom:6px;
-  }
-  .notepad-asker-chip{
-    display:inline-flex;
-    align-items:center;
-    gap:5px;
-    font-family:'Nunito';
-    font-weight:800;
-    font-size:11.5px;
-    color:#fff;
-    border:none;
-    border-radius:999px;
-    padding:5px 10px 5px 8px;
-    cursor:pointer;
-    touch-action:manipulation;
-    opacity:.55;
-  }
-  .notepad-asker-chip.active{
-    opacity:1;
-    box-shadow: 0 0 0 2px rgba(0,0,0,.35) inset;
-  }
-  .notepad-asker-chip .notepad-asker-remove{
-    opacity:.8;
-    font-weight:700;
-  }
-  .notepad-asker-chip .notepad-asker-remove:hover{ opacity:1; }
+  /* ---- Étiquette 🏷️ (qui a posé cette question) sur chaque case du bloc-note ---- */
   .notepad-asker-tag{
     width:24px;
     height:24px;
@@ -1579,7 +1533,7 @@
       <button class="notepad-close" id="btnNotepadClose" aria-label="Fermer">✕</button>
     </div>
     <div class="notepad-body">
-      <div class="notepad-hint">Choisis un joueur, puis coche ce que tu sais sur son Pokémon secret : un clic = case verte (vrai), un double-clic = case rouge (faux). Tu peux aussi noter qui a posé chaque question (bouton 🏷️).</div>
+      <div class="notepad-hint">Choisis un joueur, puis coche ce que tu sais sur son Pokémon secret : un clic = case verte (vrai), un double-clic = case rouge (faux). Tape sur 🏷️ à côté d'une question pour noter qui l'a posée : la case grise avec son initiale (re-tape pour retirer).</div>
 
       <div class="notepad-players-row" id="notepadPlayersRow"></div>
       <form class="notepad-add-player" id="notepadAddPlayerForm">
@@ -1590,14 +1544,6 @@
       <div class="notepad-empty" id="notepadEmptyState" style="display:none;">Ajoute au moins un joueur pour commencer à prendre des notes sur son Pokémon secret.</div>
 
       <div class="notepad-active-area" id="notepadActiveArea">
-        <div class="notepad-askers-block">
-          <div class="notepad-askers-label">Qui a posé quelle question ? <span class="notepad-askers-sub">(sélectionne un ami, puis tape sur 🏷️ à côté d'une question)</span></div>
-          <div class="notepad-askers-row" id="notepadAskersRow"></div>
-          <form class="notepad-add-player" id="notepadAddAskerForm">
-            <input type="text" id="notepadAddAskerInput" maxlength="16" placeholder="Ajouter un ami (ex: Claude)…" autocomplete="off">
-            <button type="submit" class="notepad-add-player-btn" title="Ajouter">＋</button>
-          </form>
-        </div>
         <div class="notepad-categories" id="notepadCategories"></div>
         <textarea class="notepad-textarea" id="notepadText" placeholder="Notes libres, indices, hypothèses sur ce joueur…"></textarea>
       </div>
@@ -1926,9 +1872,6 @@
   const notepadEmptyState = document.getElementById("notepadEmptyState");
   const notepadActiveArea = document.getElementById("notepadActiveArea");
   const notepadCategories = document.getElementById("notepadCategories");
-  const notepadAskersRow = document.getElementById("notepadAskersRow");
-  const notepadAddAskerForm = document.getElementById("notepadAddAskerForm");
-  const notepadAddAskerInput = document.getElementById("notepadAddAskerInput");
 
   const btnGcClose = document.getElementById("btnGcClose");
   const gcOverlay = document.getElementById("gcOverlay");
@@ -3088,29 +3031,30 @@
   function loadNotepadState(){
     try{
       const raw = localStorage.getItem(NOTEPAD_KEY);
-      if(!raw) return { manualPlayers: [], activePlayerKey: null, data: {}, askers: [], activeAskerKey: null };
+      if(!raw) return { manualPlayers: [], activePlayerKey: null, data: {}, lastAskerName: "" };
       const parsed = JSON.parse(raw);
       return {
         manualPlayers: Array.isArray(parsed.manualPlayers) ? parsed.manualPlayers : [],
         activePlayerKey: parsed.activePlayerKey || null,
         data: (parsed.data && typeof parsed.data === "object") ? parsed.data : {},
-        // Liste manuelle des personnes qui posent des questions (ex: "Claude"), pour
-        // pouvoir associer chaque question du bloc-note à qui l'a posée.
-        askers: Array.isArray(parsed.askers) ? parsed.askers : [],
-        activeAskerKey: parsed.activeAskerKey || null
+        // Dernier nom saisi pour "qui a posé la question", histoire de ne pas avoir à le
+        // retaper à chaque fois si c'est souvent la même personne qui pose les questions.
+        lastAskerName: typeof parsed.lastAskerName === "string" ? parsed.lastAskerName : ""
       };
-    }catch(e){ return { manualPlayers: [], activePlayerKey: null, data: {}, askers: [], activeAskerKey: null }; }
+    }catch(e){ return { manualPlayers: [], activePlayerKey: null, data: {}, lastAskerName: "" }; }
   }
   function saveNotepadState(){
     try{ localStorage.setItem(NOTEPAD_KEY, JSON.stringify(notepadState)); }catch(e){}
   }
 
-  // Petite palette de couleurs cycliques pour distinguer visuellement les amis dans la
-  // liste des "askers" (celui qui pose la question), sans avoir à en choisir une à la main.
+  // Petite palette de couleurs cycliques pour distinguer visuellement qui a posé chaque
+  // question, dérivée directement du nom tapé (même nom → toujours la même couleur),
+  // sans avoir besoin d'une liste d'amis à gérer à côté.
   const NOTEPAD_ASKER_COLORS = ["#2670be", "#b8460d", "#2a7a3d", "#7a3d9e", "#c62828", "#a8860b", "#0f8f82", "#a83279"];
-  function notepadAskerColor(key){
-    const idx = notepadState.askers.findIndex(a => a.key === key);
-    return NOTEPAD_ASKER_COLORS[(idx >= 0 ? idx : 0) % NOTEPAD_ASKER_COLORS.length];
+  function notepadAskerColor(name){
+    let hash = 0;
+    for(let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+    return NOTEPAD_ASKER_COLORS[hash % NOTEPAD_ASKER_COLORS.length];
   }
   function notepadAskerInitial(name){
     return (name || "?").trim().slice(0, 1).toUpperCase() || "?";
@@ -3152,88 +3096,24 @@
   function renderNotepadAll(){
     notepadPickActive();
     renderNotepadPlayers();
-    renderNotepadAskers();
     renderNotepadActivePlayer();
   }
 
-  // ---- Liste des "askers" (amis qui posent des questions) : sélection simple (un
-  // seul actif à la fois, ou aucun) + gestion (ajout/suppression), indépendante du
-  // joueur actif puisqu'un même ami peut poser des questions sur plusieurs adversaires.
-  function renderNotepadAskers(){
-    if(!notepadAskersRow) return;
-    if(!notepadState.askers.length){
-      notepadAskersRow.innerHTML = `<span class="notepad-askers-sub">Aucun ami ajouté pour l'instant — ajoute-en un ci-dessous.</span>`;
-      return;
-    }
-    notepadAskersRow.innerHTML = notepadState.askers.map(a => {
-      const isActive = a.key === notepadState.activeAskerKey;
-      const color = notepadAskerColor(a.key);
-      return `
-        <button type="button" class="notepad-asker-chip${isActive ? " active" : ""}" data-asker-key="${mpEscapeHtml(a.key)}" style="background:${color}" title="${isActive ? "Cliquer pour désélectionner" : "Sélectionner " + mpEscapeHtml(a.name)}">
-          ${mpEscapeHtml(a.name)}
-          <span class="notepad-asker-remove" data-remove-asker-key="${mpEscapeHtml(a.key)}" title="Retirer cet ami">✕</span>
-        </button>`;
-    }).join("");
-
-    notepadAskersRow.querySelectorAll(".notepad-asker-chip").forEach(btn => {
-      btn.addEventListener("click", (e) => {
-        if(e.target.closest(".notepad-asker-remove")) return; // géré séparément
-        const key = btn.dataset.askerKey;
-        notepadState.activeAskerKey = (notepadState.activeAskerKey === key) ? null : key;
-        saveNotepadState();
-        renderNotepadAskers();
-      });
-    });
-    notepadAskersRow.querySelectorAll(".notepad-asker-remove").forEach(el => {
-      el.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const key = el.dataset.removeAskerKey;
-        notepadState.askers = notepadState.askers.filter(a => a.key !== key);
-        if(notepadState.activeAskerKey === key) notepadState.activeAskerKey = null;
-        // On retire aussi toutes les étiquettes déjà posées avec cet ami, pour tous les
-        // joueurs, pour ne pas garder de référence à un ami qui n'existe plus.
-        Object.keys(notepadState.data).forEach(dataKey => {
-          const entry = notepadState.data[dataKey];
-          if(entry && entry.askedBy){
-            Object.keys(entry.askedBy).forEach(itemId => {
-              if(entry.askedBy[itemId] === key) delete entry.askedBy[itemId];
-            });
-          }
-        });
-        saveNotepadState();
-        renderNotepadAll();
-      });
-    });
-  }
-
-  function notepadHandleAddAsker(e){
-    e.preventDefault();
-    const name = notepadAddAskerInput.value.trim().slice(0, 16);
-    if(!name) return;
-    const key = "a" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    notepadState.askers.push({ key, name });
-    notepadState.activeAskerKey = key; // sélectionné automatiquement, prêt à étiqueter
-    saveNotepadState();
-    notepadAddAskerInput.value = "";
-    renderNotepadAskers();
-  }
-
-  // Clic sur l'étiquette 🏷️ d'une question : associe (ou retire, en re-cliquant) l'ami
-  // actuellement sélectionné ci-dessus à cette question précise, pour ce joueur-là.
+  // Clic sur l'étiquette 🏷️ d'une question : si elle n'est pas encore étiquetée, demande
+  // rapidement qui l'a posée (petite invite, pas de liste à gérer à côté) et grise la
+  // case ; un second clic sur une case déjà étiquetée retire simplement l'étiquette.
   function notepadHandleTagClick(btn){
-    const activeAsker = notepadState.activeAskerKey;
-    if(!activeAsker){
-      notepadStatus.textContent = "Sélectionne d'abord un ami ci-dessus ↑";
-      return;
-    }
     const key = notepadState.activePlayerKey;
     if(!key) return;
     const entry = notepadEnsureData(key);
     const id = btn.dataset.itemId;
-    if(entry.askedBy[id] === activeAsker){
-      delete entry.askedBy[id]; // re-clic sur le même ami : on retire l'étiquette
+    if(entry.askedBy[id]){
+      delete entry.askedBy[id];
     }else{
-      entry.askedBy[id] = activeAsker;
+      const name = (window.prompt("Qui a posé cette question ?", notepadState.lastAskerName || "") || "").trim().slice(0, 16);
+      if(!name) return; // annulé ou laissé vide : on ne fait rien
+      entry.askedBy[id] = name;
+      notepadState.lastAskerName = name;
     }
     saveNotepadState();
     renderNotepadActivePlayer();
@@ -3300,17 +3180,16 @@
             const state = entry.checks[it.id] || null;
             const showPct = it.hasPercent && state === "yes";
             const pctVal = (entry.pct && entry.pct[it.id] != null) ? entry.pct[it.id] : 100;
-            const askerKey = entry.askedBy ? entry.askedBy[it.id] : null;
-            const asker = askerKey ? notepadState.askers.find(a => a.key === askerKey) : null;
-            const tagStyle = asker ? `style="background:${notepadAskerColor(asker.key)};border-color:${notepadAskerColor(asker.key)}"` : "";
-            const tagLabel = asker ? notepadAskerInitial(asker.name) : "🏷️";
-            const tagTitle = asker ? `Demandé par ${asker.name} (re-cliquer pour retirer)` : "Associer l'ami sélectionné à cette question";
+            const askerName = entry.askedBy ? entry.askedBy[it.id] : null;
+            const tagStyle = askerName ? `style="background:${notepadAskerColor(askerName)};border-color:${notepadAskerColor(askerName)}"` : "";
+            const tagLabel = askerName ? notepadAskerInitial(askerName) : "🏷️";
+            const tagTitle = askerName ? `Demandé par ${askerName} (re-tape pour retirer)` : "Indiquer qui a posé cette question";
             return `
             <span class="notepad-chip-wrap">
-              <button type="button" class="notepad-chip${state === "yes" ? " is-yes" : ""}${state === "no" ? " is-no" : ""}${asker ? " has-asker" : ""}"
+              <button type="button" class="notepad-chip${state === "yes" ? " is-yes" : ""}${state === "no" ? " is-no" : ""}${askerName ? " has-asker" : ""}"
                 data-item-id="${mpEscapeHtml(it.id)}" data-cat="${cat.key}"
                 ${it.accent ? `style="border-left:4px solid ${it.accent}"` : ""}>${mpEscapeHtml(it.label)}</button>
-              <button type="button" class="notepad-asker-tag${asker ? " has-asker" : ""}" data-item-id="${mpEscapeHtml(it.id)}" ${tagStyle} title="${mpEscapeHtml(tagTitle)}">${tagLabel}</button>
+              <button type="button" class="notepad-asker-tag${askerName ? " has-asker" : ""}" data-item-id="${mpEscapeHtml(it.id)}" ${tagStyle} title="${mpEscapeHtml(tagTitle)}">${tagLabel}</button>
               ${it.hasPercent ? `<span class="notepad-pct-wrap" data-pct-wrap="${mpEscapeHtml(it.id)}" style="display:${showPct ? "inline-flex" : "none"}">
                 <button type="button" class="notepad-pct-btn" data-pct-id="${mpEscapeHtml(it.id)}" data-pct-delta="-10" aria-label="Diminuer">−</button>
                 <span class="notepad-pct-value" data-pct-value="${mpEscapeHtml(it.id)}">${pctVal}%</span>
@@ -4679,7 +4558,6 @@
   btnNotepadClear.addEventListener("click", clearNotepad);
   notepadText.addEventListener("input", onNotepadInput);
   notepadAddPlayerForm.addEventListener("submit", notepadHandleAddPlayer);
-  notepadAddAskerForm.addEventListener("submit", notepadHandleAddAsker);
   notepadOverlay.addEventListener("click", (e) => { if(e.target === notepadOverlay) closeNotepad(); });
   document.addEventListener("keydown", (e) => {
     if(e.key !== "Escape") return;
