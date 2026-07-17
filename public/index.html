@@ -1189,6 +1189,8 @@
   }
   .notepad-asker-tag.has-asker{
     border-style:solid;
+    border-color:#6b6357;
+    background:#6b6357;
     color:#fff;
   }
   /* La case elle-même se grise dès qu'une question lui est associée à un ami — le
@@ -1533,7 +1535,7 @@
       <button class="notepad-close" id="btnNotepadClose" aria-label="Fermer">✕</button>
     </div>
     <div class="notepad-body">
-      <div class="notepad-hint">Choisis un joueur, puis coche ce que tu sais sur son Pokémon secret : un clic = case verte (vrai), un double-clic = case rouge (faux). Tape sur 🏷️ à côté d'une question pour noter qui l'a posée : la case grise avec son initiale (re-tape pour retirer).</div>
+      <div class="notepad-hint">Choisis un joueur, puis coche ce que tu sais sur son Pokémon secret : un clic = case verte (vrai), un double-clic = case rouge (faux). Tape sur 🏷️ à côté d'une question pour la griser (déjà posée) ; re-tape pour revenir en arrière.</div>
 
       <div class="notepad-players-row" id="notepadPlayersRow"></div>
       <form class="notepad-add-player" id="notepadAddPlayerForm">
@@ -3031,34 +3033,19 @@
   function loadNotepadState(){
     try{
       const raw = localStorage.getItem(NOTEPAD_KEY);
-      if(!raw) return { manualPlayers: [], activePlayerKey: null, data: {}, lastAskerName: "" };
+      if(!raw) return { manualPlayers: [], activePlayerKey: null, data: {} };
       const parsed = JSON.parse(raw);
       return {
         manualPlayers: Array.isArray(parsed.manualPlayers) ? parsed.manualPlayers : [],
         activePlayerKey: parsed.activePlayerKey || null,
-        data: (parsed.data && typeof parsed.data === "object") ? parsed.data : {},
-        // Dernier nom saisi pour "qui a posé la question", histoire de ne pas avoir à le
-        // retaper à chaque fois si c'est souvent la même personne qui pose les questions.
-        lastAskerName: typeof parsed.lastAskerName === "string" ? parsed.lastAskerName : ""
+        data: (parsed.data && typeof parsed.data === "object") ? parsed.data : {}
       };
-    }catch(e){ return { manualPlayers: [], activePlayerKey: null, data: {}, lastAskerName: "" }; }
+    }catch(e){ return { manualPlayers: [], activePlayerKey: null, data: {} }; }
   }
   function saveNotepadState(){
     try{ localStorage.setItem(NOTEPAD_KEY, JSON.stringify(notepadState)); }catch(e){}
   }
 
-  // Petite palette de couleurs cycliques pour distinguer visuellement qui a posé chaque
-  // question, dérivée directement du nom tapé (même nom → toujours la même couleur),
-  // sans avoir besoin d'une liste d'amis à gérer à côté.
-  const NOTEPAD_ASKER_COLORS = ["#2670be", "#b8460d", "#2a7a3d", "#7a3d9e", "#c62828", "#a8860b", "#0f8f82", "#a83279"];
-  function notepadAskerColor(name){
-    let hash = 0;
-    for(let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
-    return NOTEPAD_ASKER_COLORS[hash % NOTEPAD_ASKER_COLORS.length];
-  }
-  function notepadAskerInitial(name){
-    return (name || "?").trim().slice(0, 1).toUpperCase() || "?";
-  }
 
   // Fusionne les joueurs de la partie multijoueur en cours (auto, non supprimables)
   // et les joueurs ajoutés à la main (pour une partie en local entre amis), utile
@@ -3099,22 +3086,15 @@
     renderNotepadActivePlayer();
   }
 
-  // Clic sur l'étiquette 🏷️ d'une question : si elle n'est pas encore étiquetée, demande
-  // rapidement qui l'a posée (petite invite, pas de liste à gérer à côté) et grise la
-  // case ; un second clic sur une case déjà étiquetée retire simplement l'étiquette.
+  // Clic sur l'étiquette 🏷️ d'une question : simple bascule "déjà posée" (grise la
+  // case) / "pas encore posée" (re-clic pour revenir en arrière). Aucune saisie requise.
   function notepadHandleTagClick(btn){
     const key = notepadState.activePlayerKey;
     if(!key) return;
     const entry = notepadEnsureData(key);
     const id = btn.dataset.itemId;
-    if(entry.askedBy[id]){
-      delete entry.askedBy[id];
-    }else{
-      const name = (window.prompt("Qui a posé cette question ?", notepadState.lastAskerName || "") || "").trim().slice(0, 16);
-      if(!name) return; // annulé ou laissé vide : on ne fait rien
-      entry.askedBy[id] = name;
-      notepadState.lastAskerName = name;
-    }
+    if(entry.askedBy[id]) delete entry.askedBy[id];
+    else entry.askedBy[id] = true;
     saveNotepadState();
     renderNotepadActivePlayer();
   }
@@ -3180,16 +3160,15 @@
             const state = entry.checks[it.id] || null;
             const showPct = it.hasPercent && state === "yes";
             const pctVal = (entry.pct && entry.pct[it.id] != null) ? entry.pct[it.id] : 100;
-            const askerName = entry.askedBy ? entry.askedBy[it.id] : null;
-            const tagStyle = askerName ? `style="background:${notepadAskerColor(askerName)};border-color:${notepadAskerColor(askerName)}"` : "";
-            const tagLabel = askerName ? notepadAskerInitial(askerName) : "🏷️";
-            const tagTitle = askerName ? `Demandé par ${askerName} (re-tape pour retirer)` : "Indiquer qui a posé cette question";
+            const asked = entry.askedBy ? !!entry.askedBy[it.id] : false;
+            const tagLabel = asked ? "✅" : "🏷️";
+            const tagTitle = asked ? "Question déjà posée (re-taper pour revenir en arrière)" : "Marquer cette question comme déjà posée";
             return `
             <span class="notepad-chip-wrap">
-              <button type="button" class="notepad-chip${state === "yes" ? " is-yes" : ""}${state === "no" ? " is-no" : ""}${askerName ? " has-asker" : ""}"
+              <button type="button" class="notepad-chip${state === "yes" ? " is-yes" : ""}${state === "no" ? " is-no" : ""}${asked ? " has-asker" : ""}"
                 data-item-id="${mpEscapeHtml(it.id)}" data-cat="${cat.key}"
                 ${it.accent ? `style="border-left:4px solid ${it.accent}"` : ""}>${mpEscapeHtml(it.label)}</button>
-              <button type="button" class="notepad-asker-tag${askerName ? " has-asker" : ""}" data-item-id="${mpEscapeHtml(it.id)}" ${tagStyle} title="${mpEscapeHtml(tagTitle)}">${tagLabel}</button>
+              <button type="button" class="notepad-asker-tag${asked ? " has-asker" : ""}" data-item-id="${mpEscapeHtml(it.id)}" title="${tagTitle}">${tagLabel}</button>
               ${it.hasPercent ? `<span class="notepad-pct-wrap" data-pct-wrap="${mpEscapeHtml(it.id)}" style="display:${showPct ? "inline-flex" : "none"}">
                 <button type="button" class="notepad-pct-btn" data-pct-id="${mpEscapeHtml(it.id)}" data-pct-delta="-10" aria-label="Diminuer">−</button>
                 <span class="notepad-pct-value" data-pct-value="${mpEscapeHtml(it.id)}">${pctVal}%</span>
