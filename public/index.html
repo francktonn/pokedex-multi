@@ -5030,6 +5030,21 @@
     }
   }
 
+  // Si l'onglet se ferme (ou se recharge) pendant qu'on est dans une partie, on
+  // prévient le serveur immédiatement pour libérer la place tout de suite — sans ça,
+  // le joueur resterait affiché dans la partie jusqu'à ce que le serveur le détecte
+  // inactif tout seul (voir STALE_PLAYER_MS côté serveur, ~20 s, qui ne sert alors
+  // que de filet de sécurité en cas de crash/perte réseau). `sendBeacon` est utilisé
+  // plutôt qu'un `fetch` classique car il continue son envoi même après que la page
+  // a commencé à se fermer.
+  window.addEventListener("pagehide", () => {
+    if(!mpRoomCode || !mpPlayerId || !navigator.sendBeacon) return;
+    try{
+      const payload = JSON.stringify({ action: "leave", code: mpRoomCode, playerId: mpPlayerId });
+      navigator.sendBeacon(MP_API, new Blob([payload], { type: "application/json" }));
+    }catch(e){}
+  });
+
   // ---------- Actions ----------
   async function drawPokemon(){
     clearNotepad();
