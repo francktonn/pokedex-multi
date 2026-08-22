@@ -89,6 +89,8 @@ function ensureTeamFields(room) {
   if (typeof room.teamSlotSeq !== 'number') {
     room.teamSlotSeq = room.teamSlots.reduce((m, s) => Math.max(m, (s.id || 0) + 1), 0);
   }
+  // Notes de bloc-note partagées entre coéquipiers (mode équipes) : { [teamId]: { [targetPlayerId]: { note, checks, pct, askedBy } } }.
+  if (!room.teamNotes || typeof room.teamNotes !== 'object') room.teamNotes = {};
 }
 
 function teamSlotName(room, teamId) {
@@ -440,6 +442,7 @@ function sanitizeRoom(room, playerId) {
     };
   });
   const me = playerId && room.players[playerId] ? room.players[playerId] : null;
+  const config = normalizeConfig(room.config);
 
   // En mode équipes : on révèle le Pokémon (et donc les caractéristiques, via son id)
   // de TOUS ses coéquipiers — et uniquement des siens — au joueur qui demande son état
@@ -455,6 +458,17 @@ function sanitizeRoom(room, playerId) {
       });
   }
 
+  // Bloc-note partagé : les notes prises par N'IMPORTE quel membre de TA propre
+  // équipe (assignation faite par l'hôte, indépendante du fait qu'une manche soit en
+  // cours) sur un adversaire donné, pour que toute l'équipe voie les mêmes coches en
+  // quasi temps réel (au rythme du sondage périodique). On ne renvoie jamais les
+  // notes des AUTRES équipes. `null` si le mode équipes n'est pas actif ou que le
+  // joueur n'est pas encore assigné à une équipe (voir l'action 'teamNotePatch').
+  const myAssignedTeam = room.teamAssignments[playerId];
+  const teamNotes = (config.mode === 'teams' && playerId && myAssignedTeam !== undefined)
+    ? (room.teamNotes[myAssignedTeam] || {})
+    : null;
+
   return {
     code: room.code,
     status: room.status || 'lobby',
@@ -463,13 +477,14 @@ function sanitizeRoom(room, playerId) {
     players,
     me: me ? { pokemonId: me.pokemonId || null, pokemonName: me.pokemonName || null } : null,
     teammates, // liste de tes coéquipiers en mode équipes (id/nom/pokémon), sinon []
+    teamNotes, // bloc-note partagé avec tes coéquipiers : { [adversaireId]: {note,checks,pct,askedBy} }, sinon null
     activeMode: room.activeMode || 'ffa', // mode réellement utilisé pour la manche en cours
     // Équipes ouvertes par l'hôte, visibles par tous pour affichage, mais modifiables
     // par l'hôte seulement — voir les actions 'addTeamSlot'/'removeTeamSlot'/
     // 'renameTeamSlot'/'assignTeam'/'randomizeTeams'.
     teamSlots: room.teamSlots.map(s => ({ id: s.id, name: s.name })),
     // Visible par tous (pour affichage), mais seul l'hôte peut la modifier — voir l'action 'config'.
-    config: normalizeConfig(room.config)
+    config
   };
 }
 
@@ -665,6 +680,7 @@ module.exports = async (req, res) => {
         Object.keys(room.teamAssignments).forEach(pid => {
           if (room.teamAssignments[pid] === teamId) delete room.teamAssignments[pid];
         });
+        delete room.teamNotes[teamId]; // le bloc-note partagé de cette équipe n'a plus lieu d'être
         await saveRoom(code, room);
         res.status(200).json(sanitizeRoom(room, playerId));
         return;
@@ -752,6 +768,68 @@ module.exports = async (req, res) => {
         }
         const pids = Object.keys(room.players);
         room.teamAssignments = distributeTeamsEvenly(pids, room.teamSlots.map(s => s.id));
+        await saveRoom(code, room);
+        res.status(200).json(sanitizeRoom(room, playerId));
+        return;
+      }
+
+      // ---- Bloc-note partagé entre coéquipiers (mode équipes) : n'importe quel
+      // membre de l'équipe peut cocher/décocher une info sur un adversaire donné, les
+      // autres la voient au sondage suivant (voir `teamNotes` dans sanitizeRoom).
+      // Ouvert à TOUS les joueurs déjà assignés à une équipe (pas réservé à l'hôte) :
+      // c'est un outil de jeu partagé, pas un réglage de partie.
+      // `patch` ne contient que les champs à modifier :
+      //   { checks: { [itemId]: 'yes'|'no'|null }, askedBy: { [itemId]: bool },
+      //     pct: { [itemId]: number }, note: string }
+      if (action === 'teamNotePatch') {
+        const code = (body.code || '').toString().trim().toUpperCase();
+        const playerId = body.playerId;
+        const targetPlayerId = (body.targetPlayerId || '').toString();
+        const room = await getRoom(code);
+        if (!room || !room.players[playerId]) {
+          res.status(404).json({ error: 'Partie ou joueur introuvable' });
+          return;
+        }
+        ensureTeamFields(room);
+        const config = normalizeConfig(room.config);
+        const myTeamId = room.teamAssignments[playerId];
+        if (config.mode !== 'teams' || myTeamId === undefined) {
+          res.status(400).json({ error: "Le bloc-note partagé n'est disponible qu'en mode équipes, une fois assigné à une équipe." });
+          return;
+        }
+        if (!targetPlayerId) {
+          res.status(400).json({ error: 'Joueur ciblé manquant' });
+          return;
+        }
+        if (!room.teamNotes[myTeamId]) room.teamNotes[myTeamId] = {};
+        if (!room.teamNotes[myTeamId][targetPlayerId]) {
+          room.teamNotes[myTeamId][targetPlayerId] = { note: '', checks: {}, pct: {}, askedBy: {} };
+        }
+        const entry = room.teamNotes[myTeamId][targetPlayerId];
+        const patch = body.patch || {};
+        if (patch.checks && typeof patch.checks === 'object') {
+          Object.keys(patch.checks).forEach(itemId => {
+            const v = patch.checks[itemId];
+            if (v === 'yes' || v === 'no') entry.checks[itemId] = v;
+            else delete entry.checks[itemId];
+          });
+        }
+        if (patch.askedBy && typeof patch.askedBy === 'object') {
+          Object.keys(patch.askedBy).forEach(itemId => {
+            if (patch.askedBy[itemId]) entry.askedBy[itemId] = true;
+            else delete entry.askedBy[itemId];
+          });
+        }
+        if (patch.pct && typeof patch.pct === 'object') {
+          Object.keys(patch.pct).forEach(itemId => {
+            const n = Number(patch.pct[itemId]);
+            if (Number.isFinite(n)) entry.pct[itemId] = Math.max(0, Math.min(100, n));
+            else delete entry.pct[itemId];
+          });
+        }
+        if (typeof patch.note === 'string') {
+          entry.note = patch.note.slice(0, 2000);
+        }
         await saveRoom(code, room);
         res.status(200).json(sanitizeRoom(room, playerId));
         return;
