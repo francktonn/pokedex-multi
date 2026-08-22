@@ -1231,6 +1231,11 @@
     line-height:1;
   }
   .notepad-player-remove:hover{ opacity:1; }
+  .notepad-shared-tag{
+    font-size:10px;
+    margin-left:4px;
+    opacity:.85;
+  }
 
   .notepad-add-player{
     display:flex;
@@ -1721,7 +1726,7 @@
       <button class="notepad-close" id="btnNotepadClose" aria-label="Fermer">✕</button>
     </div>
     <div class="notepad-body">
-      <div class="notepad-hint">Choisis un joueur, puis coche ce que tu sais sur son Pokémon secret : un clic = case verte (vrai), un double-clic = case rouge (faux). Tape sur 🏷️ à côté d'une question pour la griser (déjà posée) ; re-tape pour revenir en arrière.</div>
+      <div class="notepad-hint">Choisis un joueur, puis coche ce que tu sais sur son Pokémon secret : un clic = case verte (vrai), un double-clic = case rouge (faux). Tape sur 🏷️ à côté d'une question pour la griser (déjà posée) ; re-tape pour revenir en arrière. En mode équipes, les notes marquées 🔗 sont partagées en direct avec tes coéquipiers.</div>
 
       <div class="notepad-players-row" id="notepadPlayersRow"></div>
       <form class="notepad-add-player" id="notepadAddPlayerForm">
@@ -3146,9 +3151,14 @@
     ).join("");
   }
 
-  function renderPokemon(data){
+  function renderPokemon(data, opts){
+    opts = opts || {};
     current = data;
-    clearNotepad(); // le bloc-note se vide à chaque nouveau Pokémon affiché (solo ou multijoueur)
+    // Le bloc-note se vide à chaque VRAI nouveau tirage (solo ou multijoueur), mais
+    // pas quand on ne fait que consulter une fiche déjà connue (ex. basculer sur
+    // celle d'un coéquipier puis revenir à la sienne) — sans quoi jeter un oeil au
+    // Pokémon d'un coéquipier effacerait les notes prises sur les adversaires.
+    if(!opts.keepNotepad) clearNotepad();
 
     screenContent.innerHTML = "";
     screenContent.appendChild(buildSpriteWithShinyToggle(data));
@@ -3248,6 +3258,7 @@
   let notepadState = loadNotepadState();
   let notepadMpPlayers = []; // rempli depuis la partie multijoueur en cours (id/name), hors soi-même
   let notepadChipTimers = {}; // debounce clic simple / double-clic par item
+  let notepadTeamShared = false; // true si le mode équipes est actif ET qu'on est assigné à une équipe : les notes "mp:<id>" deviennent alors partagées avec les coéquipiers
 
   function loadNotepadState(){
     try{
@@ -3285,11 +3296,54 @@
 
   // Appelée par le sondage multijoueur : garde la liste de joueurs à jour (sans
   // jamais toucher aux notes déjà prises, qui restent associées à l'id du joueur).
+  //
+  // En mode équipes (une fois assigné à une équipe), le serveur renvoie aussi
+  // `state.teamNotes` : les notes prises par n'importe quel coéquipier sur un
+  // adversaire donné, partagées en temps quasi réel (au rythme du sondage). On les
+  // reflète simplement dans les mêmes clés locales "mp:<id>" pour que tout le reste
+  // de l'affichage (déjà écrit pour un bloc-note local) fonctionne sans changement —
+  // sauf le texte libre, qu'on ne réécrase pas si l'utilisateur est justement en
+  // train d'y taper, pour ne pas lui couper la parole au sondage suivant.
   function notepadSyncMpPlayers(state){
     notepadMpPlayers = (state && state.players)
       ? state.players.filter(p => p.id !== mpPlayerId).map(p => ({ id: p.id, name: p.name }))
       : [];
+
+    const teamNotes = state && state.teamNotes;
+    notepadTeamShared = !!teamNotes;
+    if(teamNotes){
+      const typingKey = (document.activeElement === notepadText) ? notepadState.activePlayerKey : null;
+      Object.keys(teamNotes).forEach(targetId => {
+        const key = "mp:" + targetId;
+        const remote = teamNotes[targetId] || {};
+        const local = notepadEnsureData(key);
+        local.checks = Object.assign({}, remote.checks || {});
+        local.pct = Object.assign({}, remote.pct || {});
+        local.askedBy = Object.assign({}, remote.askedBy || {});
+        if(key !== typingKey) local.note = remote.note || "";
+      });
+      saveNotepadState();
+    }
+
     if(notepadOverlay.classList.contains("open")) renderNotepadAll();
+  }
+
+  // Une note sur un adversaire est-elle partagée avec l'équipe ? (mode équipes,
+  // uniquement pour les joueurs de la partie en cours — jamais pour les joueurs
+  // ajoutés à la main, qui restent des notes strictement personnelles.)
+  function notepadIsSharedKey(key){
+    return notepadTeamShared && typeof key === "string" && key.indexOf("mp:") === 0;
+  }
+
+  // Envoie au serveur le changement qu'on vient de faire localement, pour que les
+  // coéquipiers le voient au prochain sondage. Ne fait rien si la note n'est pas
+  // partagée (mode classique, ou joueur ajouté à la main) ; échoue silencieusement en
+  // cas de souci réseau (la modif reste de toute façon visible localement).
+  function notepadPushTeamPatch(key, patch){
+    if(!notepadIsSharedKey(key)) return;
+    if(!mpRoomCode || !mpPlayerId) return;
+    const targetPlayerId = key.slice(3);
+    mpApiPost("teamNotePatch", { code: mpRoomCode, playerId: mpPlayerId, targetPlayerId, patch }).catch(() => {});
   }
 
   function notepadPickActive(){
@@ -3316,6 +3370,7 @@
     if(entry.askedBy[id]) delete entry.askedBy[id];
     else entry.askedBy[id] = true;
     saveNotepadState();
+    notepadPushTeamPatch(key, { askedBy: { [id]: !!entry.askedBy[id] } });
     renderNotepadActivePlayer();
   }
 
@@ -3323,7 +3378,7 @@
     const players = notepadAllPlayers();
     notepadPlayersRow.innerHTML = players.map(p => `
       <button type="button" class="notepad-player-tab${p.key === notepadState.activePlayerKey ? " active" : ""}" data-key="${mpEscapeHtml(p.key)}">
-        ${mpEscapeHtml(p.name)}${p.removable ? `<span class="notepad-player-remove" data-remove-key="${mpEscapeHtml(p.key)}" title="Retirer ce joueur">✕</span>` : ""}
+        ${mpEscapeHtml(p.name)}${notepadIsSharedKey(p.key) ? `<span class="notepad-shared-tag" title="Notes partagées avec tes coéquipiers">🔗</span>` : ""}${p.removable ? `<span class="notepad-player-remove" data-remove-key="${mpEscapeHtml(p.key)}" title="Retirer ce joueur">✕</span>` : ""}
       </button>
     `).join("");
 
@@ -3487,6 +3542,10 @@
     }
 
     saveNotepadState();
+    notepadPushTeamPatch(key, {
+      checks: { [id]: next },
+      pct: pctWrap ? { [id]: (next === "yes" ? entry.pct[id] : null) } : undefined
+    });
 
     chip.classList.toggle("is-yes", next === "yes");
     chip.classList.toggle("is-no", next === "no");
@@ -3506,6 +3565,7 @@
     v = Math.max(0, Math.min(100, v + delta));
     entry.pct[id] = v;
     saveNotepadState();
+    notepadPushTeamPatch(key, { pct: { [id]: v } });
     const wrap = btn.closest(".notepad-pct-wrap");
     const valueEl = wrap ? wrap.querySelector(".notepad-pct-value") : null;
     if(valueEl) valueEl.textContent = v + "%";
@@ -3548,6 +3608,7 @@
     notepadSaveTimer = setTimeout(() => {
       notepadEnsureData(key).note = notepadText.value;
       saveNotepadState();
+      notepadPushTeamPatch(key, { note: notepadText.value });
       notepadStatus.textContent = "Enregistré ✓";
     }, 350);
   }
@@ -4763,7 +4824,7 @@
     if(!targetId) return;
     try{
       const data = await loadPokemon(targetId);
-      renderPokemon(data);
+      renderPokemon(data, { keepNotepad: true });
     }catch(e){}
   }
 
