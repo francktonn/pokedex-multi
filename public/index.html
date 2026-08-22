@@ -757,7 +757,7 @@
   .mp-mode-btn:disabled{ opacity:.45; cursor:not-allowed; }
   .mp-mode-static{ font-size:12.5px; color:#6b6357; }
 
-  /* ---- Badges d'équipe (mode 2v2) ---- */
+  /* ---- Badges d'équipe (mode équipes) ---- */
   .mp-team-badge{
     font-family:'Silkscreen', monospace;
     font-size:9.5px;
@@ -769,8 +769,136 @@
   .mp-team-badge.team-1{ color:#b8460d; background:rgba(214,90,30,.12); }
   .mp-team-badge.team-2{ color:#2a7a3d; background:rgba(42,122,61,.12); }
   .mp-team-badge.team-3{ color:#7a3d9e; background:rgba(122,61,158,.12); }
+  .mp-team-badge.team-4{ color:#9c6d00; background:rgba(184,134,11,.14); }
+  .mp-team-badge.team-5{ color:#ad1457; background:rgba(194,24,91,.12); }
+  .mp-team-badge.team-6{ color:#00707d; background:rgba(0,131,143,.12); }
+  .mp-team-badge.team-7{ color:#5d4037; background:rgba(93,64,55,.14); }
 
-  /* ---- Ton équipier (mode 2v2) : son secret t'est révélé ---- */
+  /* ---- Panneau de gestion des équipes (mode équipes, réservé à l'hôte pour l'édition) ---- */
+  .mp-teams-panel{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    background:#fff;
+    border-radius:12px;
+    padding:10px 12px;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,.06);
+  }
+  .mp-teams-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+  }
+  .mp-teams-actions{ display:flex; gap:6px; }
+  .mp-teams-action-btn{
+    font-family:'Baloo 2', sans-serif;
+    font-weight:700;
+    font-size:11px;
+    color:var(--ink);
+    background:#f2ece0;
+    border:none;
+    border-radius:999px;
+    padding:6px 10px;
+    cursor:pointer;
+  }
+  .mp-teams-action-btn:active{ transform:translateY(1px); }
+  .mp-teams-hint{
+    font-size:11px;
+    color:#8c8474;
+    font-style:italic;
+  }
+  .mp-teams-slots{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+  }
+  .mp-team-slot{
+    border:1px solid rgba(0,0,0,.10);
+    border-left:5px solid #999;
+    border-radius:10px;
+    padding:7px 9px;
+    background:#faf8f4;
+  }
+  .mp-team-slot.team-0{ border-left-color:#2670be; }
+  .mp-team-slot.team-1{ border-left-color:#d65a1e; }
+  .mp-team-slot.team-2{ border-left-color:#2a7a3d; }
+  .mp-team-slot.team-3{ border-left-color:#7a3d9e; }
+  .mp-team-slot.team-4{ border-left-color:#b8860d; }
+  .mp-team-slot.team-5{ border-left-color:#c2185b; }
+  .mp-team-slot.team-6{ border-left-color:#00838f; }
+  .mp-team-slot.team-7{ border-left-color:#5d4037; }
+  .mp-team-slot.drop-ready{ background:#fff6e0; }
+  .mp-team-slot-head{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    margin-bottom:5px;
+  }
+  .mp-team-slot-name{
+    flex:1;
+    min-width:0;
+    border:none;
+    background:transparent;
+    font-family:'Baloo 2', sans-serif;
+    font-weight:700;
+    font-size:12.5px;
+    color:var(--ink);
+    padding:2px 4px;
+    border-radius:6px;
+  }
+  .mp-team-slot-name:focus{ outline:2px solid var(--gold); background:#fff; }
+  .mp-team-slot-name:disabled{ color:var(--ink); opacity:1; }
+  .mp-team-slot-count{ font-size:10.5px; color:#8c8474; flex-shrink:0; }
+  .mp-team-slot-remove{
+    flex-shrink:0;
+    border:none;
+    background:none;
+    color:#b0453d;
+    font-size:12px;
+    cursor:pointer;
+    opacity:.7;
+    padding:2px 4px;
+  }
+  .mp-team-slot-remove:hover{ opacity:1; }
+  .mp-team-slot-members{
+    display:flex;
+    flex-wrap:wrap;
+    gap:5px;
+    min-height:26px;
+  }
+  .mp-team-unassigned{
+    border:1px dashed rgba(0,0,0,.16);
+    border-radius:10px;
+    padding:7px 9px;
+  }
+  .mp-team-unassigned.drop-ready{ background:#fff6e0; border-color:var(--gold); }
+  .mp-teams-subtitle{
+    font-size:11px;
+    font-weight:700;
+    color:#8c8474;
+    margin-bottom:5px;
+  }
+  .mp-team-chip{
+    font-family:'Nunito';
+    font-weight:700;
+    font-size:11.5px;
+    color:var(--ink);
+    background:#f2ece0;
+    border:1px solid rgba(0,0,0,.1);
+    border-radius:999px;
+    padding:5px 10px;
+    cursor:default;
+  }
+  .mp-team-chip.pickable{ cursor:pointer; }
+  .mp-team-chip.picked{
+    background:var(--gold);
+    border-color:var(--gold);
+    color:var(--red-darker);
+    box-shadow:0 0 0 2px rgba(0,0,0,.08);
+  }
+
+  /* ---- Ton/tes coéquipier(s) (mode équipes) : leur secret t'est révélé ---- */
   .mp-ally-box{
     display:flex;
     align-items:center;
@@ -782,8 +910,10 @@
     font-size:12.5px;
     color:#6b6357;
   }
-  .mp-ally-box img{ width:34px; height:34px; object-fit:contain; }
+  .mp-ally-box img{ width:34px; height:34px; object-fit:contain; flex-shrink:0; }
   .mp-ally-box .mp-ally-name{ font-weight:700; color:var(--ink); text-transform:capitalize; }
+  .mp-teammates-list{ display:flex; flex-direction:column; gap:8px; width:100%; }
+  .mp-teammate-row{ display:flex; align-items:center; gap:10px; }
   /* ---- Bouton (écran principal) pour intervertir entre sa propre fiche et celle
      de son équipier, en mode 2v2 ---- */
   .mp-ally-toggle-btn{
@@ -1090,53 +1220,54 @@
     flex:1;
     min-height:0;
   }
-  .notepad-categories{
+  .notepad-categories-row{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+    flex-shrink:0;
+  }
+  .notepad-cat-tab{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-family:'Nunito';
+    font-weight:800;
+    font-size:11.5px;
+    color:var(--red-dark);
+    background:#fff;
+    border:1px solid rgba(0,0,0,.14);
+    border-radius:8px;
+    padding:7px 10px;
+    cursor:pointer;
+    transition: background .12s ease, border-color .12s ease, color .12s ease;
+  }
+  .notepad-cat-tab.active{
+    background: var(--gold);
+    border-color: var(--gold);
+    color: var(--red-darker);
+  }
+  .notepad-cat-tab-count{
+    font-weight:600;
+    font-size:10px;
+    color:#8c8474;
+  }
+  .notepad-cat-tab.active .notepad-cat-tab-count{ color:var(--red-darker); opacity:.75; }
+  .notepad-grid-wrap{
     flex:1;
     min-height:0;
     overflow-y:auto;
-    display:flex;
-    flex-direction:column;
-    gap:6px;
     padding-right:2px;
-  }
-  .notepad-cat{
-    border:1px solid rgba(0,0,0,.10);
-    border-radius:10px;
-    background:#fff;
-    overflow:hidden;
-    flex-shrink:0;
-  }
-  .notepad-cat > summary{
-    list-style:none;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    padding:8px 10px;
-    cursor:pointer;
-    font-family:'Nunito';
-    font-weight:800;
-    font-size:12px;
-    color:var(--red-dark);
-    user-select:none;
-  }
-  .notepad-cat > summary::-webkit-details-marker{ display:none; }
-  .notepad-cat > summary::before{
-    content:"▸";
-    display:inline-block;
-    margin-right:6px;
-    transition: transform .12s ease;
-  }
-  .notepad-cat[open] > summary::before{ transform:rotate(90deg); }
-  .notepad-cat-count{
-    font-weight:600;
-    font-size:10.5px;
-    color:#8c8474;
   }
   .notepad-grid{
     display:flex;
     flex-wrap:wrap;
+    align-content:flex-start;
     gap:6px;
-    padding:0 10px 10px;
+    padding:10px;
+    background:#fff;
+    border:1px solid rgba(0,0,0,.10);
+    border-radius:10px;
+    min-height:100%;
   }
   .notepad-chip{
     font-family:'Nunito';
@@ -1546,7 +1677,10 @@
       <div class="notepad-empty" id="notepadEmptyState" style="display:none;">Ajoute au moins un joueur pour commencer à prendre des notes sur son Pokémon secret.</div>
 
       <div class="notepad-active-area" id="notepadActiveArea">
-        <div class="notepad-categories" id="notepadCategories"></div>
+        <div class="notepad-categories-row" id="notepadCategoriesRow"></div>
+        <div class="notepad-grid-wrap">
+          <div class="notepad-grid" id="notepadGrid"></div>
+        </div>
         <textarea class="notepad-textarea" id="notepadText" placeholder="Notes libres, indices, hypothèses sur ce joueur…"></textarea>
       </div>
     </div>
@@ -1686,13 +1820,19 @@
         { id:"size:lourd", label:"Plus de 50 kg" },
         { id:"size:leger", label:"Moins de 10 kg" }
       ]},
+      { key:"evo", label:"Évolution", items: [
+        { id:"evo:base", label:"Pokémon de base" },
+        { id:"evo:sous_evolution", label:"Sous-évolution" },
+        { id:"evo:famille_2", label:"Famille de 2" },
+        { id:"evo:famille_3", label:"Famille de 3" },
+        { id:"evo:peut_evoluer", label:"Peut encore évoluer" },
+        { id:"evo:finale", label:"Fin d'évolution" },
+        { id:"evo:objet", label:"Évolue avec un objet" },
+        { id:"evo:echange", label:"Évolue par échange" }
+      ]},
       { key:"divers", label:"Divers", items: [
         { id:"divers:capture_facile", label:"Capture facile" },
         { id:"divers:capture_difficile", label:"Capture difficile" },
-        { id:"divers:peut_evoluer", label:"Peut encore évoluer" },
-        { id:"divers:evo_finale", label:"Fin d'évolution" },
-        { id:"divers:evo_objet", label:"Évoluable avec objet" },
-        { id:"divers:pokemon_base", label:"Pokémon de base" },
         { id:"divers:pokemon_forme", label:"Pokémon avec une forme" },
         { id:"divers:nom_long", label:"Nom de +8 lettres" },
         { id:"divers:genre_mf", label:"Mâle et femelle" }
@@ -1873,7 +2013,8 @@
   const notepadAddPlayerInput = document.getElementById("notepadAddPlayerInput");
   const notepadEmptyState = document.getElementById("notepadEmptyState");
   const notepadActiveArea = document.getElementById("notepadActiveArea");
-  const notepadCategories = document.getElementById("notepadCategories");
+  const notepadCategoriesRow = document.getElementById("notepadCategoriesRow");
+  const notepadGrid = document.getElementById("notepadGrid");
 
   const btnGcClose = document.getElementById("btnGcClose");
   const gcOverlay = document.getElementById("gcOverlay");
@@ -3033,14 +3174,15 @@
   function loadNotepadState(){
     try{
       const raw = localStorage.getItem(NOTEPAD_KEY);
-      if(!raw) return { manualPlayers: [], activePlayerKey: null, data: {} };
+      if(!raw) return { manualPlayers: [], activePlayerKey: null, activeCategoryKey: null, data: {} };
       const parsed = JSON.parse(raw);
       return {
         manualPlayers: Array.isArray(parsed.manualPlayers) ? parsed.manualPlayers : [],
         activePlayerKey: parsed.activePlayerKey || null,
+        activeCategoryKey: parsed.activeCategoryKey || null,
         data: (parsed.data && typeof parsed.data === "object") ? parsed.data : {}
       };
-    }catch(e){ return { manualPlayers: [], activePlayerKey: null, data: {} }; }
+    }catch(e){ return { manualPlayers: [], activePlayerKey: null, activeCategoryKey: null, data: {} }; }
   }
   function saveNotepadState(){
     try{ localStorage.setItem(NOTEPAD_KEY, JSON.stringify(notepadState)); }catch(e){}
@@ -3149,47 +3291,66 @@
     notepadText.value = entry.note || "";
 
     const categories = noteCategories();
-    notepadCategories.innerHTML = categories.map(cat => `
-      <details class="notepad-cat" open>
-        <summary>
-          <span>${mpEscapeHtml(cat.label)}</span>
-          <span class="notepad-cat-count" data-cat-count="${cat.key}">${notepadCatCounts(cat.items, entry.checks)}/${cat.items.length}</span>
-        </summary>
-        <div class="notepad-grid">
-          ${cat.items.map(it => {
-            const state = entry.checks[it.id] || null;
-            const showPct = it.hasPercent && state === "yes";
-            const pctVal = (entry.pct && entry.pct[it.id] != null) ? entry.pct[it.id] : 100;
-            const asked = entry.askedBy ? !!entry.askedBy[it.id] : false;
-            const tagLabel = asked ? "✅" : "🏷️";
-            const tagTitle = asked ? "Question déjà posée (re-taper pour revenir en arrière)" : "Marquer cette question comme déjà posée";
-            return `
-            <span class="notepad-chip-wrap">
-              <button type="button" class="notepad-chip${state === "yes" ? " is-yes" : ""}${state === "no" ? " is-no" : ""}${asked ? " has-asker" : ""}"
-                data-item-id="${mpEscapeHtml(it.id)}" data-cat="${cat.key}"
-                ${it.accent ? `style="border-left:4px solid ${it.accent}"` : ""}>${mpEscapeHtml(it.label)}</button>
-              <button type="button" class="notepad-asker-tag${asked ? " has-asker" : ""}" data-item-id="${mpEscapeHtml(it.id)}" title="${tagTitle}">${tagLabel}</button>
-              ${it.hasPercent ? `<span class="notepad-pct-wrap" data-pct-wrap="${mpEscapeHtml(it.id)}" style="display:${showPct ? "inline-flex" : "none"}">
-                <button type="button" class="notepad-pct-btn" data-pct-id="${mpEscapeHtml(it.id)}" data-pct-delta="-10" aria-label="Diminuer">−</button>
-                <span class="notepad-pct-value" data-pct-value="${mpEscapeHtml(it.id)}">${pctVal}%</span>
-                <button type="button" class="notepad-pct-btn" data-pct-id="${mpEscapeHtml(it.id)}" data-pct-delta="10" aria-label="Augmenter">+</button>
-              </span>` : ""}
-            </span>`;
-          }).join("")}
-        </div>
-      </details>
+    if(!categories.find(c => c.key === notepadState.activeCategoryKey)){
+      notepadState.activeCategoryKey = categories.length ? categories[0].key : null;
+      saveNotepadState();
+    }
+
+    // Rangée de rectangles à sélectionner (une seule catégorie affichée à la fois),
+    // même principe que la rangée de joueurs.
+    notepadCategoriesRow.innerHTML = categories.map(cat => `
+      <button type="button" class="notepad-cat-tab${cat.key === notepadState.activeCategoryKey ? " active" : ""}" data-cat-key="${mpEscapeHtml(cat.key)}">
+        <span>${mpEscapeHtml(cat.label)}</span>
+        <span class="notepad-cat-tab-count" data-cat-count="${cat.key}">${notepadCatCounts(cat.items, entry.checks)}/${cat.items.length}</span>
+      </button>
     `).join("");
 
-    notepadCategories.querySelectorAll(".notepad-chip").forEach(chip => {
+    notepadCategoriesRow.querySelectorAll(".notepad-cat-tab").forEach(btn => {
+      btn.addEventListener("click", () => {
+        notepadState.activeCategoryKey = btn.dataset.catKey;
+        saveNotepadState();
+        renderNotepadActivePlayer();
+      });
+    });
+
+    renderNotepadGrid(categories, entry);
+  }
+
+  function renderNotepadGrid(categories, entry){
+    const cat = categories.find(c => c.key === notepadState.activeCategoryKey);
+    if(!cat){ notepadGrid.innerHTML = ""; return; }
+
+    notepadGrid.innerHTML = cat.items.map(it => {
+      const state = entry.checks[it.id] || null;
+      const showPct = it.hasPercent && state === "yes";
+      const pctVal = (entry.pct && entry.pct[it.id] != null) ? entry.pct[it.id] : 100;
+      const asked = entry.askedBy ? !!entry.askedBy[it.id] : false;
+      const tagLabel = asked ? "✅" : "🏷️";
+      const tagTitle = asked ? "Question déjà posée (re-taper pour revenir en arrière)" : "Marquer cette question comme déjà posée";
+      return `
+      <span class="notepad-chip-wrap">
+        <button type="button" class="notepad-chip${state === "yes" ? " is-yes" : ""}${state === "no" ? " is-no" : ""}${asked ? " has-asker" : ""}"
+          data-item-id="${mpEscapeHtml(it.id)}" data-cat="${cat.key}"
+          ${it.accent ? `style="border-left:4px solid ${it.accent}"` : ""}>${mpEscapeHtml(it.label)}</button>
+        <button type="button" class="notepad-asker-tag${asked ? " has-asker" : ""}" data-item-id="${mpEscapeHtml(it.id)}" title="${tagTitle}">${tagLabel}</button>
+        ${it.hasPercent ? `<span class="notepad-pct-wrap" data-pct-wrap="${mpEscapeHtml(it.id)}" style="display:${showPct ? "inline-flex" : "none"}">
+          <button type="button" class="notepad-pct-btn" data-pct-id="${mpEscapeHtml(it.id)}" data-pct-delta="-5" aria-label="Diminuer">−</button>
+          <span class="notepad-pct-value" data-pct-value="${mpEscapeHtml(it.id)}">${pctVal}%</span>
+          <button type="button" class="notepad-pct-btn" data-pct-id="${mpEscapeHtml(it.id)}" data-pct-delta="5" aria-label="Augmenter">+</button>
+        </span>` : ""}
+      </span>`;
+    }).join("");
+
+    notepadGrid.querySelectorAll(".notepad-chip").forEach(chip => {
       chip.addEventListener("click", () => notepadHandleChipClick(chip));
     });
-    notepadCategories.querySelectorAll(".notepad-asker-tag").forEach(btn => {
+    notepadGrid.querySelectorAll(".notepad-asker-tag").forEach(btn => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
         notepadHandleTagClick(btn);
       });
     });
-    notepadCategories.querySelectorAll(".notepad-pct-btn").forEach(btn => {
+    notepadGrid.querySelectorAll(".notepad-pct-btn").forEach(btn => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
         notepadHandlePctBtnClick(btn);
@@ -3253,7 +3414,7 @@
     chip.classList.toggle("is-no", next === "no");
     const catKey = chip.dataset.cat;
     const cat = noteCategories().find(c => c.key === catKey);
-    const countEl = notepadCategories.querySelector(`[data-cat-count="${catKey}"]`);
+    const countEl = notepadCategoriesRow.querySelector(`[data-cat-count="${catKey}"]`);
     if(cat && countEl) countEl.textContent = notepadCatCounts(cat.items, entry.checks) + "/" + cat.items.length;
   }
 
@@ -3720,12 +3881,13 @@
   let mpBusy = false;
   let mpLastRenderedPokemonId = null; // dernier secret déjà affiché sur l'écran principal du Pokédex
   let mpMyLastPokemonId = null; // dernier id de secret connu comme "le mien" (conservé même après avoir été trouvé, pour pouvoir y revenir depuis la fiche de l'équipier)
-  let mpAllyInfo = null; // dernier { id, name, pokemonId, pokemonName } de l'équipier reçu (mode 2v2), sinon null
-  let mpViewingAlly = false; // true quand l'écran principal affiche actuellement la fiche de l'équipier plutôt que la sienne
+  let mpTeammatesInfo = []; // liste de { id, name, pokemonId, pokemonName } de tes coéquipiers reçue (mode équipes), sinon []
+  let mpViewingTeammateIndex = -1; // -1 = ma propre fiche ; sinon index dans mpTeammatesInfo dont l'écran principal affiche la fiche
   let mpCurrentStatus = null; // statut de la manche en cours ('lobby' | 'playing' | null si pas en partie)
   let mpIsHost = false; // suis-je l'hôte de la partie en cours ? (seul lui peut modifier la config)
   let mpRoomConfig = null; // dernière configuration connue de la partie (générations/catégories/formes)
   let mpLastKnownState = null; // dernier état de partie reçu, réutilisé pour afficher le panneau "Deviner"
+  let mpTeamsPickedPlayerId = null; // (hôte, mode équipes) joueur actuellement "sélectionné" en attente d'un tap sur une équipe/zone "non assignés"
 
   // Le tirage aléatoire "solo" (bouton principal du Pokédex) est désactivé pendant
   // qu'une manche multijoueur est active : sinon on pourrait re-tirer librement un
@@ -3917,6 +4079,7 @@
         <button class="mp-copy-code-btn" id="mpCopyCodeBtn" title="Copier le code">📋</button>
       </div>
       <div id="mpModeRow"></div>
+      <div id="mpTeamsPanelHolder"></div>
       <button class="btn btn-config" id="mpConfigBtn">⚙️ Configuration</button>
       <div id="mpHostControls"></div>
       <div class="mp-my-secret" id="mpMySecret" style="display:none;"></div>
@@ -3955,7 +4118,7 @@
       mpRenderQuickBar(null);
       guessRenderPanel(null);
       notepadSyncMpPlayers(null);
-      mpUpdateAllyToggleButton(null);
+      mpUpdateTeammateToggleButton(null);
       mpRenderEntry("La partie n'existe plus ou tu n'en fais plus partie.");
       return;
     }
@@ -3968,7 +4131,7 @@
     mpRoomConfig = state.config || mpRoomConfig;
 
     mpRenderModeRow(state);
-    mpRenderAllyBox(state);
+    mpRenderTeammatesBox(state);
 
     // ---- Zone réservée à l'hôte : lancer / relancer une manche pour tout le monde ----
     const hostControls = document.getElementById("mpHostControls");
@@ -3999,15 +4162,15 @@
       }
     }
 
-    const isTeamMode = state.activeMode === "team2v2";
+    const isTeamMode = state.activeMode === "teams";
     const myTeam = (state.players.find(p => p.id === mpPlayerId) || {}).team;
 
     const noteText = document.getElementById("mpNoteText");
     if(noteText){
       if(isTeamMode){
         noteText.textContent = isPlaying
-          ? "Mode 2v2 : tu vois le Pokémon de ton équipier (ci-dessus) — utilise le bouton 🎯 « Deviner » pour trouver ceux des deux adversaires. La manche se termine quand une seule équipe a encore un secret à protéger — nouvelle manche automatique, scores conservés, mêmes binômes."
-          : "Mode 2v2 activé : une fois que l'hôte aura lancé la partie, des binômes seront tirés au sort et chacun verra le secret de son équipier.";
+          ? "Mode équipes : tu vois le Pokémon de tes coéquipiers (ci-dessus) — utilise le bouton 🎯 « Deviner » pour trouver ceux des autres équipes. La manche se termine quand une seule équipe a encore un secret à protéger — nouvelle manche automatique, scores conservés, mêmes équipes."
+          : "Mode équipes activé : configure tes équipes ci-dessus, puis une fois que l'hôte aura lancé la partie, chacun verra le secret de ses coéquipiers.";
       }else{
         noteText.textContent = isPlaying
           ? "Utilise le bouton 🎯 « Deviner » (dans les boutons flottants) pour deviner le Pokémon secret des autres joueurs, même si le tien a déjà été trouvé ! La manche se termine quand il ne reste plus qu'un seul joueur non trouvé — une nouvelle manche démarre alors automatiquement pour tout le monde, scores conservés."
@@ -4022,7 +4185,7 @@
     mpRenderQuickBar(state);
     guessRenderPanel(state);
     notepadSyncMpPlayers(state);
-    mpUpdateAllyToggleButton(state);
+    mpUpdateTeammateToggleButton(state);
 
     // La liste dans l'onglet Multijoueur sert désormais uniquement à voir les scores
     // et le statut de chacun ; deviner se fait via le bouton dédié 🎯 « Deviner ».
@@ -4035,7 +4198,7 @@
       if(isMe){
         rightPart = "";
       }else if(isAlly){
-        rightPart = `<span class="mp-ally-tag">équipier</span>`;
+        rightPart = `<span class="mp-ally-tag">coéquipier</span>`;
       }else if(p.hasPokemon){
         rightPart = `<span class="mp-player-waiting">à deviner</span>`;
       }else if(isPlaying){
@@ -4043,9 +4206,7 @@
       }else{
         rightPart = `<span class="mp-player-waiting">en attente</span>`;
       }
-      const teamBadge = isTeamMode && p.team !== null
-        ? `<span class="mp-team-badge team-${p.team}">Équipe ${p.team + 1}</span>`
-        : "";
+      const teamBadge = mpTeamBadgeHtml(p);
       return `
         <div class="mp-player-row${isMe ? " is-me" : ""}">
           <span class="mp-player-name">${mpEscapeHtml(p.name)}${isMe ? " (toi)" : ""}${p.id === state.hostId ? " 👑" : ""}${teamBadge}</span>
@@ -4055,37 +4216,52 @@
     }).join("");
   }
 
-  // ---- Ligne "Mode de jeu" : classique vs 2v2. Modifiable par l'hôte uniquement,
-  // et seulement activable si au moins 4 joueurs sont présents. ----
+  // Petit badge coloré d'équipe, réutilisé partout où la liste des joueurs est
+  // affichée (onglet Multijoueur, panneau "Deviner", barre rapide). Utilise
+  // `teamColorIndex` (position de l'équipe parmi celles ouvertes, calculée côté
+  // serveur) pour piocher une couleur stable même si les identifiants d'équipe ne
+  // sont pas de petits entiers consécutifs.
+  function mpTeamBadgeHtml(p, short){
+    if(p.team === null || p.team === undefined) return "";
+    const colorIdx = (p.teamColorIndex != null ? p.teamColorIndex : 0) % 8;
+    const label = short ? `É${colorIdx + 1}` : (p.teamName || `Équipe ${colorIdx + 1}`);
+    return `<span class="mp-team-badge team-${colorIdx}">${mpEscapeHtml(label)}</span>`;
+  }
+
+  // ---- Ligne "Mode de jeu" : classique vs équipes. Modifiable par l'hôte uniquement,
+  // et seulement activable si au moins 2 joueurs sont présents (les équipes elles-mêmes,
+  // leur nombre et leur taille, se règlent ensuite dans le panneau dédié — voir
+  // mpRenderTeamsPanel). ----
   function mpRenderModeRow(state){
     const row = document.getElementById("mpModeRow");
     if(!row) return;
-    const isTeamMode = (state.config && state.config.mode) === "team2v2";
+    const isTeamMode = (state.config && state.config.mode) === "teams";
     const playerCount = state.players.length;
-    const canEnable2v2 = playerCount >= 4;
+    const canEnableTeams = playerCount >= 2;
     if(state.isHost){
       row.innerHTML = `
         <div class="mp-mode-row">
           <span class="mp-mode-label">Mode de jeu</span>
           <div class="mp-mode-switch">
             <button class="mp-mode-btn${!isTeamMode ? " active" : ""}" id="mpModeFfaBtn" type="button">Classique</button>
-            <button class="mp-mode-btn${isTeamMode ? " active" : ""}" id="mpMode2v2Btn" type="button" ${canEnable2v2 ? "" : "disabled"} title="${canEnable2v2 ? "" : "Il faut au moins 4 joueurs"}">2v2</button>
+            <button class="mp-mode-btn${isTeamMode ? " active" : ""}" id="mpModeTeamsBtn" type="button" ${canEnableTeams ? "" : "disabled"} title="${canEnableTeams ? "" : "Il faut au moins 2 joueurs"}">Équipes</button>
           </div>
         </div>
-        ${canEnable2v2 ? "" : `<div class="mp-note">Le mode 2v2 nécessite au moins 4 joueurs (actuellement ${playerCount}).</div>`}
+        ${canEnableTeams ? "" : `<div class="mp-note">Le mode équipes nécessite au moins 2 joueurs (actuellement ${playerCount}).</div>`}
       `;
       const ffaBtn = document.getElementById("mpModeFfaBtn");
-      const teamBtn = document.getElementById("mpMode2v2Btn");
+      const teamBtn = document.getElementById("mpModeTeamsBtn");
       if(ffaBtn) ffaBtn.addEventListener("click", () => mpHandleSetMode("ffa"));
-      if(teamBtn) teamBtn.addEventListener("click", () => mpHandleSetMode("team2v2"));
+      if(teamBtn) teamBtn.addEventListener("click", () => mpHandleSetMode("teams"));
     }else{
       row.innerHTML = `
         <div class="mp-mode-row">
           <span class="mp-mode-label">Mode de jeu</span>
-          <span class="mp-mode-static">${isTeamMode ? "👥 2v2" : "🎯 Classique"}</span>
+          <span class="mp-mode-static">${isTeamMode ? "👥 Équipes" : "🎯 Classique"}</span>
         </div>
       `;
     }
+    mpRenderTeamsPanel(state);
   }
 
   async function mpHandleSetMode(mode){
@@ -4103,22 +4279,212 @@
     }
   }
 
-  // ---- Boîte "équipier" (mode 2v2) : affiche son secret (sprite + nom) sur l'écran
-  // de l'onglet Multijoueur. Pour voir sa fiche complète, l'écran principal propose
-  // désormais un bouton dédié (voir mpUpdateAllyToggleButton / mpToggleAllyView). ----
-  function mpRenderAllyBox(state){
+  // ---- Panneau de gestion des équipes (mode équipes uniquement) : rectangles
+  // d'équipes ouverts par l'hôte, avec leurs membres, plus une zone "non assignés".
+  // Seul l'hôte peut interagir : taper un joueur le "sélectionne" (surligné en doré),
+  // puis taper une équipe (ou la zone "non assignés") l'y déplace — même principe de
+  // sélection que les catégories du bloc-note. Les autres joueurs voient la même
+  // disposition, en lecture seule, pour suivre la composition des équipes en direct. ----
+  function mpRenderTeamsPanel(state){
+    const holder = document.getElementById("mpTeamsPanelHolder");
+    if(!holder) return;
+    const isTeamMode = !!(state && state.config && state.config.mode === "teams");
+    if(!isTeamMode){
+      holder.innerHTML = "";
+      mpTeamsPickedPlayerId = null;
+      return;
+    }
+    // Ne pas reconstruire le panneau pendant que l'hôte tape un nom d'équipe : le
+    // sondage périodique écraserait sa frappe en cours.
+    if(document.activeElement && document.activeElement.classList && document.activeElement.classList.contains("mp-team-slot-name")){
+      return;
+    }
+    const isHost = !!state.isHost;
+    const slots = state.teamSlots || [];
+    const players = state.players || [];
+    const unassigned = players.filter(p => p.assignedTeam === null || p.assignedTeam === undefined);
+
+    const chipHtml = (p) => {
+      const isPicked = mpTeamsPickedPlayerId === p.id;
+      const crown = p.id === state.hostId ? " 👑" : "";
+      if(!isHost){
+        return `<span class="mp-team-chip">${mpEscapeHtml(p.name)}${crown}</span>`;
+      }
+      return `<button type="button" class="mp-team-chip pickable${isPicked ? " picked" : ""}" data-player-id="${mpEscapeHtml(p.id)}">${mpEscapeHtml(p.name)}${crown}</button>`;
+    };
+
+    const slotsHtml = slots.map((slot, idx) => {
+      const members = players.filter(p => p.assignedTeam === slot.id);
+      const colorIdx = idx % 8;
+      return `
+        <div class="mp-team-slot team-${colorIdx}" data-team-id="${slot.id}">
+          <div class="mp-team-slot-head">
+            ${isHost
+              ? `<input class="mp-team-slot-name" data-team-id="${slot.id}" value="${mpEscapeHtml(slot.name)}" maxlength="18">`
+              : `<span class="mp-team-slot-name" style="padding:2px 4px; flex:1;">${mpEscapeHtml(slot.name)}</span>`}
+            <span class="mp-team-slot-count">${members.length} joueur${members.length > 1 ? "s" : ""}</span>
+            ${isHost ? `<button type="button" class="mp-team-slot-remove" data-team-id="${slot.id}" title="Fermer cette équipe">✕</button>` : ""}
+          </div>
+          <div class="mp-team-slot-members">${members.map(chipHtml).join("") || `<span class="mp-teams-hint">Vide</span>`}</div>
+        </div>
+      `;
+    }).join("");
+
+    holder.innerHTML = `
+      <div class="mp-teams-panel">
+        <div class="mp-teams-header">
+          <span class="mp-mode-label">Équipes</span>
+          ${isHost ? `
+            <div class="mp-teams-actions">
+              <button type="button" class="mp-teams-action-btn" id="mpTeamsRandomBtn">🎲 Mélanger</button>
+              <button type="button" class="mp-teams-action-btn" id="mpTeamsAddBtn">+ Équipe</button>
+            </div>
+          ` : ""}
+        </div>
+        ${isHost ? `<div class="mp-teams-hint">${mpTeamsPickedPlayerId ? "Touche une équipe (ou « Non assignés ») pour l'y placer." : "Touche un joueur puis une équipe pour l'y assigner."}</div>` : ""}
+        <div class="mp-teams-slots">${slotsHtml || `<div class="mp-teams-hint">Aucune équipe ouverte pour l'instant.</div>`}</div>
+        <div class="mp-team-unassigned" id="mpTeamsUnassigned">
+          <div class="mp-teams-subtitle">Non assignés</div>
+          <div class="mp-team-slot-members">${unassigned.map(chipHtml).join("") || `<span class="mp-teams-hint">—</span>`}</div>
+        </div>
+      </div>
+    `;
+
+    if(!isHost) return; // affichage seul pour les autres joueurs
+
+    holder.querySelectorAll(".mp-team-chip.pickable").forEach(chip => {
+      chip.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const pid = chip.dataset.playerId;
+        mpTeamsPickedPlayerId = (mpTeamsPickedPlayerId === pid) ? null : pid;
+        mpRenderTeamsPanel(mpLastKnownState);
+      });
+    });
+
+    holder.querySelectorAll(".mp-team-slot").forEach(slotEl => {
+      slotEl.addEventListener("click", (e) => {
+        if(e.target.closest(".mp-team-slot-remove") || e.target.closest(".mp-team-slot-name")) return;
+        if(!mpTeamsPickedPlayerId) return;
+        mpHandleAssignTeam(mpTeamsPickedPlayerId, slotEl.dataset.teamId);
+      });
+    });
+
+    holder.querySelectorAll(".mp-team-slot-remove").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        mpHandleRemoveTeamSlot(btn.dataset.teamId);
+      });
+    });
+
+    holder.querySelectorAll(".mp-team-slot-name").forEach(input => {
+      input.addEventListener("click", (e) => e.stopPropagation());
+      input.addEventListener("change", () => {
+        mpHandleRenameTeamSlot(input.dataset.teamId, input.value);
+      });
+    });
+
+    const unassignedEl = document.getElementById("mpTeamsUnassigned");
+    if(unassignedEl){
+      unassignedEl.addEventListener("click", (e) => {
+        if(e.target.closest(".mp-team-chip")) return;
+        if(!mpTeamsPickedPlayerId) return;
+        mpHandleAssignTeam(mpTeamsPickedPlayerId, null);
+      });
+    }
+
+    const addBtn = document.getElementById("mpTeamsAddBtn");
+    if(addBtn) addBtn.addEventListener("click", mpHandleAddTeamSlot);
+    const randomBtn = document.getElementById("mpTeamsRandomBtn");
+    if(randomBtn) randomBtn.addEventListener("click", mpHandleRandomizeTeams);
+  }
+
+  async function mpHandleAddTeamSlot(){
+    if(mpBusy || !mpRoomCode) return;
+    mpBusy = true;
+    try{
+      const state = await mpApiPost("addTeamSlot", { code: mpRoomCode, playerId: mpPlayerId });
+      mpRenderPlayersList(state);
+    }catch(e){
+      alert(e.message || "Impossible d'ouvrir une nouvelle équipe.");
+    }finally{
+      mpBusy = false;
+    }
+  }
+
+  async function mpHandleRemoveTeamSlot(teamId){
+    if(mpBusy || !mpRoomCode) return;
+    if(!confirm("Fermer cette équipe ? Les joueurs qui y sont assignés repasseront \"non assignés\".")) return;
+    mpBusy = true;
+    try{
+      const state = await mpApiPost("removeTeamSlot", { code: mpRoomCode, playerId: mpPlayerId, teamId: Number(teamId) });
+      mpRenderPlayersList(state);
+    }catch(e){
+      alert(e.message || "Impossible de fermer cette équipe.");
+    }finally{
+      mpBusy = false;
+    }
+  }
+
+  async function mpHandleRenameTeamSlot(teamId, name){
+    if(!mpRoomCode) return;
+    try{
+      const state = await mpApiPost("renameTeamSlot", { code: mpRoomCode, playerId: mpPlayerId, teamId: Number(teamId), name });
+      mpRenderPlayersList(state);
+    }catch(e){
+      if(mpLastKnownState) mpRenderTeamsPanel(mpLastKnownState);
+    }
+  }
+
+  async function mpHandleRandomizeTeams(){
+    if(mpBusy || !mpRoomCode) return;
+    mpBusy = true;
+    try{
+      const state = await mpApiPost("randomizeTeams", { code: mpRoomCode, playerId: mpPlayerId });
+      mpRenderPlayersList(state);
+    }catch(e){
+      alert(e.message || "Impossible de mélanger les équipes.");
+    }finally{
+      mpBusy = false;
+    }
+  }
+
+  async function mpHandleAssignTeam(targetPlayerId, teamId){
+    if(!mpRoomCode) return;
+    mpTeamsPickedPlayerId = null;
+    try{
+      const parsedTeamId = (teamId === null || teamId === undefined || teamId === "") ? null : Number(teamId);
+      const state = await mpApiPost("assignTeam", { code: mpRoomCode, playerId: mpPlayerId, targetPlayerId, teamId: parsedTeamId });
+      mpRenderPlayersList(state);
+    }catch(e){
+      alert(e.message || "Impossible d'assigner ce joueur.");
+      if(mpLastKnownState) mpRenderTeamsPanel(mpLastKnownState);
+    }
+  }
+
+  // ---- Boîte "coéquipiers" (mode équipes) : affiche le secret (sprite + nom) de
+  // CHACUN de tes coéquipiers sur l'écran de l'onglet Multijoueur — une équipe peut
+  // compter plus de 2 membres (3v3, 4v3…). Pour voir leur fiche complète, l'écran
+  // principal propose un bouton dédié qui les fait défiler un par un (voir
+  // mpUpdateTeammateToggleButton / mpToggleTeammateView). ----
+  function mpRenderTeammatesBox(state){
     const box = document.getElementById("mpAllyBox");
     if(!box) return;
-    const ally = state.ally;
-    if(!ally || !ally.pokemonId){
+    const teammates = (state.teammates || []).filter(t => t.pokemonId);
+    if(!teammates.length){
       box.style.display = "none";
       box.innerHTML = "";
       return;
     }
     box.style.display = "flex";
     box.innerHTML = `
-      <img src="${smallSpriteUrl(ally.pokemonId)}" alt="">
-      <span>Secret de ton équipier <span class="mp-ally-name">${mpEscapeHtml(ally.name)}</span> : <span class="mp-ally-name">${mpEscapeHtml(ally.pokemonName)}</span></span>
+      <div class="mp-teammates-list">
+        ${teammates.map(t => `
+          <div class="mp-teammate-row">
+            <img src="${smallSpriteUrl(t.pokemonId)}" alt="">
+            <span>Secret de <span class="mp-ally-name">${mpEscapeHtml(t.name)}</span> : <span class="mp-ally-name">${mpEscapeHtml(t.pokemonName)}</span></span>
+          </div>
+        `).join("")}
+      </div>
     `;
   }
 
@@ -4157,7 +4523,7 @@
         : "En attente que l'hôte lance la partie…";
     }
     const entries = state.players.slice().sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
-    const isTeamMode = state.activeMode === "team2v2";
+    const isTeamMode = state.activeMode === "teams";
     const myTeam = (state.players.find(p => p.id === mpPlayerId) || {}).team;
     if(!list) return;
     list.innerHTML = entries.map(p => {
@@ -4167,7 +4533,7 @@
       if(isMe){
         rightPart = "";
       }else if(isAlly){
-        rightPart = `<span class="mp-ally-tag">équipier</span>`;
+        rightPart = `<span class="mp-ally-tag">coéquipier</span>`;
       }else if(p.hasPokemon){
         rightPart = `<button class="mp-guess-btn" data-pid="${mpEscapeHtml(p.id)}" data-name="${mpEscapeHtml(p.name)}">🔎 Deviner</button>`;
       }else if(isPlaying){
@@ -4175,9 +4541,7 @@
       }else{
         rightPart = `<span class="mp-player-waiting">en attente</span>`;
       }
-      const teamBadge = isTeamMode && p.team !== null
-        ? `<span class="mp-team-badge team-${p.team}">Équipe ${p.team + 1}</span>`
-        : "";
+      const teamBadge = mpTeamBadgeHtml(p);
       return `
         <div class="mp-player-row${isMe ? " is-me" : ""}">
           <span class="mp-player-name">${mpEscapeHtml(p.name)}${isMe ? " (toi)" : ""}${p.id === state.hostId ? " 👑" : ""}${teamBadge}</span>
@@ -4225,7 +4589,7 @@
     if(statusEl) statusEl.textContent = isPlaying ? "manche en cours" : "en attente…";
 
     const entries = state.players.slice().sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
-    const isTeamMode = state.activeMode === "team2v2";
+    const isTeamMode = state.activeMode === "teams";
     const myTeam = (state.players.find(p => p.id === mpPlayerId) || {}).team;
     const players = document.getElementById("mpQuickPlayers");
     if(!players) return;
@@ -4235,7 +4599,7 @@
       let action = "";
       if(!isMe){
         if(isAlly){
-          action = `<span class="mp-quick-waiting" title="Ton équipier">🤝</span>`;
+          action = `<span class="mp-quick-waiting" title="Ton coéquipier">🤝</span>`;
         }else if(p.hasPokemon){
           action = `<button class="mp-quick-guess-btn" data-pid="${mpEscapeHtml(p.id)}" data-name="${mpEscapeHtml(p.name)}" title="Deviner le secret de ${mpEscapeHtml(p.name)}">🔎</button>`;
         }else if(isPlaying){
@@ -4244,9 +4608,7 @@
           action = `<span class="mp-quick-waiting">en attente</span>`;
         }
       }
-      const teamBadge = isTeamMode && p.team !== null
-        ? `<span class="mp-team-badge team-${p.team}">É${p.team + 1}</span>`
-        : "";
+      const teamBadge = mpTeamBadgeHtml(p, true);
       return `
         <div class="mp-quick-chip${isMe ? " is-me" : ""}">
           <span class="mp-quick-name">${mpEscapeHtml(p.name)}${isMe ? " (toi)" : ""}${p.id === state.hostId ? " 👑" : ""}${teamBadge}</span>
@@ -4274,7 +4636,7 @@
     if(newId && newId !== mpLastRenderedPokemonId){
       mpLastRenderedPokemonId = newId;
       // Une nouvelle manche vient de démarrer : on revient sur sa propre fiche.
-      mpViewingAlly = false;
+      mpViewingTeammateIndex = -1;
       try{
         const data = await loadPokemon(newId);
         renderPokemon(data);
@@ -4288,28 +4650,38 @@
     }
   }
 
-  // ---- Bouton (écran principal) pour intervertir entre sa fiche et celle de son
-  // équipier, en mode 2v2. ----
-  function mpUpdateAllyToggleButton(state){
+  // ---- Bouton (écran principal) pour faire défiler sa propre fiche puis celle de
+  // CHACUN de ses coéquipiers, en mode équipes (une équipe peut avoir plus de 2
+  // membres : 3v3, 4v3…). Un tap = passe au suivant ; on revient à soi-même après
+  // le dernier coéquipier. ----
+  function mpUpdateTeammateToggleButton(state){
     if(!mpAllyToggleBtn) return;
-    const ally = state && state.ally;
-    mpAllyInfo = (ally && ally.pokemonId) ? ally : null;
-    if(!mpAllyInfo){
+    mpTeammatesInfo = ((state && state.teammates) || []).filter(t => t.pokemonId);
+    if(!mpTeammatesInfo.length){
       mpAllyToggleBtn.style.display = "none";
-      mpViewingAlly = false;
+      mpViewingTeammateIndex = -1;
       return;
     }
+    if(mpViewingTeammateIndex >= mpTeammatesInfo.length) mpViewingTeammateIndex = -1;
     mpAllyToggleBtn.style.display = "flex";
-    mpAllyToggleBtn.textContent = mpViewingAlly
-      ? "🔄 Revenir à mon Pokémon"
-      : `🔄 Voir le Pokémon de ${mpAllyInfo.name}`;
+    if(mpViewingTeammateIndex === -1){
+      mpAllyToggleBtn.textContent = mpTeammatesInfo.length === 1
+        ? `🔄 Voir le Pokémon de ${mpTeammatesInfo[0].name}`
+        : `🔄 Voir le Pokémon de ${mpTeammatesInfo[0].name} (1/${mpTeammatesInfo.length})`;
+    }else{
+      const current = mpTeammatesInfo[mpViewingTeammateIndex];
+      const isLast = mpViewingTeammateIndex === mpTeammatesInfo.length - 1;
+      mpAllyToggleBtn.textContent = isLast
+        ? "🔄 Revenir à mon Pokémon"
+        : `🔄 Voir le Pokémon de ${mpTeammatesInfo[mpViewingTeammateIndex + 1].name} (${mpViewingTeammateIndex + 2}/${mpTeammatesInfo.length})`;
+    }
   }
 
-  async function mpToggleAllyView(){
-    if(!mpAllyInfo) return;
-    mpViewingAlly = !mpViewingAlly;
-    const targetId = mpViewingAlly ? mpAllyInfo.pokemonId : mpMyLastPokemonId;
-    mpUpdateAllyToggleButton(mpLastKnownState);
+  async function mpToggleTeammateView(){
+    if(!mpTeammatesInfo.length) return;
+    mpViewingTeammateIndex = mpViewingTeammateIndex >= mpTeammatesInfo.length - 1 ? -1 : mpViewingTeammateIndex + 1;
+    const targetId = mpViewingTeammateIndex === -1 ? mpMyLastPokemonId : mpTeammatesInfo[mpViewingTeammateIndex].pokemonId;
+    mpUpdateTeammateToggleButton(mpLastKnownState);
     if(!targetId) return;
     try{
       const data = await loadPokemon(targetId);
@@ -4498,7 +4870,7 @@
     mpRenderQuickBar(null);
     guessRenderPanel(null);
     notepadSyncMpPlayers(null);
-    mpUpdateAllyToggleButton(null);
+    mpUpdateTeammateToggleButton(null);
     mpRenderEntry();
     if(code && pid){
       try{ await mpApiPost("leave", { code, playerId: pid }); }catch(e){}
@@ -4553,7 +4925,7 @@
 
   btnMultiplayer.addEventListener("click", mpOpen);
   btnMpClose.addEventListener("click", mpClose);
-  if(mpAllyToggleBtn) mpAllyToggleBtn.addEventListener("click", mpToggleAllyView);
+  if(mpAllyToggleBtn) mpAllyToggleBtn.addEventListener("click", mpToggleTeammateView);
   mpOverlay.addEventListener("click", (e) => { if(e.target === mpOverlay) mpClose(); });
   document.addEventListener("keydown", (e) => {
     if(e.key === "Escape" && mpOverlay.classList.contains("open")) mpClose();
