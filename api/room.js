@@ -395,6 +395,14 @@ async function startNewRound(room) {
   }
 
   const config = normalizeConfig(room.config);
+
+  // Nouvelle manche = nouveaux secrets pour tout le monde : les notes partagées entre
+  // coéquipiers portaient sur les secrets de la manche précédente, elles n'ont donc
+  // plus lieu d'être — sans ce reset, elles resteraient stockées côté serveur et
+  // réapparaîtraient aussitôt au sondage suivant (y compris après un "Tout effacer"
+  // du joueur, qui ne peut agir que localement).
+  room.teamNotes = {};
+
   const metaList = await getSpeciesMetaServer().catch(() => null);
   let pool = buildDrawPoolServer(metaList, config);
   if (!pool.length) {
@@ -883,6 +891,32 @@ module.exports = async (req, res) => {
         if (typeof patch.note === 'string') {
           entry.note = patch.note.slice(0, 2000);
         }
+        await saveRoom(code, room);
+        res.status(200).json(sanitizeRoom(room, playerId));
+        return;
+      }
+
+      // ---- Effacer entièrement les notes partagées prises sur un adversaire donné
+      // (utilisé par le bouton "Tout effacer" côté client) : sans cette action, un
+      // effacement resterait purement local et serait aussitôt écrasé par les
+      // anciennes notes toujours stockées côté serveur, au prochain sondage. ----
+      if (action === 'teamNoteReset') {
+        const code = (body.code || '').toString().trim().toUpperCase();
+        const playerId = body.playerId;
+        const targetPlayerId = (body.targetPlayerId || '').toString();
+        const room = await getRoom(code);
+        if (!room || !room.players[playerId]) {
+          res.status(404).json({ error: 'Partie ou joueur introuvable' });
+          return;
+        }
+        ensureTeamFields(room);
+        const config = normalizeConfig(room.config);
+        const myTeamId = room.teamAssignments[playerId];
+        if (config.mode !== 'teams' || myTeamId === undefined) {
+          res.status(400).json({ error: "Le bloc-note partagé n'est disponible qu'en mode équipes, une fois assigné à une équipe." });
+          return;
+        }
+        if (room.teamNotes[myTeamId]) delete room.teamNotes[myTeamId][targetPlayerId];
         await saveRoom(code, room);
         res.status(200).json(sanitizeRoom(room, playerId));
         return;
