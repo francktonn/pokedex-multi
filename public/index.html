@@ -3360,6 +3360,15 @@
     mpApiPost("teamNotePatch", { code: mpRoomCode, playerId: mpPlayerId, targetPlayerId, patch }).catch(() => {});
   }
 
+  // Comme notepadPushTeamPatch, mais pour effacer entièrement les notes partagées
+  // d'une cible (utilisé par "Tout effacer" — voir clearNotepad).
+  function notepadPushTeamReset(key){
+    if(!notepadIsSharedKey(key)) return;
+    if(!mpRoomCode || !mpPlayerId) return;
+    const targetPlayerId = key.slice(3);
+    mpApiPost("teamNoteReset", { code: mpRoomCode, playerId: mpPlayerId, targetPlayerId }).catch(() => {});
+  }
+
   function notepadPickActive(){
     const players = notepadAllPlayers();
     if(!players.length){ notepadState.activePlayerKey = null; return; }
@@ -3608,7 +3617,15 @@
   // Vide les infos récoltées (cases + notes libres) pour tous les joueurs, sans
   // supprimer la liste des joueurs elle-même : à chaque nouveau tirage/manche, les
   // secrets changent mais on garde le même groupe de joueurs sous la main.
+  //
+  // Pour les cibles dont les notes sont partagées avec l'équipe (voir
+  // notepadIsSharedKey), on prévient aussi le serveur : sinon le sondage suivant
+  // réimporterait aussitôt les anciennes notes restées stockées côté serveur,
+  // annulant ce "Tout effacer" quelques secondes plus tard.
   function clearNotepad(){
+    Object.keys(notepadState.data).forEach(key => {
+      if(notepadIsSharedKey(key)) notepadPushTeamReset(key);
+    });
     notepadState.data = {};
     saveNotepadState();
     if(notepadOverlay.classList.contains("open")) renderNotepadActivePlayer();
