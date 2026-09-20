@@ -498,17 +498,8 @@ function sanitizeRoom(room, playerId) {
 
 // ---------- Handler ----------
 
-// Au-delà de ce délai sans nouvelles d'un joueur (son navigateur sondait l'état de
-// la partie toutes les 3 s tant que l'onglet était ouvert — voir MP_POLL_MS côté
-// client), on considère qu'il a fermé l'onglet / perdu la connexion, et sa place est
-// libérée automatiquement. Sert de filet de sécurité : la fermeture "propre" d'un
-// onglet déclenche normalement un envoi immédiat de l'action 'leave' (voir
-// `navigator.sendBeacon` côté client), ce délai ne couvre donc que les crashs,
-// pertes de réseau, etc.
-const STALE_PLAYER_MS = 20000;
-
 // Retire un joueur de la partie, où qu'il soit référencé (équipes, hôte…) — utilisé
-// aussi bien pour un départ volontaire ('leave') qu'automatique (joueur inactif).
+// aussi bien pour un départ volontaire ('leave') que pour une exclusion par l'hôte ('kick').
 function removePlayerFromRoom(room, playerId) {
   if (!room.players[playerId]) return;
   delete room.players[playerId];
@@ -520,24 +511,6 @@ function removePlayerFromRoom(room, playerId) {
     const remaining = Object.keys(room.players);
     room.hostId = remaining.length ? remaining[0] : null;
   }
-}
-
-// Purge les joueurs dont on n'a plus de nouvelles depuis trop longtemps (voir
-// STALE_PLAYER_MS). `keepPlayerId` est le joueur à l'origine de la requête en cours :
-// il vient forcément de donner signe de vie, on ne le purge jamais lui-même même si
-// son `lastSeen` n'a pas encore été mis à jour au moment de l'appel.
-function pruneStalePlayers(room, keepPlayerId) {
-  const now = Date.now();
-  let changed = false;
-  Object.keys(room.players).forEach(pid => {
-    if (pid === keepPlayerId) return;
-    const lastSeen = typeof room.players[pid].lastSeen === 'number' ? room.players[pid].lastSeen : 0;
-    if (now - lastSeen > STALE_PLAYER_MS) {
-      removePlayerFromRoom(room, pid);
-      changed = true;
-    }
-  });
-  return changed;
 }
 
 module.exports = async (req, res) => {
@@ -563,17 +536,6 @@ module.exports = async (req, res) => {
         res.status(404).json({ error: 'Partie introuvable' });
         return;
       }
-      // Chaque sondage (toutes les 3 s tant que l'onglet est ouvert, voir
-      // MP_POLL_MS côté client) vaut "signe de vie" pour ce joueur, et est
-      // l'occasion de libérer la place de ceux qui n'en ont plus donné depuis
-      // trop longtemps (voir STALE_PLAYER_MS / pruneStalePlayers).
-      let changed = false;
-      if (playerId && room.players[playerId]) {
-        room.players[playerId].lastSeen = Date.now();
-        changed = true;
-      }
-      if (pruneStalePlayers(room, playerId)) changed = true;
-      if (changed) await saveRoom(code, room);
       res.status(200).json(sanitizeRoom(room, playerId));
       return;
     }
@@ -603,7 +565,7 @@ module.exports = async (req, res) => {
           createdAt: Date.now(),
           status: 'lobby', // 'lobby' = en attente que l'hôte lance la 1ère manche, 'playing' = manche en cours
           hostId: playerId,
-          players: { [playerId]: { name, score: 0, pokemonId: null, pokemonName: null, lastSeen: Date.now() } },
+          players: { [playerId]: { name, score: 0, pokemonId: null, pokemonName: null } },
           config: defaultConfig(), // le créateur pourra l'ajuster ensuite depuis le lobby ; lui seul pourra la modifier
           teamSlots: [],
           teamAssignments: {},
@@ -628,7 +590,7 @@ module.exports = async (req, res) => {
           return;
         }
         const playerId = 'p_' + Math.random().toString(36).slice(2, 9);
-        room.players[playerId] = { name, score: 0, pokemonId: null, pokemonName: null, lastSeen: Date.now() };
+        room.players[playerId] = { name, score: 0, pokemonId: null, pokemonName: null };
         // Rejoindre en cours de manche : le nouveau joueur attend simplement la
         // manche suivante (il n'a pas de secret tant que l'hôte n'en relance pas une).
         await saveRoom(code, room);
@@ -1037,6 +999,38 @@ module.exports = async (req, res) => {
           await saveRoom(code, room);
         }
         res.status(200).json({ ok: true });
+        return;
+      }
+
+      // ---- Exclure un joueur de la partie (réservé à l'hôte) ----
+      // Le joueur exclu s'en aperçoit au sondage suivant : il ne figure alors plus
+      // dans la liste des joueurs, et son client bascule de lui-même hors de la
+      // partie (voir mpRenderPlayersList côté client, qui gère déjà le cas "je ne
+      // fais plus partie de cette partie").
+      if (action === 'kick') {
+        const code = (body.code || '').toString().trim().toUpperCase();
+        const playerId = body.playerId;
+        const targetPlayerId = body.targetPlayerId;
+        const room = await getRoom(code);
+        if (!room || !room.players[playerId]) {
+          res.status(404).json({ error: 'Partie ou joueur introuvable' });
+          return;
+        }
+        if (room.hostId !== playerId) {
+          res.status(403).json({ error: "Seul l'hôte de la partie peut exclure un joueur" });
+          return;
+        }
+        if (playerId === targetPlayerId) {
+          res.status(400).json({ error: "Tu ne peux pas t'exclure toi-même : utilise « Quitter la partie »." });
+          return;
+        }
+        if (!room.players[targetPlayerId]) {
+          res.status(404).json({ error: 'Joueur introuvable' });
+          return;
+        }
+        removePlayerFromRoom(room, targetPlayerId);
+        await saveRoom(code, room);
+        res.status(200).json(sanitizeRoom(room, playerId));
         return;
       }
 
