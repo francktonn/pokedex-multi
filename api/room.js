@@ -74,7 +74,8 @@ function defaultConfig() {
     generations: [1, 2, 3, 4, 5, 6, 7, 8, 9],
     categories: { legendary: true, mythical: true, ultrabeast: true, paradox: true, starter: true, baby: true },
     forms: { regional: true, mega: true, gmax: true },
-    mode: 'ffa' // 'ffa' (chacun pour soi) ou 'teams' (équipes définies par l'hôte, tailles libres : 2v2, 3v2, 3v3…)
+    mode: 'ffa', // 'ffa' (chacun pour soi) ou 'teams' (équipes définies par l'hôte, tailles libres : 2v2, 3v2, 3v3…)
+    shinyOnly: false // si true, tous les Pokémon secrets s'affichent en version chromatique (shiny)
   };
 }
 
@@ -166,8 +167,11 @@ function normalizeConfig(raw) {
   }
 
   const mode = raw.mode === 'teams' ? 'teams' : 'ffa';
+  // Mode "chromatique uniquement" : les secrets sont affichés sous leur apparence
+  // shiny, ce qui rend la reconnaissance visuelle nettement plus difficile.
+  const shinyOnly = raw.shinyOnly === true;
 
-  return { generations, categories, forms, mode };
+  return { generations, categories, forms, mode, shinyOnly };
 }
 
 // Reprend le même ordre de priorité que côté client pour rester cohérent avec l'étiquette
