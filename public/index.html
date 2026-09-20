@@ -722,6 +722,20 @@
     color:#b0a898;
     font-style:italic;
   }
+  .mp-kick-btn{
+    flex-shrink:0;
+    margin-left:6px;
+    border:none;
+    background:none;
+    color:#b0453d;
+    font-size:12px;
+    line-height:1;
+    padding:3px 5px;
+    border-radius:6px;
+    cursor:pointer;
+    opacity:.6;
+  }
+  .mp-kick-btn:hover{ opacity:1; background:rgba(176,69,61,.12); }
   .mp-guess-btn{
     margin-left:auto;
     font-family:'Baloo 2', sans-serif;
@@ -4276,8 +4290,13 @@
   }
 
   function mpRenderPlayersList(state){
-    mpLastKnownState = state && state.players ? state : null;
-    if(!state || !state.players){
+    // Si je ne figure plus dans la liste des joueurs alors que la partie existe
+    // toujours, c'est que l'hôte vient de m'exclure : on traite ça exactement comme
+    // une partie disparue (retour à l'écran d'accueil du multijoueur), avec un
+    // message explicite.
+    const kickedOut = !!(state && state.players && mpPlayerId && !state.players.some(p => p.id === mpPlayerId));
+    mpLastKnownState = (state && state.players && !kickedOut) ? state : null;
+    if(!state || !state.players || kickedOut){
       mpStopPolling();
       mpRoomCode = null; mpPlayerId = null; mpPlayerName = null;
       mpClearSession();
@@ -4289,7 +4308,9 @@
       guessRenderPanel(null);
       notepadSyncMpPlayers(null);
       mpUpdateTeammateToggleButton(null);
-      mpRenderEntry("La partie n'existe plus ou tu n'en fais plus partie.");
+      mpRenderEntry(kickedOut
+        ? "L'hôte t'a exclu de la partie."
+        : "La partie n'existe plus ou tu n'en fais plus partie.");
       return;
     }
     mpCurrentStatus = state.status || "lobby";
@@ -4377,13 +4398,36 @@
         rightPart = `<span class="mp-player-waiting">en attente</span>`;
       }
       const teamBadge = mpTeamBadgeHtml(p);
+      // L'hôte peut exclure n'importe quel joueur sauf lui-même.
+      const kickBtn = (isHost && !isMe)
+        ? `<button class="mp-kick-btn" data-kick-pid="${mpEscapeHtml(p.id)}" data-kick-name="${mpEscapeHtml(p.name)}" title="Exclure ${mpEscapeHtml(p.name)} de la partie">✕</button>`
+        : "";
       return `
         <div class="mp-player-row${isMe ? " is-me" : ""}">
           <span class="mp-player-name">${mpEscapeHtml(p.name)}${isMe ? " (toi)" : ""}${p.id === state.hostId ? " 👑" : ""}${teamBadge}</span>
           <span class="mp-player-score">${p.score} pt${p.score > 1 ? "s" : ""}</span>
           ${rightPart}
+          ${kickBtn}
         </div>`;
     }).join("");
+
+    list.querySelectorAll(".mp-kick-btn").forEach(btn => {
+      btn.addEventListener("click", () => mpHandleKick(btn.dataset.kickPid, btn.dataset.kickName));
+    });
+  }
+
+  async function mpHandleKick(targetPlayerId, targetName){
+    if(mpBusy || !mpRoomCode) return;
+    if(!confirm(`Exclure ${targetName} de la partie ?`)) return;
+    mpBusy = true;
+    try{
+      const state = await mpApiPost("kick", { code: mpRoomCode, playerId: mpPlayerId, targetPlayerId });
+      mpRenderPlayersList(state);
+    }catch(e){
+      alert(e.message || "Impossible d'exclure ce joueur.");
+    }finally{
+      mpBusy = false;
+    }
   }
 
   // Petit badge coloré d'équipe, réutilisé partout où la liste des joueurs est
@@ -5048,19 +5092,10 @@
   }
 
   // Si l'onglet se ferme (ou se recharge) pendant qu'on est dans une partie, on
-  // prévient le serveur immédiatement pour libérer la place tout de suite — sans ça,
-  // le joueur resterait affiché dans la partie jusqu'à ce que le serveur le détecte
-  // inactif tout seul (voir STALE_PLAYER_MS côté serveur, ~20 s, qui ne sert alors
-  // que de filet de sécurité en cas de crash/perte réseau). `sendBeacon` est utilisé
-  // plutôt qu'un `fetch` classique car il continue son envoi même après que la page
-  // a commencé à se fermer.
-  window.addEventListener("pagehide", () => {
-    if(!mpRoomCode || !mpPlayerId || !navigator.sendBeacon) return;
-    try{
-      const payload = JSON.stringify({ action: "leave", code: mpRoomCode, playerId: mpPlayerId });
-      navigator.sendBeacon(MP_API, new Blob([payload], { type: "application/json" }));
-    }catch(e){}
-  });
+  // reste volontairement dans la partie : c'est à l'hôte de faire le ménage s'il
+  // le souhaite (bouton d'exclusion à côté de chaque joueur), ce qui évite qu'un
+  // simple rafraîchissement de page ou un passage de tunnel fasse sortir quelqu'un
+  // de la partie sans qu'il l'ait demandé.
 
   // ---------- Actions ----------
   async function drawPokemon(){
