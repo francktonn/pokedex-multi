@@ -453,6 +453,24 @@
   .shiny-toggle:hover{ background:rgba(0,0,0,.5); }
   .shiny-toggle.active{ background:var(--gold); color:var(--red-darker); }
   .shiny-toggle:active{ transform:scale(0.92); }
+  /* Mode "chromatique uniquement" : simple pastille indicative, non cliquable
+     (revenir à l'apparence normale annulerait la difficulté du mode). */
+  .shiny-locked-badge{
+    position:absolute;
+    top:4px;
+    right:4px;
+    width:30px;
+    height:30px;
+    border-radius:50%;
+    background:var(--gold);
+    color:var(--red-darker);
+    font-size:15px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    pointer-events:none;
+    z-index:2;
+  }
 
   .flavor{
     margin-top:12px;
@@ -518,6 +536,13 @@
   .gc-panel{ max-width:440px; max-height:min(720px, 92vh); }
   .gc-body{ overflow-y:auto; }
   .gc-section{ margin-bottom:16px; }
+  .gc-hint{
+    font-size:11px;
+    color:var(--text-muted);
+    font-style:italic;
+    margin-top:6px;
+    line-height:1.45;
+  }
   .gc-gen-actions{ display:flex; gap:16px; margin:2px 0 8px; }
   .gc-link-btn{
     background:none; border:none; padding:0; cursor:pointer;
@@ -1794,6 +1819,12 @@
         <div class="gc-switch-list" id="gcFormsList"></div>
       </div>
 
+      <div class="gc-section">
+        <div class="mp-section-label">Difficulté</div>
+        <div class="gc-switch-list" id="gcDifficultyList"></div>
+        <div class="gc-hint">En mode chromatique, les Pokémon s'affichent avec leurs couleurs shiny : bien plus dur à reconnaître !</div>
+      </div>
+
       <div class="gc-summary">
         <div class="gc-summary-title">Configuration actuelle</div>
         <ul class="gc-summary-list" id="gcSummaryList"></ul>
@@ -2120,6 +2151,7 @@
   const gcClearAllGensBtn = document.getElementById("gcClearAllGens");
   const gcCategoryList = document.getElementById("gcCategoryList");
   const gcFormsList = document.getElementById("gcFormsList");
+  const gcDifficultyList = document.getElementById("gcDifficultyList");
   const gcSummaryList = document.getElementById("gcSummaryList");
   const gcSummaryCount = document.getElementById("gcSummaryCount");
   const btnGcReset = document.getElementById("btnGcReset");
@@ -2201,6 +2233,14 @@
   const SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon";
   function officialArtUrl(id){ return `${SPRITE_BASE}/other/official-artwork/${id}.png`; }
   function smallSpriteUrl(id){ return `${SPRITE_BASE}/${id}.png`; }
+  // Sprite d'un Pokémon secret (le sien, celui d'un coéquipier) : suit le mode
+  // "chromatique uniquement" pour que l'apparence montrée soit bien celle que les
+  // autres joueurs devront reconnaître.
+  function secretSpriteUrl(id){
+    return (typeof activeSettings === "function" && activeSettings().shinyOnly)
+      ? `${SPRITE_BASE}/shiny/${id}.png`
+      : `${SPRITE_BASE}/${id}.png`;
+  }
   function officialArtShinyUrl(id){ return `${SPRITE_BASE}/other/official-artwork/shiny/${id}.png`; }
   function smallSpriteShinyUrl(id){ return `${SPRITE_BASE}/shiny/${id}.png`; }
   const PLACEHOLDER_SPRITE = "data:image/svg+xml;utf8," + encodeURIComponent(
@@ -2649,7 +2689,10 @@
     return {
       generations: [1,2,3,4,5,6,7,8,9],
       categories: { legendary:true, mythical:true, ultrabeast:true, paradox:true, starter:true, baby:true },
-      forms: { regional:true, mega:true, gmax:true }
+      forms: { regional:true, mega:true, gmax:true },
+      // Mode "chromatique uniquement" : le Pokémon tiré s'affiche sous son apparence
+      // shiny, bien plus difficile à reconnaître (couleurs inhabituelles).
+      shinyOnly: false
     };
   }
 
@@ -2664,7 +2707,8 @@
       const merged = {
         generations: Array.isArray(parsed.generations) && parsed.generations.length ? parsed.generations.filter(g => g>=1 && g<=9) : def.generations,
         categories: Object.assign({}, def.categories, parsed.categories || {}),
-        forms: Object.assign({}, def.forms, parsed.forms || {})
+        forms: Object.assign({}, def.forms, parsed.forms || {}),
+        shinyOnly: parsed.shinyOnly === true
       };
       if(!merged.generations.length) merged.generations = def.generations;
       return merged;
@@ -2850,6 +2894,12 @@
     { key:"mega", label:"Méga-Évolutions" },
     { key:"gmax", label:"Formes Gigamax" }
   ];
+  // Options de difficulté : contrairement aux catégories/formes, elles ne filtrent pas
+  // le pool de Pokémon, elles changent seulement la façon dont le secret est affiché.
+  // Elles vivent donc à la racine de la config, pas dans un sous-objet.
+  const GC_DIFFICULTY_DEFS = [
+    { key:"shinyOnly", label:"Chromatique uniquement (shiny)" }
+  ];
 
   let gcDraft = null; // copie de travail de gameSettings, appliquée seulement au clic sur "Valider"
   let gcMode = "solo"; // "solo" (localStorage) ou "mp" (configuration partagée de la partie multijoueur)
@@ -2868,6 +2918,8 @@
     });
   }
 
+  // `groupKey` désigne le sous-objet de la config à modifier ("categories", "forms"…).
+  // Passer `null` écrit directement à la racine de la config (options de difficulté).
   function gcBuildSwitchList(container, defs, groupKey){
     container.innerHTML = defs.map(d => `
       <label class="gc-switch-row">
@@ -2880,7 +2932,8 @@
     `).join("");
     container.querySelectorAll("input").forEach(inp => {
       inp.addEventListener("change", () => {
-        gcDraft[groupKey][inp.dataset.key] = inp.checked;
+        if(groupKey) gcDraft[groupKey][inp.dataset.key] = inp.checked;
+        else gcDraft[inp.dataset.key] = inp.checked;
         gcRecomputeSummary();
       });
     });
@@ -2912,6 +2965,9 @@
     gcFormsList.querySelectorAll("input").forEach(inp => {
       inp.checked = !!gcDraft.forms[inp.dataset.key];
     });
+    gcDifficultyList.querySelectorAll("input").forEach(inp => {
+      inp.checked = !!gcDraft[inp.dataset.key];
+    });
   }
 
   // Compacte une liste de générations en libellé lisible, ex: [1,2,3,5] → "1 à 3, 5"
@@ -2936,7 +2992,8 @@
     const gens = gcDraft.generations;
     const lines = [`Générations : ${gcFormatGenRange(gens)}`]
       .concat(GC_CATEGORY_DEFS.map(d => `${d.label} : ${gcDraft.categories[d.key] ? "Oui" : "Non"}`))
-      .concat(GC_FORM_DEFS.map(d => `${d.label} : ${gcDraft.forms[d.key] ? "Oui" : "Non"}`));
+      .concat(GC_FORM_DEFS.map(d => `${d.label} : ${gcDraft.forms[d.key] ? "Oui" : "Non"}`))
+      .concat(GC_DIFFICULTY_DEFS.map(d => `${d.label} : ${gcDraft[d.key] ? "Oui" : "Non"}`));
     gcSummaryList.innerHTML = lines.map(l => `<li>${l}</li>`).join("");
 
     const draftAtCall = gcDraft;
@@ -2991,6 +3048,7 @@
     gcGenGrid.querySelectorAll("input").forEach(inp => { inp.disabled = disable; });
     gcCategoryList.querySelectorAll("input").forEach(inp => { inp.disabled = disable; });
     gcFormsList.querySelectorAll("input").forEach(inp => { inp.disabled = disable; });
+    gcDifficultyList.querySelectorAll("input").forEach(inp => { inp.disabled = disable; });
     gcSelectAllGensBtn.style.display = disable ? "none" : "";
     gcClearAllGensBtn.style.display = disable ? "none" : "";
     btnGcReset.style.display = disable ? "none" : "";
@@ -3042,6 +3100,7 @@
   gcBuildGenGrid();
   gcBuildSwitchList(gcCategoryList, GC_CATEGORY_DEFS, "categories");
   gcBuildSwitchList(gcFormsList, GC_FORM_DEFS, "forms");
+  gcBuildSwitchList(gcDifficultyList, GC_DIFFICULTY_DEFS, null);
   gcSelectAllGensBtn.addEventListener("click", () => {
     gcDraft.generations = [1,2,3,4,5,6,7,8,9];
     gcSyncInputsFromDraft();
@@ -3134,13 +3193,36 @@
     forms.forEach(f => rowEl.appendChild(buildFormCard(f)));
   }
 
+  // Quelle configuration pilote l'affichage : celle de la partie multijoueur en cours
+  // si on en a une (pour que tout le groupe joue avec les mêmes règles), sinon la
+  // configuration locale du mode solo.
+  function activeSettings(){
+    return (mpRoomCode && mpRoomConfig) ? mpRoomConfig : gameSettings;
+  }
+
   function buildSpriteWithShinyToggle(data){
     const spriteWrap = document.createElement("div");
     spriteWrap.className = "sprite-wrap";
-    let showingShiny = false;
 
-    const spriteImg = createImgWithFallback([data.sprite, data.spriteSmall], "Sprite Pokémon");
-    spriteWrap.appendChild(spriteImg);
+    // En mode "chromatique uniquement", on part directement de l'apparence shiny et
+    // on retire le bouton de bascule : pouvoir revenir à l'apparence normale rendrait
+    // la difficulté supplémentaire totalement inopérante.
+    const shinyOnly = !!activeSettings().shinyOnly;
+    let showingShiny = shinyOnly;
+
+    const initialSrcs = showingShiny
+      ? [data.spriteShiny, data.spriteSmallShiny, data.sprite, data.spriteSmall]
+      : [data.sprite, data.spriteSmall];
+    spriteWrap.appendChild(createImgWithFallback(initialSrcs, "Sprite Pokémon"));
+
+    if(shinyOnly){
+      const badge = document.createElement("span");
+      badge.className = "shiny-locked-badge";
+      badge.title = "Mode chromatique : tous les Pokémon s'affichent en version shiny";
+      badge.textContent = "✨";
+      spriteWrap.appendChild(badge);
+      return spriteWrap;
+    }
 
     const shinyBtn = document.createElement("button");
     shinyBtn.className = "shiny-toggle";
@@ -4342,7 +4424,7 @@
       if(me && me.pokemonId){
         mySecretBox.style.display = "flex";
         mySecretBox.innerHTML = `
-          <img src="${smallSpriteUrl(me.pokemonId)}" alt="">
+          <img src="${secretSpriteUrl(me.pokemonId)}" alt="">
           <span>Ton secret : <span class="mp-secret-name">${mpEscapeHtml(me.pokemonName)}</span> — les autres tentent de le deviner</span>
         `;
       }else if(isPlaying){
@@ -4694,7 +4776,7 @@
       <div class="mp-teammates-list">
         ${teammates.map(t => `
           <div class="mp-teammate-row">
-            <img src="${smallSpriteUrl(t.pokemonId)}" alt="">
+            <img src="${secretSpriteUrl(t.pokemonId)}" alt="">
             <span>Secret de <span class="mp-ally-name">${mpEscapeHtml(t.name)}</span> : <span class="mp-ally-name">${mpEscapeHtml(t.pokemonName)}</span></span>
           </div>
         `).join("")}
