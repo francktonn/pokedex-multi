@@ -210,10 +210,12 @@ function isSpeciesEligible(meta, settings) {
 // il ne suffit pas que l'espèce de base soit dans une génération sélectionnée, il faut
 // AUSSI que la génération d'apparition de LA FORME elle-même soit sélectionnée (voir
 // formInfoFromSuffix ci-dessus pour le détail des générations par type de forme).
-function pushEligibleForms(list, settings, pool, speciesId) {
+function pushEligibleForms(list, settings, pool, speciesId, kind) {
   list.forEach(f => {
     if (f.minGen != null && !settings.generations.includes(f.minGen)) return;
-    pool.push({ pokemonId: f.id, speciesId });
+    // `kind` ('regional' | 'mega' | 'gmax') sert à nommer le secret : une Méga-Évolution
+    // est un Pokémon à part entière (« M-Requiem »), pas l'espèce de base.
+    pool.push({ pokemonId: f.id, speciesId, kind });
   });
 }
 
@@ -232,9 +234,9 @@ function buildDrawPoolServer(metaList, settings) {
   metaList.forEach(meta => {
     if (!isSpeciesEligible(meta, settings)) return;
     pool.push({ pokemonId: meta.defaultPokemonId, speciesId: meta.id });
-    if (settings.forms.regional) pushEligibleForms(meta.forms.regional, settings, pool, meta.id);
-    if (settings.forms.mega) pushEligibleForms(meta.forms.mega, settings, pool, meta.id);
-    if (settings.forms.gmax) pushEligibleForms(meta.forms.gmax, settings, pool, meta.id);
+    if (settings.forms.regional) pushEligibleForms(meta.forms.regional, settings, pool, meta.id, 'regional');
+    if (settings.forms.mega) pushEligibleForms(meta.forms.mega, settings, pool, meta.id, 'mega');
+    if (settings.forms.gmax) pushEligibleForms(meta.forms.gmax, settings, pool, meta.id, 'gmax');
   });
   return pool;
 }
@@ -377,6 +379,37 @@ async function fetchFrenchName(id) {
   return frEntry ? frEntry.name : formatSlugName(data.name);
 }
 
+// Nom du secret affiché/attendu pour une Méga-Évolution (ou un Primo-Retour), qui compte
+// comme un Pokémon distinct de l'espèce de base : « M-Requiem », « M-Dracaufeu X »,
+// « Primo-Groudon ». `slug` est le nom technique PokeAPI de la forme (ex : sharpedo-mega,
+// charizard-mega-x, groudon-primal) et `baseName` le nom français de l'espèce.
+function megaDisplayName(slug, baseName) {
+  const m = /-mega(?:-([a-z]+))?$/.exec(slug || '');
+  if (m) return 'M-' + baseName + (m[1] ? ' ' + m[1].toUpperCase() : '');
+  if (/-primal$/.test(slug || '')) return 'Primo-' + baseName;
+  return baseName;
+}
+
+// Nom secret complet d'un tirage : nom français de l'espèce, préfixé « M- » pour les Méga.
+async function fetchSecretName(entry) {
+  const baseName = await fetchFrenchName(entry.speciesId || entry.pokemonId);
+  if (entry.kind !== 'mega') return baseName;
+  const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${entry.pokemonId}`);
+  if (!res.ok) throw new Error('Erreur PokeAPI');
+  const data = await res.json();
+  return megaDisplayName(data.name, baseName);
+}
+
+// Compare une proposition au nom secret (accents/casse ignorés). Pour une Méga, « Méga-X »
+// est aussi accepté en plus de « M-X » ; l'espèce de base seule (« X ») est refusée.
+function guessMatches(guess, secretName) {
+  const g = foldFr(guess);
+  const n = foldFr(secretName);
+  if (g === n) return true;
+  if (n.startsWith('m-') && g === 'mega-' + n.slice(2)) return true;
+  return false;
+}
+
 function roomKey(code) {
   return `room:${code}`;
 }
@@ -434,7 +467,7 @@ async function startNewRound(room) {
   }
   const draws = await Promise.all(pids.map(async (pid) => {
     const entry = pool[Math.floor(Math.random() * pool.length)];
-    const name = await fetchFrenchName(entry.speciesId || entry.pokemonId);
+    const name = await fetchSecretName(entry);
     // Hardcore : tirage chromatique décidé ICI, côté serveur (jamais par le client).
     const shiny = !!config.hardcore && Math.random() < HARDCORE_SHINY_CHANCE;
     return { pid, pokemonId: entry.pokemonId, name, shiny };
@@ -961,7 +994,7 @@ module.exports = async (req, res) => {
           res.status(200).json({ correct: false, gone: true });
           return;
         }
-        const isCorrect = foldFr(guess) === foldFr(target.pokemonName);
+        const isCorrect = guessMatches(guess, target.pokemonName);
         if (!isCorrect) {
           res.status(200).json({ correct: false });
           return;
