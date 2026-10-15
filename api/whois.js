@@ -71,6 +71,11 @@ function shuffled(arr) {
   }
   return a;
 }
+// Photo de profil : numéro de Pokédex (le sprite est affiché côté client). Jamais autre chose qu'un entier valide.
+function cleanAvatar(v) {
+  const n = Number(v);
+  return Number.isInteger(n) && n >= 1 && n <= MAX_DEX_ID ? n : null;
+}
 const cleanCode = v => (v || '').toString().trim().toUpperCase();
 
 // ---------- Noms français (1025 espèces), mis en cache ----------
@@ -182,7 +187,7 @@ function view(room, playerId) {
   const now = Date.now();
   const r = room.round;
   const players = Object.keys(room.players).map(pid => ({
-    id: pid, name: room.players[pid].name, score: room.players[pid].score,
+    id: pid, name: room.players[pid].name, avatar: room.players[pid].avatar || null, score: room.players[pid].score,
     solved: !!(r && r.winnerId === pid)
   })).sort((a, b) => b.score - a.score);
 
@@ -229,7 +234,8 @@ module.exports = async (req, res) => {
       if (action === 'names') {
         const names = await getNames();
         res.setHeader('Cache-Control', 'public, max-age=86400');
-        res.status(200).json({ names: names ? Object.values(names) : [] });
+        const byId = names ? Array.from({ length: MAX_DEX_ID }, (_, i) => names[i + 1] || '') : [];
+        res.status(200).json({ names: names ? Object.values(names) : [], byId }); // byId[i] = nom du Pokémon n° i+1
         return;
       }
 
@@ -279,7 +285,7 @@ module.exports = async (req, res) => {
         const playerId = 'w_' + Math.random().toString(36).slice(2, 9);
         const room = {
           code, createdAt: Date.now(), status: 'lobby', hostId: playerId,
-          players: { [playerId]: { name, score: 0 } },
+          players: { [playerId]: { name, score: 0, avatar: cleanAvatar(body.avatar) } },
           totalRounds: DEFAULT_ROUNDS, config: { generations: ALL_GENS.slice() }, deck: [], round: null
         };
         await saveRoom(code, room);
@@ -295,7 +301,7 @@ module.exports = async (req, res) => {
           const room = await getRoom(code);
           if (!room) return { status: 404, body: { error: 'Partie introuvable' } };
           const playerId = 'w_' + Math.random().toString(36).slice(2, 9);
-          room.players[playerId] = { name, score: 0 };
+          room.players[playerId] = { name, score: 0, avatar: cleanAvatar(body.avatar) };
           await saveRoom(code, room);
           return { status: 200, body: { code, playerId } };
         });
