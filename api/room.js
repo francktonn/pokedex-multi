@@ -4,6 +4,7 @@
 // dans la variable d'environnement REDIS_URL (voir README.md pour les instructions).
 const Redis = require('ioredis');
 
+const HARDCORE_SHINY_CHANCE = 0.15; // mode hardcore : probabilité qu'un secret soit tiré en version chromatique
 const MAX_DEX_ID = 1025; // Génération I à IX (aligné sur la config partagée par le client)
 const ROOM_TTL_SECONDS = 60 * 60 * 24; // les parties expirent après 24h d'inactivité
 const SPECIES_META_REDIS_KEY = 'species_meta_v2'; // v2 : les formes portent désormais aussi leur génération d'apparition (voir plus bas)
@@ -75,7 +76,11 @@ function defaultConfig() {
     categories: { legendary: true, mythical: true, ultrabeast: true, paradox: true, starter: true, baby: true },
     forms: { regional: true, mega: true, gmax: true },
     mode: 'ffa', // 'ffa' (chacun pour soi) ou 'teams' (équipes définies par l'hôte, tailles libres : 2v2, 3v2, 3v3…)
-    shinyOnly: false // si true, tous les Pokémon secrets s'affichent en version chromatique (shiny)
+    shinyOnly: false, // si true, tous les Pokémon secrets s'affichent en version chromatique (shiny)
+    // Mode hardcore : active toutes les options de pool (toutes générations, toutes catégories,
+    // toutes formes), SANS le mode « tout shiny » : à la place, chaque secret a HARDCORE_SHINY_CHANCE
+    // de chances d'être chromatique. En équipes, on ne voit plus le Pokémon de ses coéquipiers.
+    hardcore: false
   };
 }
 
@@ -169,9 +174,19 @@ function normalizeConfig(raw) {
   const mode = raw.mode === 'teams' ? 'teams' : 'ffa';
   // Mode "chromatique uniquement" : les secrets sont affichés sous leur apparence
   // shiny, ce qui rend la reconnaissance visuelle nettement plus difficile.
-  const shinyOnly = raw.shinyOnly === true;
+  let shinyOnly = raw.shinyOnly === true;
+  const hardcore = raw.hardcore === true;
 
-  return { generations, categories, forms, mode, shinyOnly };
+  if (hardcore) {
+    // Hardcore = toutes les options de pool activées (imposé côté serveur, un client ne peut
+    // pas le contourner), mais pas « chromatique uniquement » (remplacé par le tirage à 15 %).
+    generations = def.generations.slice();
+    Object.keys(categories).forEach(k => { categories[k] = true; });
+    Object.keys(forms).forEach(k => { forms[k] = true; });
+    shinyOnly = false;
+  }
+
+  return { generations, categories, forms, mode, shinyOnly, hardcore };
 }
 
 // Reprend le même ordre de priorité que côté client pour rester cohérent avec l'étiquette
@@ -399,6 +414,9 @@ async function startNewRound(room) {
   }
 
   const config = normalizeConfig(room.config);
+  // Mémorise si CETTE manche est en hardcore (la config ne s'applique qu'aux manches
+  // suivantes quand l'hôte la change en cours de route).
+  room.hardcoreRound = !!config.hardcore;
 
   // Nouvelle manche = nouveaux secrets pour tout le monde : les notes partagées entre
   // coéquipiers portaient sur les secrets de la manche précédente, elles n'ont donc
@@ -417,11 +435,14 @@ async function startNewRound(room) {
   const draws = await Promise.all(pids.map(async (pid) => {
     const entry = pool[Math.floor(Math.random() * pool.length)];
     const name = await fetchFrenchName(entry.speciesId || entry.pokemonId);
-    return { pid, pokemonId: entry.pokemonId, name };
+    // Hardcore : tirage chromatique décidé ICI, côté serveur (jamais par le client).
+    const shiny = !!config.hardcore && Math.random() < HARDCORE_SHINY_CHANCE;
+    return { pid, pokemonId: entry.pokemonId, name, shiny };
   }));
-  draws.forEach(({ pid, pokemonId, name }) => {
+  draws.forEach(({ pid, pokemonId, name, shiny }) => {
     room.players[pid].pokemonId = pokemonId;
     room.players[pid].pokemonName = name;
+    room.players[pid].shiny = shiny;
   });
   room.status = 'playing';
 }
@@ -459,6 +480,7 @@ function sanitizeRoom(room, playerId) {
   // En mode équipes : on révèle le Pokémon (et donc les caractéristiques, via son id)
   // de TOUS ses coéquipiers — et uniquement des siens — au joueur qui demande son état
   // (une équipe peut compter plus de 2 membres : 3v3, 4v3…).
+  const hardcoreRound = !!room.hardcoreRound;
   let teammates = [];
   if (teams && playerId && teams[playerId] !== undefined) {
     const myTeam = teams[playerId];
@@ -466,6 +488,9 @@ function sanitizeRoom(room, playerId) {
       .filter(pid => pid !== playerId && teams[pid] === myTeam && room.players[pid])
       .map(pid => {
         const a = room.players[pid];
+        // Hardcore : on connaît ses coéquipiers (nom), mais leur Pokémon reste caché — il
+        // n'est même pas envoyé au client, impossible de le lire dans les données brutes.
+        if (hardcoreRound) return { id: pid, name: a.name, pokemonId: null, pokemonName: null };
         return { id: pid, name: a.name, pokemonId: a.pokemonId || null, pokemonName: a.pokemonName || null };
       });
   }
@@ -487,10 +512,11 @@ function sanitizeRoom(room, playerId) {
     hostId: room.hostId || null,
     isHost: !!(playerId && room.hostId === playerId),
     players,
-    me: me ? { pokemonId: me.pokemonId || null, pokemonName: me.pokemonName || null } : null,
+    me: me ? { pokemonId: me.pokemonId || null, pokemonName: me.pokemonName || null, shiny: !!(me.pokemonId && me.shiny) } : null,
     teammates, // liste de tes coéquipiers en mode équipes (id/nom/pokémon), sinon []
     teamNotes, // bloc-note partagé avec tes coéquipiers : { [adversaireId]: {note,checks,pct,askedBy} }, sinon null
     activeMode: room.activeMode || 'ffa', // mode réellement utilisé pour la manche en cours
+    hardcoreRound, // true si la manche en cours est en hardcore (coéquipiers cachés, shiny possible)
     // Équipes ouvertes par l'hôte, visibles par tous pour affichage, mais modifiables
     // par l'hôte seulement — voir les actions 'addTeamSlot'/'removeTeamSlot'/
     // 'renameTeamSlot'/'assignTeam'/'randomizeTeams'.
@@ -945,6 +971,7 @@ module.exports = async (req, res) => {
         const revealedName = target.pokemonName;
         target.pokemonId = null;
         target.pokemonName = null;
+        target.shiny = false;
 
         // Fin de manche :
         // - Mode classique (ffa) : la manche continue jusqu'à ce qu'il ne reste plus
