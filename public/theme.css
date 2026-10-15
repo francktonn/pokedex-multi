@@ -320,15 +320,15 @@ body::before{
 }
 .modetab{
   flex:1; min-height:44px; border:0; border-radius:999px; cursor:pointer;
-  font-family:'Baloo 2',sans-serif; font-weight:800; font-size:15px; color:rgba(255,255,255,.75);
+  font-family:'Baloo 2',sans-serif; font-weight:800; font-size:14px; color:rgba(255,255,255,.75); padding:0 4px; white-space:nowrap;
   background:transparent; transition:background .2s var(--ease), color .2s, transform .15s var(--ease);
 }
 .modetab:active{ transform:scale(.97); }
 .modetab.active{ background:linear-gradient(180deg,#ffd96b,var(--gold) 60%,#f0b21f); color:var(--ink); box-shadow:0 3px 0 var(--gold-deep); }
 .modetab:focus-visible{ outline:3px solid var(--gold); outline-offset:2px; }
-body.tab-whois .stage, body.tab-whois .fab-stack{ display:none !important; }
-#whoisPane{ max-width:520px; margin:0 auto; }
+body.tab-off .stage, body.tab-off .fab-stack{ display:none !important; }
+#whoisPane, #profilePane{ max-width:520px; margin:0 auto; }
 
 /* Le body d'origine est un flex en ligne : on l'empile pour que les onglets passent au-dessus. */
 body{ flex-direction:column; align-items:center; justify-content:flex-start; }
-.modetabs, #whoisPane{ width:100%; }
+.modetabs, #whoisPane, #profilePane{ width:100%; }

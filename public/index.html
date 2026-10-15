@@ -15,6 +15,29 @@
     }catch(e){}
   })();
 </script>
+<script>
+  // Profil du joueur (pseudo + Pokémon préféré), mémorisé sur cet appareil et partagé par tous les modes.
+  (function(){
+    var KEY = "pokeProfile_v1";
+    function read(){
+      try{
+        var p = JSON.parse(localStorage.getItem(KEY) || "null");
+        if(p && typeof p.name === "string" && p.name.trim()) return { name: p.name.trim().slice(0,16), favId: Number(p.favId) || null, favName: String(p.favName || "") };
+      }catch(e){}
+      return null;
+    }
+    window.PokeProfile = {
+      get: read,
+      set: function(p){
+        var v = { name: String(p.name || "").trim().slice(0,16), favId: Number(p.favId) || null, favName: String(p.favName || "") };
+        try{ localStorage.setItem(KEY, JSON.stringify(v)); }catch(e){}
+        window.dispatchEvent(new CustomEvent("profilechange"));
+      },
+      clear: function(){ try{ localStorage.removeItem(KEY); }catch(e){} window.dispatchEvent(new CustomEvent("profilechange")); },
+      sprite: function(id){ return "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/" + id + ".png"; }
+    };
+  })();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:ital,wght@0,400;0,600;0,700;1,600&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
 <style>
@@ -1632,8 +1655,10 @@
 <nav class="modetabs" id="modeTabs" role="tablist" aria-label="Mode de jeu">
   <button type="button" role="tab" id="tabGuess" class="modetab active" aria-selected="true" data-tab="guess">🔴 Devinette</button>
   <button type="button" role="tab" id="tabWhois" class="modetab" aria-selected="false" data-tab="whois">❔ Qui est-ce ?</button>
+  <button type="button" role="tab" id="tabProfile" class="modetab" aria-selected="false" data-tab="profile">👤 Profil</button>
 </nav>
 <div id="whoisPane" style="display:none;"><div id="whoisHost"></div></div>
+<div id="profilePane" style="display:none;"><div id="profileHost"></div></div>
 
 
 <div class="stage">
@@ -4534,6 +4559,30 @@
     });
     codeInput.addEventListener("keydown", (e) => { if(e.key === "Enter") mpHandleJoin(); });
     const nameInput = document.getElementById("mpNameInput");
+    // Profil enregistré : son pseudo remplace le champ (modifiable depuis l'onglet Profil).
+    const prof = window.PokeProfile && window.PokeProfile.get();
+    if(prof){
+      nameInput.value = prof.name;
+      nameInput.readOnly = true;
+      nameInput.title = "Change ton pseudo dans l'onglet Profil";
+      nameInput.style.opacity = ".85";
+      const hint = document.createElement("div");
+      hint.className = "mp-note";
+      hint.style.cssText = "display:flex;align-items:center;gap:8px;";
+      if(prof.favId){
+        const im = document.createElement("img");
+        im.src = window.PokeProfile.sprite(prof.favId); im.alt = "";
+        im.style.cssText = "width:36px;height:36px;image-rendering:pixelated;";
+        hint.appendChild(im);
+      }
+      hint.appendChild(document.createTextNode("Profil : " + prof.name + " · à changer dans l'onglet 👤 Profil"));
+      nameInput.insertAdjacentElement("afterend", hint);
+    }else{
+      const hint = document.createElement("div");
+      hint.className = "mp-note";
+      hint.textContent = "💡 Crée ton profil (onglet 👤 Profil) pour garder ton pseudo et ta photo partout.";
+      nameInput.insertAdjacentElement("afterend", hint);
+    }
     nameInput.addEventListener("keydown", (e) => {
       if(e.key === "Enter") mpHandleCreate();
     });
@@ -4541,6 +4590,7 @@
     // créer/rejoindre : comme ça, même si on ferme la popup sans valider, le pseudo
     // reste pré-rempli la prochaine fois.
     nameInput.addEventListener("input", () => {
+      if(nameInput.readOnly) return;
       mpSaveLastName(nameInput.value.trim().slice(0, 16));
     });
   }
@@ -5545,43 +5595,51 @@
 <script src="enhance.js"></script>
 <script>
 (function(){
-  var tabGuess=document.getElementById("tabGuess"), tabWhois=document.getElementById("tabWhois");
-  var pane=document.getElementById("whoisPane"), loaded=false;
-  function setTab(name){
-    var w = name==="whois";
-    document.body.classList.toggle("tab-whois", w);
-    pane.style.display = w ? "block" : "none";
-    tabGuess.classList.toggle("active",!w); tabWhois.classList.toggle("active",w);
-    tabGuess.setAttribute("aria-selected",String(!w)); tabWhois.setAttribute("aria-selected",String(w));
-    try{ localStorage.setItem("modeTab",name); }catch(e){}
-    if (w && !loaded){
-      loaded=true;
-      var host=document.getElementById("whoisHost");
-      function fail(msg){
-        loaded=false; // un nouveau clic sur l'onglet retente le chargement
-        host.textContent="";
-        var d=document.createElement("div");
-        d.style.cssText="margin:12px 0;padding:16px;border-radius:16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#fff;font:700 14px/1.5 Nunito,sans-serif;";
-        d.textContent=msg; host.appendChild(d);
-      }
-      var sc=document.createElement("script"); sc.src="whois.js?v=3";
-      sc.onload=function(){
-        if(!window.WhoIsTab){ fail("whois.js est chargé mais ce n'est pas le bon fichier. Vérifie que public/whois.js est l'interface (il commence par « /* whois.js — onglet »), et pas le serveur."); return; }
-        try{ window.WhoIsTab.mount(host); }catch(e){ fail("Erreur au démarrage de l'onglet : "+(e&&e.message||e)); }
-      };
-      sc.onerror=function(){ fail("Impossible de charger /whois.js. Vérifie qu'il est bien dans le dossier public/ (à côté de index.html), puis redéploie."); };
-      document.body.appendChild(sc);
-    }
-    window.scrollTo(0,0);
+  // Onglets : chaque onglet (sauf Devinette) est chargé à la première ouverture, dans un Shadow DOM isolé.
+  var TABS = {
+    guess:   { btn: "tabGuess" },
+    whois:   { btn: "tabWhois",   pane: "whoisPane",   host: "whoisHost",   src: "whois.js?v=4",   api: "WhoIsTab",   label: "whois.js" },
+    profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=1", api: "ProfileTab", label: "profile.js" }
+  };
+  var loaded = {};
+  function fail(t, msg){
+    loaded[t] = false; // un nouveau clic sur l'onglet retente le chargement
+    var host = document.getElementById(TABS[t].host); host.textContent = "";
+    var d = document.createElement("div");
+    d.style.cssText = "margin:12px 0;padding:16px;border-radius:16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#fff;font:700 14px/1.5 Nunito,sans-serif;";
+    d.textContent = msg; host.appendChild(d);
   }
-  tabGuess.onclick=function(){ setTab("guess"); };
-  tabWhois.onclick=function(){ setTab("whois"); };
-  var start="guess";
+  function load(t){
+    var cfg = TABS[t]; if (loaded[t]) return; loaded[t] = true;
+    var host = document.getElementById(cfg.host);
+    var sc = document.createElement("script"); sc.src = cfg.src;
+    sc.onload = function(){
+      if (!window[cfg.api]) { fail(t, cfg.label + " est chargé mais ce n'est pas le bon fichier. Vérifie que public/" + cfg.label + " est bien l'interface (et pas le serveur de api/)."); return; }
+      try{ window[cfg.api].mount(host); }catch(e){ fail(t, "Erreur au démarrage de l'onglet : " + (e && e.message || e)); }
+    };
+    sc.onerror = function(){ fail(t, "Impossible de charger /" + cfg.label + ". Vérifie qu'il est bien dans le dossier public/ (à côté de index.html), puis redéploie."); };
+    document.body.appendChild(sc);
+  }
+  function setTab(name){
+    if (!TABS[name]) name = "guess";
+    document.body.classList.toggle("tab-off", name !== "guess");
+    Object.keys(TABS).forEach(function(k){
+      var on = k === name, b = document.getElementById(TABS[k].btn);
+      b.classList.toggle("active", on); b.setAttribute("aria-selected", String(on));
+      if (TABS[k].pane) document.getElementById(TABS[k].pane).style.display = on ? "block" : "none";
+    });
+    try{ localStorage.setItem("modeTab", name); }catch(e){}
+    if (name !== "guess") load(name);
+    window.scrollTo(0, 0);
+  }
+  Object.keys(TABS).forEach(function(k){ document.getElementById(TABS[k].btn).onclick = function(){ setTab(k); }; });
+  var start = "guess";
   try{
-    if (new URLSearchParams(location.search).get("whois")) start="whois";
-    else if (localStorage.getItem("modeTab")==="whois" && !new URLSearchParams(location.search).get("code")) start="whois";
+    var q = new URLSearchParams(location.search);
+    if (q.get("whois")) start = "whois";
+    else if (!q.get("code")) { var saved = localStorage.getItem("modeTab"); if (TABS[saved]) start = saved; }
   }catch(e){}
-  if (start==="whois") setTab("whois");
+  if (start !== "guess") setTab(start);
 })();
 </script>
 </body>
