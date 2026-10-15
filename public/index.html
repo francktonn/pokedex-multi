@@ -2387,6 +2387,15 @@
   function formatName(name){
     return name.split("-").map(capitalize).join(" ");
   }
+  // Nom court d'une Méga-Évolution (ou d'un Primo-Retour) : « M-Requiem », « M-Dracaufeu X »,
+  // « Primo-Groudon ». Pour toute autre forme, renvoie le nom français de l'espèce tel quel.
+  // Doit rester identique à megaDisplayName() de api/room.js (c'est le serveur qui tranche).
+  function megaShortName(pokemonSlug, baseFrName){
+    const m = /-mega(?:-([a-z]+))?$/.exec(pokemonSlug || "");
+    if(m) return "M-" + baseFrName + (m[1] ? " " + m[1].toUpperCase() : "");
+    if(/-primal$/.test(pokemonSlug || "")) return "Primo-" + baseFrName;
+    return baseFrName;
+  }
   function frenchNameFrom(namesArray, fallbackSlug){
     const entry = (namesArray||[]).find(n => n.language.name === "fr");
     return entry ? entry.name : formatName(fallbackSlug);
@@ -2678,7 +2687,7 @@
 
     const evolution = await buildEvolutionData(species, species.name);
     const regional = getRegionalDexEntry(species);
-    const displayName = frenchNameFrom(species.names, pokemon.name);
+    const displayName = megaShortName(pokemon.name, frenchNameFrom(species.names, pokemon.name));
 
     // Forme affichée : "de base" si c'est la variété par défaut de l'espèce, sinon on
     // réutilise les mêmes helpers que pour la liste "Autres formes" afin de rester cohérent
@@ -2737,7 +2746,7 @@
   // (régionales, Méga-Évolutions, Gigamax). Sauvegardé dans le localStorage pour être
   // restauré au prochain lancement, et utilisé par le randomiseur avant chaque tirage.
   const GAME_SETTINGS_KEY = "pokedex_devinette_game_settings_v1";
-  const SPECIES_META_CACHE_KEY = "pokedex_devinette_species_meta_v2"; // v2 : les formes portent aussi leur génération d'apparition
+  const SPECIES_META_CACHE_KEY = "pokedex_devinette_species_meta_v3"; // v2 : les formes portent aussi leur génération d'apparition ; v3 : et leur nom technique (slug)
 
   // Un seul et même objet pour toute la configuration : facilite l'ajout de futures options
   // (il suffit d'ajouter une clé ici, dans defaultGameSettings(), et de l'utiliser dans
@@ -2857,7 +2866,7 @@
     varieties.forEach(v => {
       if(v.is_default) return;
       const kind = formKindFromSuffix(v.name, row.name);
-      if(forms[kind]) forms[kind].push({ id: v.id, minGen: formMinGenFromSuffix(v.name, row.name) });
+      if(forms[kind]) forms[kind].push({ id: v.id, minGen: formMinGenFromSuffix(v.name, row.name), slug: v.name });
     });
     return {
       id: row.id,
@@ -4157,6 +4166,34 @@
     return scored.slice(0, limit).map(s => s.item);
   }
 
+  // Index utilisé par les suggestions de devinette : les noms d'espèces + une entrée « M-… »
+  // par Méga-Évolution (une Méga se devine avec son propre nom, pas celui de l'espèce).
+  let guessMegaCache = null; // { base, meta, extra }
+  async function getGuessIndex(){
+    const base = await getFrenchIndex();
+    if(!base.length) return base;
+    const meta = await getSpeciesMeta().catch(() => null);
+    if(!meta || !meta.size) return base;
+    if(!guessMegaCache || guessMegaCache.base !== base || guessMegaCache.meta !== meta){
+      const frById = new Map(base.map(e => [e.id, e.name]));
+      const extra = [];
+      meta.forEach(m => {
+        const fr = frById.get(m.id);
+        if(!fr) return;
+        (m.forms.mega || []).forEach(f => {
+          if(!f.slug) return;
+          const name = megaShortName(f.slug, fr);
+          if(name === fr) return;
+          extra.push({ id: m.id, spriteId: f.id, name: name, folded: foldFr(name) });
+        });
+      });
+      guessMegaCache = { base: base, meta: meta, extra: extra };
+    }
+    // Si l'hôte a désactivé les Méga-Évolutions, inutile de les suggérer.
+    const megaOff = !!(mpRoomConfig && mpRoomConfig.forms && mpRoomConfig.forms.mega === false);
+    return megaOff ? base : base.concat(guessMegaCache.extra);
+  }
+
   function hideSuggestions(){
     searchSuggest.style.display = "none";
     searchSuggest.innerHTML = "";
@@ -5290,13 +5327,13 @@
       const raw = input.value;
       if(!raw.trim()){ suggestBox.style.display = "none"; suggestBox.innerHTML = ""; return; }
       suggestTimer = setTimeout(async () => {
-        const list = await getFrenchIndex();
+        const list = await getGuessIndex();
         if(!list.length) return;
         const matches = matchFrenchIndex(raw, list, 6);
         if(!matches.length){ suggestBox.style.display = "none"; suggestBox.innerHTML = ""; return; }
         suggestBox.innerHTML = matches.map(m => `
           <button type="button" class="search-suggest-item" data-name="${mpEscapeHtml(m.name)}">
-            <img src="${smallSpriteUrl(m.id)}" alt="">
+            <img src="${smallSpriteUrl(m.spriteId || m.id)}" alt="">
             <span class="search-suggest-name">${mpEscapeHtml(m.name)}</span>
           </button>
         `).join("");
