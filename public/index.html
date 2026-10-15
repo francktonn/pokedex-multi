@@ -1822,7 +1822,7 @@
       <div class="gc-section">
         <div class="mp-section-label">Difficulté</div>
         <div class="gc-switch-list" id="gcDifficultyList"></div>
-        <div class="gc-hint">En mode chromatique, les Pokémon s'affichent avec leurs couleurs shiny : bien plus dur à reconnaître !</div>
+        <div class="gc-hint">En mode chromatique, les Pokémon s'affichent avec leurs couleurs shiny : bien plus dur à reconnaître !<br>🔥 Mode hardcore : toutes les options de Pokémon sont activées (hors « tout chromatique »), chaque Pokémon a 15 % de chances d'être chromatique, et en équipes tu ne vois plus le Pokémon de tes équipiers.</div>
       </div>
 
       <div class="gc-summary">
@@ -2236,8 +2236,8 @@
   // Sprite d'un Pokémon secret (le sien, celui d'un coéquipier) : suit le mode
   // "chromatique uniquement" pour que l'apparence montrée soit bien celle que les
   // autres joueurs devront reconnaître.
-  function secretSpriteUrl(id){
-    return (typeof activeSettings === "function" && activeSettings().shinyOnly)
+  function secretSpriteUrl(id, shiny){
+    return (shiny || (typeof activeSettings === "function" && activeSettings().shinyOnly))
       ? `${SPRITE_BASE}/shiny/${id}.png`
       : `${SPRITE_BASE}/${id}.png`;
   }
@@ -2692,8 +2692,22 @@
       forms: { regional:true, mega:true, gmax:true },
       // Mode "chromatique uniquement" : le Pokémon tiré s'affiche sous son apparence
       // shiny, bien plus difficile à reconnaître (couleurs inhabituelles).
-      shinyOnly: false
+      shinyOnly: false,
+      // Mode hardcore : toutes les options ci-dessus forcées à "tout activé" (sauf shinyOnly),
+      // et 15 % de chances que chaque Pokémon tiré soit chromatique. En équipes, le Pokémon
+      // des équipiers est caché.
+      hardcore: false
     };
+  }
+  const HARDCORE_SHINY_CHANCE = 0.15;
+  // Applique les contraintes du mode hardcore à une configuration (si elle l'active).
+  function applyHardcoreToSettings(s){
+    if(!s || !s.hardcore) return s;
+    s.generations = [1,2,3,4,5,6,7,8,9];
+    Object.keys(s.categories).forEach(k => { s.categories[k] = true; });
+    Object.keys(s.forms).forEach(k => { s.forms[k] = true; });
+    s.shinyOnly = false;
+    return s;
   }
 
   let gameSettings = loadGameSettings();
@@ -2708,9 +2722,11 @@
         generations: Array.isArray(parsed.generations) && parsed.generations.length ? parsed.generations.filter(g => g>=1 && g<=9) : def.generations,
         categories: Object.assign({}, def.categories, parsed.categories || {}),
         forms: Object.assign({}, def.forms, parsed.forms || {}),
-        shinyOnly: parsed.shinyOnly === true
+        shinyOnly: parsed.shinyOnly === true,
+        hardcore: parsed.hardcore === true
       };
       if(!merged.generations.length) merged.generations = def.generations;
+      applyHardcoreToSettings(merged);
       return merged;
     }catch(e){ return def; }
   }
@@ -2898,7 +2914,8 @@
   // le pool de Pokémon, elles changent seulement la façon dont le secret est affiché.
   // Elles vivent donc à la racine de la config, pas dans un sous-objet.
   const GC_DIFFICULTY_DEFS = [
-    { key:"shinyOnly", label:"Chromatique uniquement (shiny)" }
+    { key:"shinyOnly", label:"Chromatique uniquement (shiny)" },
+    { key:"hardcore", label:"🔥 Mode hardcore" }
   ];
 
   let gcDraft = null; // copie de travail de gameSettings, appliquée seulement au clic sur "Valider"
@@ -2934,6 +2951,13 @@
       inp.addEventListener("change", () => {
         if(groupKey) gcDraft[groupKey][inp.dataset.key] = inp.checked;
         else gcDraft[inp.dataset.key] = inp.checked;
+        if(!groupKey && inp.dataset.key === "hardcore"){
+          // Active (ou désactive) le hardcore : toutes les options de pool passent à "tout activé"
+          // et sont verrouillées tant que le mode est actif.
+          applyHardcoreToSettings(gcDraft);
+          gcSyncInputsFromDraft();
+          gcApplyReadonlyUI();
+        }
         gcRecomputeSummary();
       });
     });
@@ -3028,6 +3052,7 @@
     if(gcReadonly) return;
     gcDraft = defaultGameSettings();
     gcSyncInputsFromDraft();
+    gcApplyReadonlyUI();
     gcRecomputeSummary();
   }
   function gcHandleValidate(){
@@ -3045,12 +3070,16 @@
   // texte d'aide précise que la config s'applique à toute la partie / prochaine manche.
   function gcApplyReadonlyUI(){
     const disable = gcReadonly;
-    gcGenGrid.querySelectorAll("input").forEach(inp => { inp.disabled = disable; });
-    gcCategoryList.querySelectorAll("input").forEach(inp => { inp.disabled = disable; });
-    gcFormsList.querySelectorAll("input").forEach(inp => { inp.disabled = disable; });
-    gcDifficultyList.querySelectorAll("input").forEach(inp => { inp.disabled = disable; });
-    gcSelectAllGensBtn.style.display = disable ? "none" : "";
-    gcClearAllGensBtn.style.display = disable ? "none" : "";
+    // Mode hardcore actif : les options de pool sont imposées (tout activé), donc verrouillées.
+    const hc = !!(gcDraft && gcDraft.hardcore);
+    gcGenGrid.querySelectorAll("input").forEach(inp => { inp.disabled = disable || hc; });
+    gcCategoryList.querySelectorAll("input").forEach(inp => { inp.disabled = disable || hc; });
+    gcFormsList.querySelectorAll("input").forEach(inp => { inp.disabled = disable || hc; });
+    gcDifficultyList.querySelectorAll("input").forEach(inp => {
+      inp.disabled = disable || (hc && inp.dataset.key === "shinyOnly");
+    });
+    gcSelectAllGensBtn.style.display = (disable || hc) ? "none" : "";
+    gcClearAllGensBtn.style.display = (disable || hc) ? "none" : "";
     btnGcReset.style.display = disable ? "none" : "";
     btnGcValidate.style.display = disable ? "none" : "";
     btnGcCancel.textContent = disable ? "Fermer" : "Annuler";
@@ -3200,14 +3229,15 @@
     return (mpRoomCode && mpRoomConfig) ? mpRoomConfig : gameSettings;
   }
 
-  function buildSpriteWithShinyToggle(data){
+  function buildSpriteWithShinyToggle(data, forceShiny){
     const spriteWrap = document.createElement("div");
     spriteWrap.className = "sprite-wrap";
 
     // En mode "chromatique uniquement", on part directement de l'apparence shiny et
     // on retire le bouton de bascule : pouvoir revenir à l'apparence normale rendrait
     // la difficulté supplémentaire totalement inopérante.
-    const shinyOnly = !!activeSettings().shinyOnly;
+    // `forceShiny` : secret tiré chromatique en mode hardcore (même verrouillage).
+    const shinyOnly = !!activeSettings().shinyOnly || !!forceShiny;
     let showingShiny = shinyOnly;
 
     const initialSrcs = showingShiny
@@ -3218,7 +3248,7 @@
     if(shinyOnly){
       const badge = document.createElement("span");
       badge.className = "shiny-locked-badge";
-      badge.title = "Mode chromatique : tous les Pokémon s'affichent en version shiny";
+      badge.title = forceShiny ? "Ce Pokémon est chromatique (shiny) !" : "Mode chromatique : tous les Pokémon s'affichent en version shiny";
       badge.textContent = "✨";
       spriteWrap.appendChild(badge);
       return spriteWrap;
@@ -3257,7 +3287,7 @@
     if(!opts.keepNotepad) clearNotepad();
 
     screenContent.innerHTML = "";
-    screenContent.appendChild(buildSpriteWithShinyToggle(data));
+    screenContent.appendChild(buildSpriteWithShinyToggle(data, opts.secretShiny));
 
     nameplate.style.display = "flex";
     infoCard.style.display = "block";
@@ -4146,6 +4176,7 @@
   let mpGuessAreaId = "mpGuessArea"; // "mpGuessArea" (onglet Multijoueur) ou "mpQuickGuessArea" (écran principal)
   let mpBusy = false;
   let mpLastRenderedPokemonId = null; // dernier secret déjà affiché sur l'écran principal du Pokédex
+  let mpMyLastShiny = false; // le dernier secret connu comme "le mien" est-il chromatique (hardcore) ?
   let mpMyLastPokemonId = null; // dernier id de secret connu comme "le mien" (conservé même après avoir été trouvé, pour pouvoir y revenir depuis la fiche de l'équipier)
   let mpTeammatesInfo = []; // liste de { id, name, pokemonId, pokemonName } de tes coéquipiers reçue (mode équipes), sinon []
   let mpViewingTeammateIndex = -1; // -1 = ma propre fiche ; sinon index dans mpTeammatesInfo dont l'écran principal affiche la fiche
@@ -4424,8 +4455,8 @@
       if(me && me.pokemonId){
         mySecretBox.style.display = "flex";
         mySecretBox.innerHTML = `
-          <img src="${secretSpriteUrl(me.pokemonId)}" alt="">
-          <span>Ton secret : <span class="mp-secret-name">${mpEscapeHtml(me.pokemonName)}</span> — les autres tentent de le deviner</span>
+          <img src="${secretSpriteUrl(me.pokemonId, me.shiny)}" alt="">
+          <span>Ton secret : <span class="mp-secret-name">${mpEscapeHtml(me.pokemonName)}</span>${me.shiny ? " ✨ (chromatique !)" : ""} — les autres tentent de le deviner</span>
         `;
       }else if(isPlaying){
         mySecretBox.style.display = "flex";
@@ -4766,6 +4797,12 @@
     const box = document.getElementById("mpAllyBox");
     if(!box) return;
     const teammates = (state.teammates || []).filter(t => t.pokemonId);
+    if(state.hardcoreRound && (state.teammates || []).length){
+      // Hardcore : le serveur n'envoie plus le Pokémon des équipiers ; on l'explique au joueur.
+      box.style.display = "flex";
+      box.innerHTML = `<span>🔥 Mode hardcore : tu ne vois pas le Pokémon de ${(state.teammates || []).length > 1 ? "tes équipiers" : "ton équipier"}.</span>`;
+      return;
+    }
     if(!teammates.length){
       box.style.display = "none";
       box.innerHTML = "";
@@ -4928,14 +4965,18 @@
   async function mpSyncMainScreen(state){
     if(!state || !state.me) return;
     const newId = state.me.pokemonId || null;
-    if(newId) mpMyLastPokemonId = newId; // conservé même une fois trouvé, pour le bouton "revenir à mon Pokémon"
-    if(newId && newId !== mpLastRenderedPokemonId){
-      mpLastRenderedPokemonId = newId;
+    if(newId){
+      mpMyLastPokemonId = newId; // conservé même une fois trouvé, pour le bouton "revenir à mon Pokémon"
+      mpMyLastShiny = !!state.me.shiny;
+    }
+    const newKey = newId ? newId + (state.me.shiny ? ":s" : "") : null; // le même Pokémon re-tiré en shiny compte comme un nouveau tirage
+    if(newId && newKey !== mpLastRenderedPokemonId){
+      mpLastRenderedPokemonId = newKey;
       // Une nouvelle manche vient de démarrer : on revient sur sa propre fiche.
       mpViewingTeammateIndex = -1;
       try{
         const data = await loadPokemon(newId);
-        renderPokemon(data);
+        renderPokemon(data, { secretShiny: !!state.me.shiny });
       }catch(e){}
       // On ferme la popup Multijoueur pour laisser voir l'écran du Pokédex avec le
       // nouveau secret révélé (petit délai pour laisser le temps de lire un éventuel
@@ -4981,7 +5022,7 @@
     if(!targetId) return;
     try{
       const data = await loadPokemon(targetId);
-      renderPokemon(data, { keepNotepad: true });
+      renderPokemon(data, { keepNotepad: true, secretShiny: mpViewingTeammateIndex === -1 && mpMyLastShiny });
     }catch(e){}
   }
 
@@ -5007,11 +5048,12 @@
       await mpApiPost("start", { code: mpRoomCode, playerId: mpPlayerId });
       const state = await mpApiGetState(mpRoomCode, mpPlayerId);
       if(state && state.me && state.me.pokemonId){
-        mpLastRenderedPokemonId = state.me.pokemonId;
+        mpLastRenderedPokemonId = state.me.pokemonId + (state.me.shiny ? ":s" : "");
+        mpMyLastShiny = !!state.me.shiny;
         const data = await loadPokemon(state.me.pokemonId);
         await new Promise(r => setTimeout(r, 550));
         stopDexFlicker(data.id);
-        renderPokemon(data);
+        renderPokemon(data, { secretShiny: !!state.me.shiny });
         soundReveal();
       }else{
         stopDexFlicker(randomId());
@@ -5188,12 +5230,14 @@
     startDexFlicker();
     soundDraw();
     const id = await pickRandomPokemonId();
+    // Mode hardcore (solo) : 15 % de chances que le Pokémon tiré soit chromatique.
+    const secretShiny = !!activeSettings().hardcore && Math.random() < HARDCORE_SHINY_CHANCE;
     try{
       const data = await loadPokemon(id);
       // small delay so the "roulette" flicker is visible even on fast connections
       await new Promise(r => setTimeout(r, 550));
       stopDexFlicker(data.id);
-      renderPokemon(data);
+      renderPokemon(data, { secretShiny });
       soundReveal();
     }catch(err){
       stopDexFlicker(id);
