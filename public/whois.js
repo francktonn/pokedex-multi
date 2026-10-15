@@ -144,7 +144,7 @@
       show("vLobby");
       $("lobbyCode").textContent = st.code;
       playersList($("lobbyPlayers"), st, {kick:true});
-      renderConfig(st);
+      try { renderConfig(st); } catch (e) { if (window.console) console.error(e); }
       $("hostBox").classList.toggle("hidden", !st.isHost);
       $("waitHost").classList.toggle("hidden", st.isHost);
       return;
@@ -209,11 +209,12 @@
   var GEN_NAMES = ["Kanto","Johto","Hoenn","Sinnoh","Unys","Kalos","Alola","Galar","Paldea"];
   var GEN_ROMAN = ["I","II","III","IV","V","VI","VII","VIII","IX"];
   function renderConfig(st){
-    var box = $("gens"), sel = st.config.generations;
+    var serverOld = !st.config; // ancien api/whois.js : pas de réglages côté serveur
+    var box = $("gens"), sel = serverOld ? [1,2,3,4,5,6,7,8,9] : st.config.generations;
     box.textContent = "";
     GEN_NAMES.forEach(function(name, i){
       var g = i + 1, b = el("button", sel.indexOf(g) >= 0 ? "on" : "");
-      b.type = "button"; b.disabled = !st.isHost;
+      b.type = "button"; b.disabled = !st.isHost || serverOld;
       b.appendChild(document.createTextNode("Gén. " + GEN_ROMAN[i]));
       b.appendChild(el("small","",name));
       b.onclick = function(){
@@ -223,14 +224,16 @@
       };
       box.appendChild(b);
     });
-    $("poolInfo").textContent = st.poolSize + " Pokémon dans le tirage";
+    $("poolInfo").textContent = serverOld
+      ? "⚠️ Serveur pas à jour : remplace api/whois.js puis redéploie."
+      : st.poolSize + " Pokémon dans le tirage";
     $("gensAll").classList.toggle("hidden", !st.isHost || sel.length === 9);
     var r = $("rounds");
     if (root.activeElement !== r) r.value = String(Math.min(st.totalRounds, 30));
   }
   function saveConfig(patch){
     // Affichage immédiat, puis le serveur confirme (et corrige si besoin).
-    if (patch.generations && S.state){
+    if (patch.generations && S.state && S.state.config){
       S.state.config.generations = patch.generations.slice().sort(function(a,b){ return a-b; });
       renderConfig(S.state);
     }
