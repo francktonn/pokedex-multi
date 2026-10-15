@@ -18,6 +18,26 @@ const ROUND_MS = 25000;        // durée d'une manche
 const REVEAL_MS = 5000;        // pause d'affichage de la réponse entre deux manches
 const HINT1_MS = 10000;        // 1er indice : nombre de lettres
 const HINT2_MS = 17000;        // 2ème indice : 1re lettre
+const GENERATION_RANGES = {
+  1: [1, 151], 2: [152, 251], 3: [252, 386], 4: [387, 493], 5: [494, 649],
+  6: [650, 721], 7: [722, 809], 8: [810, 905], 9: [906, 1025]
+};
+const ALL_GENS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+// Valide une config reçue d'un client : jamais de confiance, on retombe sur « toutes les générations ».
+function normalizeConfig(raw) {
+  let gens = raw && Array.isArray(raw.generations)
+    ? Array.from(new Set(raw.generations.map(Number).filter(g => Number.isInteger(g) && g >= 1 && g <= 9))).sort((x, y) => x - y)
+    : [];
+  if (!gens.length) gens = ALL_GENS.slice();
+  return { generations: gens };
+}
+function poolIds(config) {
+  const ids = [];
+  normalizeConfig(config).generations.forEach(g => {
+    for (let id = GENERATION_RANGES[g][0]; id <= GENERATION_RANGES[g][1]; id++) ids.push(id);
+  });
+  return ids;
+}
 const MIN_ROUNDS = 3, MAX_ROUNDS = 30, DEFAULT_ROUNDS = 10;
 
 let redisClient = null;
@@ -170,6 +190,7 @@ function view(room, playerId) {
     code: room.code, status: room.status, hostId: room.hostId,
     isHost: playerId === room.hostId,
     totalRounds: room.totalRounds, players, now,
+    config: normalizeConfig(room.config), poolSize: poolIds(room.config).length,
     roundMs: ROUND_MS, revealMs: REVEAL_MS
   };
   if (r && (room.status === 'playing' || room.status === 'reveal')) {
@@ -259,7 +280,7 @@ module.exports = async (req, res) => {
         const room = {
           code, createdAt: Date.now(), status: 'lobby', hostId: playerId,
           players: { [playerId]: { name, score: 0 } },
-          totalRounds: DEFAULT_ROUNDS, deck: [], round: null
+          totalRounds: DEFAULT_ROUNDS, config: { generations: ALL_GENS.slice() }, deck: [], round: null
         };
         await saveRoom(code, room);
         res.status(200).json({ code, playerId });
@@ -296,12 +317,22 @@ module.exports = async (req, res) => {
         if (action === 'start') {
           if (room.hostId !== playerId) return { status: 403, body: { error: "Seul l'hôte peut lancer la partie" } };
           if (room.status === 'playing' || room.status === 'reveal') return { status: 400, body: { error: 'Une partie est déjà en cours' } };
-          const total = Math.max(MIN_ROUNDS, Math.min(MAX_ROUNDS, Number(body.rounds) || room.totalRounds || DEFAULT_ROUNDS));
-          const all = Array.from({ length: MAX_DEX_ID }, (_, i) => i + 1);
-          room.deck = shuffled(all).slice(0, total);
+          const pool = poolIds(room.config);
+          const total = Math.min(pool.length, Math.max(MIN_ROUNDS, Math.min(MAX_ROUNDS, Number(body.rounds) || room.totalRounds || DEFAULT_ROUNDS)));
+          room.deck = shuffled(pool).slice(0, total);
           room.totalRounds = total;
           Object.keys(room.players).forEach(pid => { room.players[pid].score = 0; });
           await beginRound(room, 0);
+          await save();
+          return { status: 200, body: view(room, playerId) };
+        }
+
+        // Réglages de la partie (hôte, au salon) : générations incluses + nombre de manches.
+        if (action === 'config') {
+          if (room.hostId !== playerId) return { status: 403, body: { error: "Seul l'hôte peut modifier les réglages" } };
+          if (room.status !== 'lobby') return { status: 400, body: { error: 'Les réglages se changent au salon' } };
+          if (body.generations !== undefined) room.config = normalizeConfig({ generations: body.generations });
+          if (body.rounds !== undefined) room.totalRounds = Math.max(MIN_ROUNDS, Math.min(MAX_ROUNDS, Number(body.rounds) || DEFAULT_ROUNDS));
           await save();
           return { status: 200, body: view(room, playerId) };
         }
