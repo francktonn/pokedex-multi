@@ -5556,8 +5556,20 @@
     try{ localStorage.setItem("modeTab",name); }catch(e){}
     if (w && !loaded){
       loaded=true;
-      var sc=document.createElement("script"); sc.src="whois.js";
-      sc.onload=function(){ window.WhoIsTab.mount(document.getElementById("whoisHost")); };
+      var host=document.getElementById("whoisHost");
+      function fail(msg){
+        loaded=false; // un nouveau clic sur l'onglet retente le chargement
+        host.textContent="";
+        var d=document.createElement("div");
+        d.style.cssText="margin:12px 0;padding:16px;border-radius:16px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:#fff;font:700 14px/1.5 Nunito,sans-serif;";
+        d.textContent=msg; host.appendChild(d);
+      }
+      var sc=document.createElement("script"); sc.src="whois.js?v=3";
+      sc.onload=function(){
+        if(!window.WhoIsTab){ fail("whois.js est chargé mais ce n'est pas le bon fichier. Vérifie que public/whois.js est l'interface (il commence par « /* whois.js — onglet »), et pas le serveur."); return; }
+        try{ window.WhoIsTab.mount(host); }catch(e){ fail("Erreur au démarrage de l'onglet : "+(e&&e.message||e)); }
+      };
+      sc.onerror=function(){ fail("Impossible de charger /whois.js. Vérifie qu'il est bien dans le dossier public/ (à côté de index.html), puis redéploie."); };
       document.body.appendChild(sc);
     }
     window.scrollTo(0,0);
