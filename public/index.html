@@ -3078,6 +3078,9 @@
     gcDifficultyList.querySelectorAll("input").forEach(inp => {
       inp.disabled = disable || (hc && inp.dataset.key === "shinyOnly");
     });
+    // Non-hôte (lecture seule) : on ne montre que le résumé « Configuration actuelle »,
+    // pas les interrupteurs que seul l'hôte peut modifier.
+    document.querySelectorAll("#gcOverlay .gc-section").forEach(sec => { sec.style.display = disable ? "none" : ""; });
     gcSelectAllGensBtn.style.display = (disable || hc) ? "none" : "";
     gcClearAllGensBtn.style.display = (disable || hc) ? "none" : "";
     btnGcReset.style.display = disable ? "none" : "";
