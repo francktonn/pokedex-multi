@@ -1797,6 +1797,7 @@
           <div class="type-effect" id="searchTypeEffect"></div>
 
           <div class="section-label">Évolutions</div>
+          <div class="evo-hint" id="searchEvoHint" style="display:none;">Touche un Pokémon de la famille pour voir sa fiche.</div>
           <div class="evo-section"><div class="evo-row" id="searchEvoRow"></div></div>
 
           <div class="section-label" id="searchFormsLabel" style="display:none;">Autres formes</div>
@@ -2252,6 +2253,7 @@
   const searchValForm = document.getElementById("searchValForm");
   const searchTypeEffect = document.getElementById("searchTypeEffect");
   const searchEvoRow = document.getElementById("searchEvoRow");
+  const searchEvoHint = document.getElementById("searchEvoHint");
   const searchFormsLabel = document.getElementById("searchFormsLabel");
   const searchFormsRow = document.getElementById("searchFormsRow");
   const searchFlavorText = document.getElementById("searchFlavorText");
@@ -3519,6 +3521,15 @@
     // fiche ; si c'est le Pokémon de départ pendant une consultation, il sert de bouton retour.
     function stageOpts(node){
       const o = { trigger: node.trigger };
+      // Panneau de recherche : toucher un stade ouvre sa fiche dans la recherche
+      // (sans toucher au Pokémon secret ni à la fiche principale).
+      if(ropts.search){
+        if(node.id){
+          o.onClick = () => searchEvoStage(node);
+          o.ariaLabel = "Rechercher " + (node.displayName || formatName(node.name));
+        }
+        return o;
+      }
       if(!ropts.interactive) return o;
       const isHome = viewingPeek && homeView && node.name === homeView.data.speciesName;
       if(isHome){
@@ -3989,7 +4000,8 @@
     searchTypeEffect.innerHTML = buildTypeEffectHTML(data.types);
     searchFlavorText.textContent = data.flavor;
 
-    renderEvolutions(data, searchEvoRow);
+    renderEvolutions(data, searchEvoRow, { search: true });
+    searchEvoHint.style.display = (data.evolution && (data.evolution.ancestors.length || data.evolution.descendants.length)) ? "block" : "none";
     renderForms(data.forms, searchFormsLabel, searchFormsRow);
   }
 
@@ -4206,6 +4218,17 @@
       const matches = matchFrenchIndex(raw, list, 8);
       renderSuggestions(matches, matches.length ? "Suggestions" : "");
     }, 200);
+  }
+
+  // Clic sur un stade d'évolution dans le résultat de recherche : on charge sa fiche
+  // dans le même panneau, puis on remonte en haut du résultat.
+  async function searchEvoStage(node){
+    if(!node || !node.id) return;
+    await performSearchById(node.id, node.displayName || formatName(node.name));
+    const body = document.getElementById("searchResultBody");
+    if(body && typeof body.scrollIntoView === "function"){
+      body.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   }
 
   // Lance une recherche directement à partir d'un id de Pokédex national (utilisé quand
