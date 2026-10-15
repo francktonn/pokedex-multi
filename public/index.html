@@ -386,6 +386,52 @@
   }
   .evo-none{ font-size:12px; color:var(--text-muted); font-style:italic; }
 
+  /* Famille cliquable : toucher un Pokémon affiche sa fiche, avec retour facile */
+  .evo-hint{ font-size:11px; color:var(--text-muted); font-style:italic; margin:-2px 0 6px; }
+  .evo-stage.evo-tap{ cursor:pointer; transition:transform .12s ease, box-shadow .12s ease; -webkit-tap-highlight-color:transparent; }
+  .evo-stage.evo-tap:hover{ transform:translateY(-2px); box-shadow: inset 0 0 0 2px rgba(0,0,0,.25), 0 4px 8px rgba(0,0,0,.18); }
+  .evo-stage.evo-tap:active{ transform:scale(.96); }
+  .evo-stage.evo-tap:focus-visible{ outline:3px solid var(--gold); outline-offset:2px; }
+  .evo-stage.home{ box-shadow: inset 0 0 0 2px var(--red); }
+  .evo-stage.home:hover{ box-shadow: inset 0 0 0 2.5px var(--red), 0 4px 8px rgba(0,0,0,.18); }
+  .evo-home-tag{ font-family:'Silkscreen', monospace; font-size:8px; color:var(--red); letter-spacing:.03em; }
+  .evo-row.loading{ opacity:.55; pointer-events:none; }
+  .screen-frame{ scroll-margin-top:72px; }
+
+  /* Bannière collante : toujours visible en haut pendant qu'on consulte un autre Pokémon */
+  .peek-banner{
+    position:sticky;
+    top:8px;
+    z-index:20;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:8px;
+    background:var(--gold);
+    color:#241f18;
+    border-radius:12px;
+    padding:8px 10px;
+    margin-bottom:10px;
+    box-shadow: 0 3px 0 rgba(0,0,0,.25), 0 8px 16px rgba(0,0,0,.3);
+    font-family:'Nunito', sans-serif;
+    font-size:12.5px;
+    font-weight:700;
+  }
+  .peek-banner-text{ flex:1 1 120px; min-width:0; }
+  .peek-banner-btn{
+    font-family:'Silkscreen', monospace;
+    font-size:10px;
+    background:#241f18;
+    color:#fff;
+    border:0;
+    border-radius:999px;
+    padding:9px 13px;
+    cursor:pointer;
+    box-shadow: inset 0 -2px 0 rgba(255,255,255,.15);
+  }
+  .peek-banner-btn:active{ transform:scale(.96); }
+
   /* type effectiveness (faiblesses / résistances) */
   .type-effect{ display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
   .type-effect-row{ display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
@@ -1599,6 +1645,11 @@
       </div>
     </div>
 
+    <div class="peek-banner" id="peekBanner" style="display:none;">
+      <span class="peek-banner-text" id="peekBannerText"></span>
+      <button type="button" class="peek-banner-btn" id="peekBackBtn"></button>
+    </div>
+
     <div class="screen-frame">
       <div class="screen-scanline"></div>
       <div class="screen-content" id="screenContent">
@@ -1633,6 +1684,7 @@
 
       <div class="section-label">Évolutions</div>
       <div class="evo-section" id="evoSection">
+        <div class="evo-hint" id="evoHint" style="display:none;"></div>
         <div class="evo-row" id="evoRow"></div>
       </div>
 
@@ -2126,6 +2178,11 @@
   const typeEffect = document.getElementById("typeEffect");
   const flavorText = document.getElementById("flavorText");
   const evoRow = document.getElementById("evoRow");
+  const evoHint = document.getElementById("evoHint");
+  const evoSection = document.getElementById("evoSection");
+  const peekBanner = document.getElementById("peekBanner");
+  const peekBannerText = document.getElementById("peekBannerText");
+  const peekBackBtn = document.getElementById("peekBackBtn");
   const formsLabel = document.getElementById("formsLabel");
   const formsRow = document.getElementById("formsRow");
   const lightBusy = document.getElementById("lightBusy");
@@ -2200,6 +2257,14 @@
   const searchFlavorText = document.getElementById("searchFlavorText");
 
   let current = null;      // fully loaded pokemon data object
+  // Consultation de la famille : `homeView` = la fiche "de départ" (ton Pokémon, ou celle du
+  // coéquipier affiché) ; `viewingPeek` = on regarde actuellement la fiche d'un autre membre
+  // de la famille. `mainViewSeq` invalide les chargements en retard (dernier clic gagnant).
+  let homeView = null;
+  let viewingPeek = false;
+  let mainViewSeq = 0;
+  const EVO_HINT_DEFAULT = "Touche un Pokémon de la famille pour voir sa fiche.";
+  let evoHintTimer = null;
   let flickerTimer = null;
 
   // ---------- Sound (WebAudio, no external files) ----------
@@ -2648,6 +2713,7 @@
 
     return {
       id: species.id, // numéro de Pokédex national (utilisé pour l'affichage "N° ..."), même pour une forme alternative
+      speciesName: species.name, // nom de l'espèce (sert à reconnaître ce Pokémon dans sa famille d'évolution)
       pokemonId: pokemon.id, // id technique de l'API (utile pour redemander exactement cette forme)
       name: pokemon.name,
       displayName: displayName,
@@ -3154,6 +3220,9 @@
 
   // ---------- Rendering ----------
   function renderLoading(){
+    mainViewSeq++; // annule toute consultation de famille encore en chargement
+    viewingPeek = false;
+    peekBanner.style.display = "none";
     screenContent.innerHTML = `
       <div class="pokeball-spin"></div>
       <div class="loading-label">RECHERCHE EN COURS…</div>
@@ -3282,7 +3351,16 @@
 
   function renderPokemon(data, opts){
     opts = opts || {};
-    current = data;
+    mainViewSeq++;
+    evoRow.classList.remove("loading");
+    if(opts.peek){
+      // Simple consultation d'un autre membre de la famille : on garde la fiche de départ.
+      viewingPeek = true;
+    }else{
+      viewingPeek = false;
+      current = data;
+      homeView = { data: data, secretShiny: !!opts.secretShiny };
+    }
     // Le bloc-note se vide à chaque VRAI nouveau tirage (solo ou multijoueur), mais
     // pas quand on ne fait que consulter une fiche déjà connue (ex. basculer sur
     // celle d'un coéquipier puis revenir à la sienne) — sans quoi jeter un oeil au
@@ -3322,9 +3400,60 @@
 
     flavorText.textContent = data.flavor;
 
-    renderEvolutions(data);
+    renderEvolutions(data, null, { interactive: true });
     renderForms(data.forms);
+    updatePeekBanner(data);
   }
+
+  // ---------- Consulter un membre de la famille, puis revenir à sa fiche ----------
+  function updatePeekBanner(data){
+    if(viewingPeek && homeView){
+      peekBannerText.textContent = `👀 Tu consultes : ${data.displayName}`;
+      peekBackBtn.textContent = `↩ Revenir à ${homeView.data.displayName}`;
+      peekBanner.style.display = "flex";
+    }else{
+      peekBanner.style.display = "none";
+    }
+  }
+
+  function showEvoHint(msg){
+    evoHint.textContent = msg;
+    clearTimeout(evoHintTimer);
+    if(msg !== EVO_HINT_DEFAULT){
+      evoHintTimer = setTimeout(() => { evoHint.textContent = EVO_HINT_DEFAULT; }, 3500);
+    }
+  }
+
+  async function peekPokemon(node){
+    if(!node || !node.id) return;
+    const seq = ++mainViewSeq;
+    evoRow.classList.add("loading");
+    try{
+      const data = await loadPokemon(node.id);
+      if(seq !== mainViewSeq) return; // un autre affichage a pris le relais entre-temps
+      renderPokemon(data, { peek: true, keepNotepad: true });
+      // On remonte sur le sprite pour voir la fiche ; la bannière reste collée en haut.
+      requestAnimationFrame(() => {
+        const frame = document.querySelector(".screen-frame");
+        if(frame) frame.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }catch(e){
+      if(seq === mainViewSeq){
+        evoRow.classList.remove("loading");
+        showEvoHint("Impossible de charger cette fiche, réessaie.");
+      }
+    }
+  }
+
+  function returnToHomePokemon(){
+    if(!viewingPeek || !homeView) return;
+    // keepNotepad : revenir à sa fiche ne doit surtout pas effacer le bloc-note.
+    renderPokemon(homeView.data, { keepNotepad: true, secretShiny: homeView.secretShiny });
+    requestAnimationFrame(() => {
+      evoSection.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }
+  peekBackBtn.addEventListener("click", returnToHomePokemon);
 
   function makeEvoStage(node, opts){
     opts = opts || {};
@@ -3345,6 +3474,25 @@
       trig.textContent = opts.trigger;
       div.appendChild(trig);
     }
+
+    if(opts.home){
+      div.classList.add("home");
+      const tag = document.createElement("span");
+      tag.className = "evo-home-tag";
+      tag.textContent = "↩ RETOUR";
+      div.appendChild(tag);
+    }
+
+    if(opts.onClick){
+      div.classList.add("evo-tap");
+      div.setAttribute("role", "button");
+      div.tabIndex = 0;
+      div.setAttribute("aria-label", opts.ariaLabel || ("Voir la fiche de " + (node.displayName || formatName(node.name))));
+      div.addEventListener("click", opts.onClick);
+      div.addEventListener("keydown", e => {
+        if(e.key === "Enter" || e.key === " "){ e.preventDefault(); opts.onClick(e); }
+      });
+    }
     return div;
   }
   function makeEvoArrow(){
@@ -3354,14 +3502,38 @@
     return span;
   }
 
-  function renderEvolutions(data, targetEl){
+  function renderEvolutions(data, targetEl, ropts){
     targetEl = targetEl || evoRow;
+    ropts = ropts || {};
     const evo = data.evolution || { ancestors: [], descendants: [] };
     targetEl.innerHTML = "";
 
+    const hasFamily = evo.ancestors.length > 0 || evo.descendants.length > 0;
+    if(ropts.interactive){
+      clearTimeout(evoHintTimer);
+      evoHint.textContent = EVO_HINT_DEFAULT;
+      evoHint.style.display = hasFamily ? "block" : "none";
+    }
+
+    // Options d'un stade de la famille : cliquable (sur l'écran principal) pour consulter sa
+    // fiche ; si c'est le Pokémon de départ pendant une consultation, il sert de bouton retour.
+    function stageOpts(node){
+      const o = { trigger: node.trigger };
+      if(!ropts.interactive) return o;
+      const isHome = viewingPeek && homeView && node.name === homeView.data.speciesName;
+      if(isHome){
+        o.home = true;
+        o.onClick = returnToHomePokemon;
+        o.ariaLabel = "Revenir à " + homeView.data.displayName;
+      }else{
+        o.onClick = () => peekPokemon(node);
+      }
+      return o;
+    }
+
     // Pré-évolutions -> flèche -> ... -> Pokémon actuel (entouré) -> flèche -> évolutions suivantes
     evo.ancestors.forEach(a => {
-      targetEl.appendChild(makeEvoStage(a, { trigger: a.trigger }));
+      targetEl.appendChild(makeEvoStage(a, stageOpts(a)));
       targetEl.appendChild(makeEvoArrow());
     });
 
@@ -3377,7 +3549,7 @@
 
     evo.descendants.forEach(d => {
       targetEl.appendChild(makeEvoArrow());
-      targetEl.appendChild(makeEvoStage(d, { trigger: d.trigger }));
+      targetEl.appendChild(makeEvoStage(d, stageOpts(d)));
     });
   }
 
