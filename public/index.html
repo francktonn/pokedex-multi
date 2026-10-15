@@ -1629,6 +1629,13 @@
 </head>
 <body>
 
+<nav class="modetabs" id="modeTabs" role="tablist" aria-label="Mode de jeu">
+  <button type="button" role="tab" id="tabGuess" class="modetab active" aria-selected="true" data-tab="guess">🔴 Devinette</button>
+  <button type="button" role="tab" id="tabWhois" class="modetab" aria-selected="false" data-tab="whois">❔ Qui est-ce ?</button>
+</nav>
+<div id="whoisPane" style="display:none;"><div id="whoisHost"></div></div>
+
+
 <div class="stage">
   <!-- DEVICE -->
   <div class="device">
@@ -5536,5 +5543,34 @@
 })();
 </script>
 <script src="enhance.js"></script>
+<script>
+(function(){
+  var tabGuess=document.getElementById("tabGuess"), tabWhois=document.getElementById("tabWhois");
+  var pane=document.getElementById("whoisPane"), loaded=false;
+  function setTab(name){
+    var w = name==="whois";
+    document.body.classList.toggle("tab-whois", w);
+    pane.style.display = w ? "block" : "none";
+    tabGuess.classList.toggle("active",!w); tabWhois.classList.toggle("active",w);
+    tabGuess.setAttribute("aria-selected",String(!w)); tabWhois.setAttribute("aria-selected",String(w));
+    try{ localStorage.setItem("modeTab",name); }catch(e){}
+    if (w && !loaded){
+      loaded=true;
+      var sc=document.createElement("script"); sc.src="whois.js";
+      sc.onload=function(){ window.WhoIsTab.mount(document.getElementById("whoisHost")); };
+      document.body.appendChild(sc);
+    }
+    window.scrollTo(0,0);
+  }
+  tabGuess.onclick=function(){ setTab("guess"); };
+  tabWhois.onclick=function(){ setTab("whois"); };
+  var start="guess";
+  try{
+    if (new URLSearchParams(location.search).get("whois")) start="whois";
+    else if (localStorage.getItem("modeTab")==="whois" && !new URLSearchParams(location.search).get("code")) start="whois";
+  }catch(e){}
+  if (start==="whois") setTab("whois");
+})();
+</script>
 </body>
 </html>
