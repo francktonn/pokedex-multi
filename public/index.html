@@ -1672,7 +1672,6 @@
         <div class="info-tile"><span class="eyebrow">Génération</span><div class="val" id="valGen">-</div></div>
         <div class="info-tile"><span class="eyebrow">Taille</span><div class="val" id="valHeight">-</div></div>
         <div class="info-tile"><span class="eyebrow">Poids</span><div class="val" id="valWeight">-</div></div>
-        <div class="info-tile"><span class="eyebrow">Habitat</span><div class="val" id="valHabitat">-</div></div>
         <div class="info-tile"><span class="eyebrow">Couleur</span><div class="val" id="valColor">-</div></div>
         <div class="info-tile"><span class="eyebrow">Catégorie</span><div class="val" id="valCategory">-</div></div>
         <div class="info-tile"><span class="eyebrow">Capture</span><div class="val" id="valCapture">-</div></div>
@@ -1786,7 +1785,6 @@
             <div class="info-tile"><span class="eyebrow">Génération</span><div class="val" id="searchValGen">-</div></div>
             <div class="info-tile"><span class="eyebrow">Taille</span><div class="val" id="searchValHeight">-</div></div>
             <div class="info-tile"><span class="eyebrow">Poids</span><div class="val" id="searchValWeight">-</div></div>
-            <div class="info-tile"><span class="eyebrow">Habitat</span><div class="val" id="searchValHabitat">-</div></div>
             <div class="info-tile"><span class="eyebrow">Couleur</span><div class="val" id="searchValColor">-</div></div>
             <div class="info-tile"><span class="eyebrow">Catégorie</span><div class="val" id="searchValCategory">-</div></div>
             <div class="info-tile"><span class="eyebrow">Capture</span><div class="val" id="searchValCapture">-</div></div>
@@ -1957,11 +1955,6 @@
     "generation-viii":"8","generation-ix":"9"
   };
 
-  const HABITAT_FR = {
-    cave:"Grotte", forest:"Forêt", grassland:"Prairie", mountain:"Montagne",
-    rare:"Rare", "rough-terrain":"Terrain accidenté", sea:"Mer",
-    urban:"Zone urbaine", "waters-edge":"Bord de l'eau"
-  };
   const COLOR_FR = {
     black:"Noir", blue:"Bleu", brown:"Marron", gray:"Gris", green:"Vert",
     pink:"Rose", purple:"Violet", red:"Rouge", white:"Blanc", yellow:"Jaune",
@@ -1994,7 +1987,6 @@
         { id:"cat:bebe", label:"Bébé" }
       ]},
       { key:"color", label:"Couleur", items: Object.keys(COLOR_FR).map(k => ({ id:"color:"+k, label:COLOR_FR[k], hasPercent:true })) },
-      { key:"habitat", label:"Habitat", items: Object.keys(HABITAT_FR).map(k => ({ id:"habitat:"+k, label:HABITAT_FR[k] })) },
       { key:"size", label:"Taille & poids", items: [
         { id:"size:grand", label:"Plus d'1 m" },
         { id:"size:petit", label:"Moins de 50 cm" },
@@ -2171,7 +2163,6 @@
   const valGen = document.getElementById("valGen");
   const valHeight = document.getElementById("valHeight");
   const valWeight = document.getElementById("valWeight");
-  const valHabitat = document.getElementById("valHabitat");
   const valColor = document.getElementById("valColor");
   const valCategory = document.getElementById("valCategory");
   const valCapture = document.getElementById("valCapture");
@@ -2246,7 +2237,6 @@
   const searchValGen = document.getElementById("searchValGen");
   const searchValHeight = document.getElementById("searchValHeight");
   const searchValWeight = document.getElementById("searchValWeight");
-  const searchValHabitat = document.getElementById("searchValHabitat");
   const searchValColor = document.getElementById("searchValColor");
   const searchValCategory = document.getElementById("searchValCategory");
   const searchValCapture = document.getElementById("searchValCapture");
@@ -2733,7 +2723,6 @@
       evolution: evolution,
       regionalNumber: regional ? regional.number : null,
       regionalRegion: regional ? regional.region : null,
-      habitat: species.habitat ? (HABITAT_FR[species.habitat.name] || formatSlug(species.habitat.name)) : "Inconnu",
       color: species.color ? (COLOR_FR[species.color.name] || formatSlug(species.color.name)) : "Inconnue",
       category: categoryFor(species),
       captureRate: captureRateInfo(species.capture_rate),
@@ -3388,7 +3377,6 @@
     valGen.textContent = data.generation;
     valHeight.textContent = data.heightM + " m";
     valWeight.textContent = data.weightKg + " kg";
-    valHabitat.textContent = data.habitat;
     valColor.textContent = data.color;
     valCategory.textContent = `${data.category.icon} ${data.category.label}`;
     valCategory.className = "val cat-" + data.category.key;
@@ -3988,7 +3976,6 @@
     searchValGen.textContent = data.generation;
     searchValHeight.textContent = data.heightM + " m";
     searchValWeight.textContent = data.weightKg + " kg";
-    searchValHabitat.textContent = data.habitat;
     searchValColor.textContent = data.color;
     searchValCategory.textContent = `${data.category.icon} ${data.category.label}`;
     searchValCategory.className = "val cat-" + data.category.key;
