@@ -1655,9 +1655,11 @@
 <nav class="modetabs" id="modeTabs" role="tablist" aria-label="Mode de jeu">
   <button type="button" role="tab" id="tabGuess" class="modetab active" aria-selected="true" data-tab="guess">🔴 Devinette</button>
   <button type="button" role="tab" id="tabWhois" class="modetab" aria-selected="false" data-tab="whois">❔ Qui est-ce ?</button>
+  <button type="button" role="tab" id="tabWordle" class="modetab" aria-selected="false" data-tab="wordle">🟩 Wordle</button>
   <button type="button" role="tab" id="tabProfile" class="modetab" aria-selected="false" data-tab="profile">👤 Profil</button>
 </nav>
 <div id="whoisPane" style="display:none;"><div id="whoisHost"></div></div>
+<div id="wordlePane" style="display:none;"><div id="wordleHost"></div></div>
 <div id="profilePane" style="display:none;"><div id="profileHost"></div></div>
 
 
@@ -5599,6 +5601,7 @@
   var TABS = {
     guess:   { btn: "tabGuess" },
     whois:   { btn: "tabWhois",   pane: "whoisPane",   host: "whoisHost",   src: "whois.js?v=4",   api: "WhoIsTab",   label: "whois.js" },
+    wordle:  { btn: "tabWordle",  pane: "wordlePane",  host: "wordleHost",  src: "wordle.js?v=1",  api: "WordleTab",  label: "wordle.js" },
     profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=1", api: "ProfileTab", label: "profile.js" }
   };
   var loaded = {};
@@ -5637,6 +5640,7 @@
   try{
     var q = new URLSearchParams(location.search);
     if (q.get("whois")) start = "whois";
+    else if (q.get("wordle")) start = "wordle";
     else if (!q.get("code")) { var saved = localStorage.getItem("modeTab"); if (TABS[saved]) start = saved; }
   }catch(e){}
   if (start !== "guess") setTab(start);
