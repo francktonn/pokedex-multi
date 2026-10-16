@@ -4703,6 +4703,22 @@
   let mpIsHost = false; // suis-je l'hôte de la partie en cours ? (seul lui peut modifier la config)
   let mpRoomConfig = null; // dernière configuration connue de la partie (générations/catégories/formes)
   let mpLastKnownState = null; // dernier état de partie reçu, réutilisé pour afficher le panneau "Deviner"
+  let mpRoundsFinishedSeen = null;
+  let mpRoundsFinishedCode = null;
+  const MP_ROUND_REWARD_MIN = 10, MP_ROUND_REWARD_MAX = 80;
+  function mpCheckRoundReward(state){
+    if(mpRoundsFinishedCode !== mpRoomCode){ mpRoundsFinishedCode = mpRoomCode; mpRoundsFinishedSeen = null; }
+    const n = state && state.roundsFinished;
+    if(typeof n !== "number") return;
+    if(mpRoundsFinishedSeen === null){ mpRoundsFinishedSeen = n; return; }
+    if(n > mpRoundsFinishedSeen){
+      let total = 0;
+      for(let i = mpRoundsFinishedSeen; i < n; i++) total += MP_ROUND_REWARD_MIN + Math.floor(Math.random() * (MP_ROUND_REWARD_MAX - MP_ROUND_REWARD_MIN + 1));
+      mpRoundsFinishedSeen = n;
+      if(window.PokeMoney) window.PokeMoney.add(total);
+      if(window.toast) window.toast("Manche terminée ! +" + total + " ₽", { kind:"ok", icon:"💰" });
+    }
+  }
   let mpTeamsPickedPlayerId = null; // (hôte, mode équipes) joueur actuellement "sélectionné" en attente d'un tap sur une équipe/zone "non assignés"
 
   // Le tirage aléatoire "solo" (bouton principal du Pokédex) est désactivé pendant
@@ -5004,6 +5020,7 @@
       return;
     }
     mpCurrentStatus = state.status || "lobby";
+    mpCheckRoundReward(state);
     mpUpdateDrawAvailability();
     const me = state.me;
     const isHost = !!state.isHost;
