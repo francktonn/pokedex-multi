@@ -562,6 +562,7 @@ function sanitizeRoom(room, playerId) {
     : null;
 
   return {
+    roundsFinished: room.roundsFinished || 0,
     code: room.code,
     status: room.status || 'lobby',
     hostId: room.hostId || null,
@@ -1056,6 +1057,7 @@ module.exports = async (req, res) => {
               winners.forEach(pid => { room.players[pid].score = (room.players[pid].score || 0) + 1; });
               winningTeamNames = winners.map(pid => room.players[pid].name);
               winningTeamName = teamSlotName(room, winningTeam);
+              room.roundsFinished = (room.roundsFinished || 0) + 1;
               await startNewRound(room); // ré-attribue un secret à tout le monde, scores et équipes conservés
             }
           } else {
@@ -1065,6 +1067,7 @@ module.exports = async (req, res) => {
               const lastPid = stillHiding[0];
               room.players[lastPid].score = (room.players[lastPid].score || 0) + 1;
               lastPlayerName = room.players[lastPid].name;
+              room.roundsFinished = (room.roundsFinished || 0) + 1;
               await startNewRound(room); // ré-attribue un secret à tout le monde, scores conservés
             }
           }
