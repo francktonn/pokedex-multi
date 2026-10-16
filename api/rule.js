@@ -31,9 +31,9 @@ function cleanCard(v) {
   const x = {};
   ['wp', 'ww', 'wb', 'qp', 'qc', 'qb', 'gf', 'gm'].forEach(k => { x[k] = n(src[k], 10000000); });
   const tm = (Array.isArray(v.tm) ? v.tm : []).map(Number).filter(id => Number.isInteger(id) && id >= 1 && id <= MAX_DEX_ID).slice(0, 6);
-  // c cadre (couleur 0-15) · b fond 0-13 · ti titre 0-15 · f style de cadre 0-5 · h forme de la photo 0-3 · e effet 0-4 · j badge emoji 0-16 · nf police du pseudo 0-3 · nc couleur du pseudo 0-7
-  return { s: n(v.s, 2), c: n(v.c, 15), t: n(v.t, 18), m: String(v.m || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 40), x, b: n(v.b, 13), ti: n(v.ti, 15), l: Math.max(1, n(v.l, 99)), tm,
-    f: n(v.f, 5), h: n(v.h, 3), e: n(v.e, 4), j: n(v.j, 16), nf: n(v.nf, 3), nc: n(v.nc, 7) };
+  // c cadre (couleur 0-15) · b fond 0-20 · ti titre 0-25 · f style de cadre 0-9 · h forme de la photo 0-6 · e effet 0-9 · j badge emoji 0-16 · nf police du pseudo 0-6 · nc couleur du pseudo 0-11
+  return { s: n(v.s, 2), c: n(v.c, 15), t: n(v.t, 18), m: String(v.m || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 40), x, b: n(v.b, 20), ti: n(v.ti, 25), l: Math.max(1, n(v.l, 99)), tm,
+    f: n(v.f, 9), h: n(v.h, 6), e: n(v.e, 9), j: n(v.j, 16), nf: n(v.nf, 6), nc: n(v.nc, 11) };
 }
 
 // ---------- Les règles ----------
