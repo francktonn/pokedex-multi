@@ -87,6 +87,12 @@ function defaultConfig() {
 // Nombre maximum d'équipes ouvrables par l'hôte (garde-fou, pas une vraie limite de jeu).
 const MAX_TEAM_SLOTS = 8;
 
+// Style de carte : s = sprite (0 normal, 1 shiny, 2 artwork), c = couleur du cadre (0-7). Valeurs bornées.
+function cleanCard(v) {
+  const n = (x, max) => { x = Number(x); return Number.isInteger(x) && x >= 0 && x <= max ? x : 0; };
+  return v && typeof v === 'object' ? { s: n(v.s, 2), c: n(v.c, 7) } : { s: 0, c: 0 };
+}
+
 // Photo de profil : simple numéro de Pokédex (le sprite est affiché côté client).
 // Jamais autre chose qu'un entier valide, sinon null.
 function cleanAvatar(v) {
@@ -502,6 +508,7 @@ function sanitizeRoom(room, playerId) {
       id: pid,
       name: p.name,
       avatar: p.avatar || null,
+      card: p.card || null,
       score: p.score || 0,
       hasPokemon: !!p.pokemonId,
       // Équipe réellement en jeu cette manche (celle utilisée pour les devinettes/victoires).
@@ -636,7 +643,7 @@ module.exports = async (req, res) => {
           createdAt: Date.now(),
           status: 'lobby', // 'lobby' = en attente que l'hôte lance la 1ère manche, 'playing' = manche en cours
           hostId: playerId,
-          players: { [playerId]: { name, score: 0, avatar: cleanAvatar(body.avatar), pokemonId: null, pokemonName: null } },
+          players: { [playerId]: { name, score: 0, avatar: cleanAvatar(body.avatar), card: cleanCard(body.card), pokemonId: null, pokemonName: null } },
           config: defaultConfig(), // le créateur pourra l'ajuster ensuite depuis le lobby ; lui seul pourra la modifier
           teamSlots: [],
           teamAssignments: {},
@@ -661,7 +668,7 @@ module.exports = async (req, res) => {
           return;
         }
         const playerId = 'p_' + Math.random().toString(36).slice(2, 9);
-        room.players[playerId] = { name, score: 0, avatar: cleanAvatar(body.avatar), pokemonId: null, pokemonName: null };
+        room.players[playerId] = { name, score: 0, avatar: cleanAvatar(body.avatar), card: cleanCard(body.card), pokemonId: null, pokemonName: null };
         // Rejoindre en cours de manche : le nouveau joueur attend simplement la
         // manche suivante (il n'a pas de secret tant que l'hôte n'en relance pas une).
         await saveRoom(code, room);

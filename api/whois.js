@@ -76,6 +76,10 @@ function cleanAvatar(v) {
   const n = Number(v);
   return Number.isInteger(n) && n >= 1 && n <= MAX_DEX_ID ? n : null;
 }
+function cleanCard(v) {
+  const n = (x, max) => { x = Number(x); return Number.isInteger(x) && x >= 0 && x <= max ? x : 0; };
+  return v && typeof v === 'object' ? { s: n(v.s, 2), c: n(v.c, 7) } : { s: 0, c: 0 };
+}
 const cleanCode = v => (v || '').toString().trim().toUpperCase();
 
 // ---------- Noms français (1025 espèces), mis en cache ----------
@@ -187,7 +191,7 @@ function view(room, playerId) {
   const now = Date.now();
   const r = room.round;
   const players = Object.keys(room.players).map(pid => ({
-    id: pid, name: room.players[pid].name, avatar: room.players[pid].avatar || null, score: room.players[pid].score,
+    id: pid, name: room.players[pid].name, avatar: room.players[pid].avatar || null, card: room.players[pid].card || null, score: room.players[pid].score,
     solved: !!(r && r.winnerId === pid)
   })).sort((a, b) => b.score - a.score);
 
@@ -285,7 +289,7 @@ module.exports = async (req, res) => {
         const playerId = 'w_' + Math.random().toString(36).slice(2, 9);
         const room = {
           code, createdAt: Date.now(), status: 'lobby', hostId: playerId,
-          players: { [playerId]: { name, score: 0, avatar: cleanAvatar(body.avatar) } },
+          players: { [playerId]: { name, score: 0, avatar: cleanAvatar(body.avatar), card: cleanCard(body.card) } },
           totalRounds: DEFAULT_ROUNDS, config: { generations: ALL_GENS.slice() }, deck: [], round: null
         };
         await saveRoom(code, room);
@@ -301,7 +305,7 @@ module.exports = async (req, res) => {
           const room = await getRoom(code);
           if (!room) return { status: 404, body: { error: 'Partie introuvable' } };
           const playerId = 'w_' + Math.random().toString(36).slice(2, 9);
-          room.players[playerId] = { name, score: 0, avatar: cleanAvatar(body.avatar) };
+          room.players[playerId] = { name, score: 0, avatar: cleanAvatar(body.avatar), card: cleanCard(body.card) };
           await saveRoom(code, room);
           return { status: 200, body: { code, playerId } };
         });

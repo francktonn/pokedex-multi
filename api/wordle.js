@@ -65,6 +65,10 @@ function cleanAvatar(v) {
   const n = Number(v);
   return Number.isInteger(n) && n >= 1 && n <= MAX_DEX_ID ? n : null;
 }
+function cleanCard(v) {
+  const n = (x, max) => { x = Number(x); return Number.isInteger(x) && x >= 0 && x <= max ? x : 0; };
+  return v && typeof v === 'object' ? { s: n(v.s, 2), c: n(v.c, 7) } : { s: 0, c: 0 };
+}
 const cleanCode = v => (v || '').toString().trim().toUpperCase();
 
 // ---------- Noms français ----------
@@ -244,7 +248,7 @@ function view(room, playerId, dex, names) {
   const active = r && (room.status === 'playing' || room.status === 'reveal');
   const rowsOf = pid => (r.guesses[pid] || []).map(id => rowFor(id, r.pokemonId, dex, names));
   const players = Object.keys(room.players).map(pid => {
-    const p = room.players[pid], o = { id: pid, name: p.name, avatar: p.avatar || null, score: p.score, attempts: 0, best: 0, solved: false, done: false };
+    const p = room.players[pid], o = { id: pid, name: p.name, avatar: p.avatar || null, card: p.card || null, score: p.score, attempts: 0, best: 0, solved: false, done: false };
     if (active) {
       const rows = rowsOf(pid);
       o.attempts = rows.length;
@@ -329,7 +333,7 @@ module.exports = async (req, res) => {
         const playerId = 'x_' + Math.random().toString(36).slice(2, 9);
         const room = {
           code, createdAt: Date.now(), status: 'lobby', hostId: playerId,
-          players: { [playerId]: { name, score: 0, avatar: cleanAvatar(body.avatar) } },
+          players: { [playerId]: { name, score: 0, avatar: cleanAvatar(body.avatar), card: cleanCard(body.card) } },
           totalRounds: DEFAULT_ROUNDS, config: { generations: ALL_GENS.slice() }, deck: [], round: null
         };
         await saveRoom(code, room);
@@ -345,7 +349,7 @@ module.exports = async (req, res) => {
           const room = await getRoom(code);
           if (!room) return { status: 404, body: { error: 'Partie introuvable' } };
           const playerId = 'x_' + Math.random().toString(36).slice(2, 9);
-          room.players[playerId] = { name, score: 0, avatar: cleanAvatar(body.avatar) };
+          room.players[playerId] = { name, score: 0, avatar: cleanAvatar(body.avatar), card: cleanCard(body.card) };
           await saveRoom(code, room);
           return { status: 200, body: { code, playerId } };
         });
