@@ -333,3 +333,19 @@ body.tab-off .stage, body.tab-off .fab-stack{ display:none !important; }
 body{ flex-direction:column; align-items:center; justify-content:flex-start; }
 .modetabs, #whoisPane, #wordlePane, #profilePane{ width:100%; }
 @media (max-width:400px){ .modetab{ font-size:12.5px; padding:0 2px; } .modetabs{ gap:2px; padding:4px; } }
+
+/* ---- Onglet « Groupe » : 5 onglets (icône au-dessus du libellé) + barre de groupe ---- */
+.modetab{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; line-height:1.1; }
+.modetab .ic{ font-size:17px; }
+.modetab .lb{ font-size:11px; white-space:nowrap; }
+#groupPane{ width:100%; }
+.grpbar{
+  position:sticky; top:0; z-index:40; align-items:center; gap:8px; flex-wrap:wrap;
+  margin:6px auto 0; padding:8px 12px; max-width:560px; box-sizing:border-box;
+  border-radius:14px; background:#fff3c4; color:#3b2f00; font:800 13px/1.3 Nunito,sans-serif;
+  box-shadow:0 3px 10px rgba(0,0,0,.18); border:2px solid #f0b21f;
+}
+html[data-theme="dark"] .grpbar{ background:#3a3320; color:#ffe9a6; border-color:#8a6a14; }
+.grpbar .gtxt{ flex:1 1 160px; }
+.grpbar .gbtn{ border:0; border-radius:10px; padding:7px 10px; font:900 12.5px Nunito,sans-serif; cursor:pointer; background:#e23b30; color:#fff; }
+.grpbar .gbtn.alt{ background:rgba(0,0,0,.12); color:inherit; }

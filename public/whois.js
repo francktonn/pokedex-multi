@@ -343,6 +343,17 @@
     });
   });
 
+  // Passerelle pour l'onglet « Groupe ».
+  window.__whoisBridge = {
+    code: function(){ return S.code; },
+    create: function(name){ return api("POST",{action:"create",name:name,avatar:avatarId(),card:cardOf()}).then(function(r){ enter(r.code, r.playerId); return r.code; }); },
+    join: function(code, name){
+      if (S.code === code) return Promise.resolve(code);
+      return api("POST",{action:"join",name:name,code:code,avatar:avatarId(),card:cardOf()}).then(function(r){ enter(r.code, r.playerId); return r.code; });
+    },
+    leave: function(){ if (!S.code) return Promise.resolve(); return post("leave").catch(function(){}).then(leaveLocal); }
+  };
+
   // ---------- Démarrage ----------
   var savedCode = load("whois_code"), savedPid = load("whois_pid");
   if (savedCode && savedPid && !inviteCode){

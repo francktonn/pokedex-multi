@@ -1718,11 +1718,14 @@
 <body>
 
 <nav class="modetabs" id="modeTabs" role="tablist" aria-label="Mode de jeu">
-  <button type="button" role="tab" id="tabGuess" class="modetab active" aria-selected="true" data-tab="guess">🔴 Devinette</button>
-  <button type="button" role="tab" id="tabWhois" class="modetab" aria-selected="false" data-tab="whois">❔ Qui est-ce ?</button>
-  <button type="button" role="tab" id="tabWordle" class="modetab" aria-selected="false" data-tab="wordle">🟩 Wordle</button>
-  <button type="button" role="tab" id="tabProfile" class="modetab" aria-selected="false" data-tab="profile">👤 Profil</button>
+  <button type="button" role="tab" id="tabGroup" class="modetab" aria-selected="false" data-tab="group"><span class="ic">👥</span><span class="lb">Groupe</span></button>
+  <button type="button" role="tab" id="tabGuess" class="modetab active" aria-selected="true" data-tab="guess"><span class="ic">🔴</span><span class="lb">Devinette</span></button>
+  <button type="button" role="tab" id="tabWhois" class="modetab" aria-selected="false" data-tab="whois"><span class="ic">❔</span><span class="lb">Qui est-ce ?</span></button>
+  <button type="button" role="tab" id="tabWordle" class="modetab" aria-selected="false" data-tab="wordle"><span class="ic">🟩</span><span class="lb">Wordle</span></button>
+  <button type="button" role="tab" id="tabProfile" class="modetab" aria-selected="false" data-tab="profile"><span class="ic">👤</span><span class="lb">Profil</span></button>
 </nav>
+<div id="grpBar" class="grpbar" style="display:none;"></div>
+<div id="groupPane" style="display:none;"><div id="groupHost"></div></div>
 <div id="whoisPane" style="display:none;"><div id="whoisHost"></div></div>
 <div id="wordlePane" style="display:none;"><div id="wordleHost"></div></div>
 <div id="profilePane" style="display:none;"><div id="profileHost"></div></div>
@@ -5691,6 +5694,29 @@
     return e.returnValue;
   });
 
+  // Passerelle pour l'onglet « Groupe » : créer / rejoindre / quitter une salle sans passer par l'écran d'entrée.
+  window.__guessBridge = {
+    code: function(){ return mpRoomCode || null; },
+    isHost: function(){ return !!mpIsHost; },
+    create: async function(name){
+      if(mpRoomCode) await mpLeaveRoom();
+      const data = await mpApiPost("create", { name, avatar: mpAvatarId(), card: mpCardOf() });
+      mpRoomCode = data.code; mpPlayerId = data.playerId; mpPlayerName = name;
+      mpSaveSession(); mpSaveLastName(name); mpRenderRoomShell(); mpStartPolling();
+      return data.code;
+    },
+    join: async function(code, name){
+      if(mpRoomCode === code) return code;
+      if(mpRoomCode) await mpLeaveRoom();
+      const data = await mpApiPost("join", { code, name, avatar: mpAvatarId(), card: mpCardOf() });
+      mpRoomCode = data.code; mpPlayerId = data.playerId; mpPlayerName = name;
+      mpSaveSession(); mpSaveLastName(name); mpRenderRoomShell(); mpStartPolling();
+      return data.code;
+    },
+    leave: async function(){ if(mpRoomCode) await mpLeaveRoom(); mpClose(); },
+    open: function(){ mpOpen(); }
+  };
+
   setLights(null);
   getFrenchIndex(); // préchauffe l'index des noms français pour des suggestions instantanées
   getSpeciesMeta(); // préchauffe les métadonnées (génération/catégorie/formes) pour la configuration de la partie
@@ -5706,6 +5732,7 @@
     guess:   { btn: "tabGuess" },
     whois:   { btn: "tabWhois",   pane: "whoisPane",   host: "whoisHost",   src: "whois.js?v=5",   api: "WhoIsTab",   label: "whois.js" },
     wordle:  { btn: "tabWordle",  pane: "wordlePane",  host: "wordleHost",  src: "wordle.js?v=2",  api: "WordleTab",  label: "wordle.js" },
+    group:   { btn: "tabGroup",   pane: "groupPane",   host: "groupHost",   src: "group.js?v=1",   api: "GroupTab",   label: "group.js" },
     profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=2", api: "ProfileTab", label: "profile.js" }
   };
   var loaded = {};
@@ -5737,17 +5764,22 @@
     });
     try{ localStorage.setItem("modeTab", name); }catch(e){}
     if (name !== "guess") load(name);
+    try{ window.dispatchEvent(new CustomEvent("modetab", { detail: name })); }catch(e){}
     window.scrollTo(0, 0);
   }
   Object.keys(TABS).forEach(function(k){ document.getElementById(TABS[k].btn).onclick = function(){ setTab(k); }; });
+  window.PokeTabs = { set: setTab, load: load, current: function(){ var a = "guess"; Object.keys(TABS).forEach(function(k){ if (document.getElementById(TABS[k].btn).classList.contains("active")) a = k; }); return a; } };
   var start = "guess";
   try{
     var q = new URLSearchParams(location.search);
-    if (q.get("whois")) start = "whois";
+    if (q.get("group")) start = "group";
+    else if (q.get("whois")) start = "whois";
     else if (q.get("wordle")) start = "wordle";
     else if (!q.get("code")) { var saved = localStorage.getItem("modeTab"); if (TABS[saved]) start = saved; }
   }catch(e){}
   if (start !== "guess") setTab(start);
+  // Groupe déjà rejoint : on charge son script en arrière-plan pour que la barre de groupe et le suivi de l'hôte fonctionnent dans tous les onglets.
+  try{ if (start !== "group" && localStorage.getItem("group_session")) load("group"); }catch(e){}
 })();
 </script>
 </body>
