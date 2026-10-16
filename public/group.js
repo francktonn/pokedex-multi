@@ -179,11 +179,13 @@
       await leaveSub();
       await b.create(n);
       G.subMode = mode; saveSession();
-      await post("prep", { mode: mode });
-      G.state = Object.assign({}, G.state, { phase: "prep", mode: mode, sub: null });
+      // Le groupe est envoyé tout de suite dans le salon du jeu ; l'hôte y règle la partie puis la lance.
+      var r = await post("live", { mode: mode, sub: b.code() });
+      G.handled = r.seq; saveSession();
+      G.state = Object.assign({}, G.state, { phase: "live", mode: mode, sub: b.code(), seq: r.seq });
       goTab(mode);
       if (mode === "guess" && b.open) b.open();
-      toast("Configure la partie, puis appuie sur « Envoyer le groupe ».", "ok");
+      toast("Groupe envoyé dans " + MODES[mode].label + ". Règle la partie puis lance-la.", "ok");
     } catch (e) {
       toast("Impossible de préparer ce jeu : " + (e && e.message || e), "ko");
     }
@@ -343,7 +345,7 @@
     if (st.phase === "idle") {
       if (host) {
         g.appendChild(el("h2", "", "Choisis un jeu"));
-        g.appendChild(el("p", "sub", "Tu règles la partie dans le jeu, puis tu envoies tout le groupe d'un seul clic. Les scores repartent de zéro."));
+        g.appendChild(el("p", "sub", "Tout le groupe est envoyé directement dans le salon du jeu ; tu règles la partie puis tu la lances. Les scores repartent de zéro."));
         var list = el("div", "modes");
         Object.keys(MODES).forEach(function (k) {
           var x = el("button", "mode"); x.type = "button";
