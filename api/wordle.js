@@ -67,7 +67,11 @@ function cleanAvatar(v) {
 }
 function cleanCard(v) {
   const n = (x, max) => { x = Number(x); return Number.isInteger(x) && x >= 0 && x <= max ? x : 0; };
-  return v && typeof v === 'object' ? { s: n(v.s, 2), c: n(v.c, 7) } : { s: 0, c: 0 };
+  if (!v || typeof v !== 'object') return { s: 0, c: 0, t: 0, m: '', x: null };
+  const src = v.x && typeof v.x === 'object' ? v.x : {};
+  const x = {};
+  ['wp', 'ww', 'wb', 'qp', 'qc', 'qb', 'gf', 'gm'].forEach(k => { x[k] = n(src[k], 10000000); });
+  return { s: n(v.s, 2), c: n(v.c, 7), t: n(v.t, 18), m: String(v.m || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 40), x };
 }
 const cleanCode = v => (v || '').toString().trim().toUpperCase();
 
@@ -432,6 +436,12 @@ module.exports = async (req, res) => {
           if (room.hostId !== playerId) return { status: 403, body: { error: "Seul l'hôte peut passer la manche" } };
           if (room.status === 'playing') { endRound(room, null, 0); await save(); }
           return { status: 200, body: v() };
+        }
+
+        if (action === 'card') {
+          room.players[playerId].card = cleanCard(body.card);
+          await save();
+          return { status: 200, body: { ok: true } };
         }
 
         if (action === 'leave') {

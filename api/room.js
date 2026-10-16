@@ -90,7 +90,11 @@ const MAX_TEAM_SLOTS = 8;
 // Style de carte : s = sprite (0 normal, 1 shiny, 2 artwork), c = couleur du cadre (0-7). Valeurs bornées.
 function cleanCard(v) {
   const n = (x, max) => { x = Number(x); return Number.isInteger(x) && x >= 0 && x <= max ? x : 0; };
-  return v && typeof v === 'object' ? { s: n(v.s, 2), c: n(v.c, 7) } : { s: 0, c: 0 };
+  if (!v || typeof v !== 'object') return { s: 0, c: 0, t: 0, m: '', x: null };
+  const src = v.x && typeof v.x === 'object' ? v.x : {};
+  const x = {};
+  ['wp', 'ww', 'wb', 'qp', 'qc', 'qb', 'gf', 'gm'].forEach(k => { x[k] = n(src[k], 10000000); });
+  return { s: n(v.s, 2), c: n(v.c, 7), t: n(v.t, 18), m: String(v.m || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 40), x };
 }
 
 // Photo de profil : simple numéro de Pokédex (le sprite est affiché côté client).
@@ -1069,6 +1073,19 @@ module.exports = async (req, res) => {
       }
 
       // ---- Quitter la partie ----
+      // ---- Mettre à jour sa carte de profil (style + statistiques partagées) ----
+      if (action === 'card') {
+        const code = (body.code || '').toString().trim().toUpperCase();
+        const playerId = body.playerId;
+        const room = await getRoom(code);
+        if (room && room.players[playerId]) {
+          room.players[playerId].card = cleanCard(body.card);
+          await saveRoom(code, room);
+        }
+        res.status(200).json({ ok: true });
+        return;
+      }
+
       if (action === 'leave') {
         const code = (body.code || '').toString().trim().toUpperCase();
         const playerId = body.playerId;
