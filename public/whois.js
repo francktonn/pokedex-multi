@@ -211,7 +211,7 @@
       var recTok = S.code + ":" + r.imgToken;
       if (S.recorded !== recTok && load("whois_rec") !== recTok){
         S.recorded = recTok; store("whois_rec", recTok);
-        if (window.PokeStats) window.PokeStats.record("whois", { won: r.winnerId === S.playerId, ms: (r.endedAt || 0) - r.startedAt });
+        if (window.PokeStats) window.PokeStats.record("whois", { won: r.winnerId === S.playerId, ms: (r.endedAt || 0) - r.startedAt, name: r.answer });
       }
       if (img.className !== "reveal") img.className = "reveal";
       var a = $("answerBox"); a.classList.remove("hidden"); a.textContent = "";

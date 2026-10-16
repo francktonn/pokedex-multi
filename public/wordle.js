@@ -433,7 +433,7 @@
         var recTok = S.code + ":" + key;
         if (S.recorded !== recTok && load("wordle_rec") !== recTok) {
           S.recorded = recTok; store("wordle_rec", recTok);
-          if (r.mine.length > 0 && window.PokeStats) window.PokeStats.record("wordle", { won: !!r.iWon, tries: r.mine.length });
+          if (r.mine.length > 0 && window.PokeStats) window.PokeStats.record("wordle", { won: !!r.iWon, tries: r.mine.length, name: r.answer && r.answer.name, id: r.answer && r.answer.id });
         }
         ans.classList.remove("hidden"); ans.textContent = "";
         var im = document.createElement("img"); im.alt = ""; im.src = sprite(r.answer.id); im.style.cssText = "width:96px;height:96px;image-rendering:pixelated;display:block;margin:0 auto";

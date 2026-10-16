@@ -17,7 +17,7 @@
     ".dark .box{background:#241e1a; color:#f3ebdd;}",
     "@keyframes in{from{opacity:0; transform:translateY(12px) scale(.97)}to{opacity:1; transform:none}}",
     ".x{position:absolute; top:10px; right:10px; width:34px; height:34px; border-radius:50%; border:0; cursor:pointer; font-size:16px; background:rgba(0,0,0,.35); color:#fff; z-index:2;}",
-    ".card{border-radius:20px; padding:16px; color:#fff; border:3px solid var(--frame); background:linear-gradient(150deg, color-mix(in srgb, var(--accent) 55%, #1a1411), #1a1411 85%);}",
+    ".card{border-radius:20px; padding:16px; color:#fff; border:3px solid var(--frame); background:var(--bg, linear-gradient(150deg, color-mix(in srgb, var(--accent) 55%, #1a1411), #1a1411 85%));}",
     ".row{display:flex; align-items:center; gap:14px;}",
     ".avatar{width:92px; height:92px; flex-shrink:0; border-radius:50%; display:flex; align-items:center; justify-content:center; overflow:hidden; background:radial-gradient(circle at 50% 40%, rgba(143,240,164,.28), transparent 70%), #0e1a12; border:5px solid #070d08; box-shadow:0 0 0 3px var(--frame), 0 8px 18px -6px rgba(0,0,0,.6);}",
     ".avatar img{width:88%; height:88%; object-fit:contain; image-rendering:pixelated;} .avatar img.art{image-rendering:auto;}",
@@ -27,6 +27,11 @@
     ".fv{opacity:.8; font-weight:700; font-size:13px; margin-top:2px;}",
     ".chip{display:inline-block; margin-top:6px; padding:2px 10px; border-radius:999px; font-size:12px; font-weight:800; background:var(--accent); text-shadow:0 1px 2px rgba(0,0,0,.4);}",
     ".motto{margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,.18); font-style:italic; font-weight:700; font-size:14px; opacity:.92;}",
+    ".ttl{font-weight:800; font-size:12px; opacity:.9; margin-top:2px; color:#FFC93C;}",
+    ".lv{display:inline-block; margin:6px 6px 0 0; padding:2px 10px; border-radius:999px; font-size:12px; font-weight:800; color:#221d17; background:#FFC93C;}",
+    ".team{display:flex; gap:4px; margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,.18);}",
+    ".team span{flex:1; min-width:0; aspect-ratio:1; border-radius:12px; background:rgba(0,0,0,.28); display:flex; align-items:center; justify-content:center;}",
+    ".team img{width:92%; height:92%; object-fit:contain; image-rendering:pixelated;}",
     "h3{font-family:'Baloo 2',sans-serif; font-size:15px; margin:14px 0 6px;}",
     ".tiles{display:grid; grid-template-columns:repeat(3,1fr); gap:6px;}",
     ".tile{background:rgba(127,127,127,.12); border:1px solid rgba(127,127,127,.25); border-radius:12px; padding:8px 4px; text-align:center;}",
@@ -72,17 +77,19 @@
     ensure();
     var card = p.card || {};
     if (p.me && window.PokeProfile && window.PokeProfile.get()) {
-      var me = window.PokeProfile.get(); card = { s: me.style, c: me.color, m: me.motto, t: me.type ? 1 + TYPES.map(function (t) { return t[0]; }).indexOf(me.type) : 0 };
+      card = window.PokeProfile.card() || card;
     }
     var style = Number(card.s) || 0, frame = FRAMES[Number(card.c)] || FRAMES[0];
     var ti = card.t > 0 ? TYPES[card.t - 1] : null;
+    var PP = window.PokeProfile, bgs = PP && PP.bgs, titles = PP && PP.titles;
+    var bgDef = bgs && bgs[Number(card.b)] ? bgs[Number(card.b)] : null, ttl = titles && Number(card.ti) > 0 ? titles[Number(card.ti)] : null;
     var back = root.getElementById("back"); back.textContent = "";
     host.classList.toggle("dark", document.documentElement.getAttribute("data-theme") === "dark");
 
     var box = el("div", "box"); back.appendChild(box);
     var x = el("button", "x", "✕"); x.type = "button"; x.setAttribute("aria-label", "Fermer"); x.onclick = close; box.appendChild(x);
 
-    var c = el("div", "card"); c.style.setProperty("--frame", frame); c.style.setProperty("--accent", ti ? ti[2] : "#D99A12"); box.appendChild(c);
+    var c = el("div", "card"); c.style.setProperty("--frame", frame); c.style.setProperty("--accent", ti ? ti[2] : "#D99A12"); if (bgDef) c.style.setProperty("--bg", bgDef.css); box.appendChild(c);
     var row = el("div", "row"); c.appendChild(row);
     var av = el("div", "avatar"); row.appendChild(av);
     if (p.avatar) {
@@ -92,9 +99,16 @@
     } else av.appendChild(el("span", "", "?"));
     var who = el("div", "who"); row.appendChild(who);
     who.appendChild(el("div", "nm", p.name || "Joueur"));
+    if (ttl) who.appendChild(el("div", "ttl", ttl.name));
     var fv = el("div", "fv", p.avatar ? "Préféré : n°" + p.avatar : "Pas de Pokémon préféré"); who.appendChild(fv);
+    if (card.l > 0 || (p.me && window.PokeStats)) who.appendChild(el("span", "lv", "Niv. " + (p.me && window.PokeStats ? window.PokeStats.level().level : card.l)));
     if (ti) who.appendChild(el("span", "chip", "Type " + ti[1]));
     if (card.m) c.appendChild(el("div", "motto", "« " + card.m + " »"));
+    if (Array.isArray(card.tm) && card.tm.length) {
+      var tmEl = el("div", "team");
+      card.tm.slice(0, 6).forEach(function (id) { var sp = el("span"), im = document.createElement("img"); im.alt = ""; im.loading = "lazy"; im.src = BASE + id + ".png"; sp.appendChild(im); tmEl.appendChild(sp); });
+      c.appendChild(tmEl);
+    }
     if (p.avatar) loadNames(function () { if (names[p.avatar - 1]) fv.textContent = "Préféré : " + names[p.avatar - 1] + " · n°" + p.avatar; });
 
     var s = statsFor(p, card);

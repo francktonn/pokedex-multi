@@ -26,7 +26,7 @@
     "p.sub{margin:0 0 12px; color:var(--muted); font-size:14px; line-height:1.4;}",
     /* carte */
     ".card{border-radius:20px; padding:14px; margin:8px 0 6px; color:#fff; position:relative; overflow:hidden;",
-    "  background:linear-gradient(150deg, color-mix(in srgb, var(--accent) 55%, #1a1411), #1a1411 85%); border:3px solid var(--frame);}",
+    "  background:var(--bg, linear-gradient(150deg, color-mix(in srgb, var(--accent) 55%, #1a1411), #1a1411 85%)); border:3px solid var(--frame);}",
     ".avatarbox{display:flex; align-items:center; gap:14px;}",
     ".avatar{width:96px; height:96px; flex-shrink:0; border-radius:50%; display:flex; align-items:center; justify-content:center; overflow:hidden;",
     "  background:radial-gradient(circle at 50% 40%, rgba(143,240,164,.28), transparent 70%), #0e1a12; border:5px solid #070d08; box-shadow:0 0 0 3px var(--frame), 0 8px 18px -6px rgba(0,0,0,.6);}",
@@ -70,6 +70,33 @@
     ".head{display:flex; align-items:center; justify-content:space-between; gap:10px;}",
     ".gear{border:0; width:40px; height:40px; border-radius:50%; cursor:pointer; font-size:18px; background:var(--card); border:1px solid var(--line); transition:transform .25s var(--ease), background .2s;}",
     ".gear:hover{transform:rotate(45deg);} .gear.on{background:rgba(255,201,60,.3); border-color:var(--gold-deep); transform:rotate(90deg);}",
+    ".ttl{font-weight:800; font-size:12px; letter-spacing:.03em; opacity:.9; margin-top:2px; color:var(--gold);}",
+    ".lvbadge{display:inline-block; margin:6px 6px 0 0; padding:2px 10px; border-radius:999px; font-size:12px; font-weight:800; color:#221d17; background:var(--gold);}",
+    ".team{display:flex; gap:4px; margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,.18);}",
+    ".team span{flex:1; min-width:0; aspect-ratio:1; border-radius:12px; background:rgba(0,0,0,.28); display:flex; align-items:center; justify-content:center;}",
+    ".team img{width:92%; height:92%; object-fit:contain; image-rendering:pixelated;}",
+    /* niveau / xp */
+    ".xp{margin-top:10px;} .xprow{display:flex; justify-content:space-between; align-items:baseline; gap:8px;}",
+    ".xprow b{font-family:'Baloo 2',sans-serif; font-size:17px;} .xprow small, .xphint{color:var(--muted); font-weight:700; font-size:12px;}",
+    ".bar{height:12px; border-radius:999px; background:var(--card); border:1px solid var(--line); overflow:hidden; margin:4px 0;}",
+    ".bar i{display:block; height:100%; width:0; border-radius:999px; background:linear-gradient(90deg,#ffd96b,var(--gold-deep)); transition:width .5s var(--ease);}",
+    /* options supplémentaires */
+    ".bgs{display:grid; grid-template-columns:repeat(3,1fr); gap:6px;}",
+    ".bgs button, .titles button{min-height:44px; border-radius:12px; cursor:pointer; font:inherit; font-weight:800; font-size:12.5px; color:var(--ink); background:var(--card); border:2px solid var(--line); padding:4px 6px;}",
+    ".bgs button.on, .titles button.on{border-color:var(--gold-deep); background:rgba(255,201,60,.22);}",
+    ".bgs button:disabled, .titles button:disabled{opacity:.5; cursor:not-allowed;}",
+    ".titles{display:grid; grid-template-columns:repeat(2,1fr); gap:6px;}",
+    ".teamEdit{display:grid; grid-template-columns:repeat(6,1fr); gap:6px; margin-bottom:8px;}",
+    ".teamEdit button{aspect-ratio:1; border-radius:12px; border:2px dashed var(--line); background:var(--card); color:var(--muted); cursor:pointer; font:inherit; font-weight:800; padding:0; position:relative;}",
+    ".teamEdit button.fill{border-style:solid;} .teamEdit img{width:100%; height:100%; object-fit:contain; image-rendering:pixelated;}",
+    ".teamEdit button.fill::after{content:'×'; position:absolute; top:-6px; right:-6px; width:18px; height:18px; line-height:16px; border-radius:50%; background:var(--ko); color:#fff; font-size:13px;}",
+    /* historique */
+    ".hist{display:flex; flex-direction:column; gap:6px;}",
+    ".hrow{display:flex; align-items:center; gap:10px; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:6px 10px; min-height:52px;}",
+    ".hrow img{width:40px; height:40px; image-rendering:pixelated; flex-shrink:0;} .hrow .hi{width:40px; text-align:center; font-size:22px; flex-shrink:0;}",
+    ".hrow .ht{min-width:0; flex:1;} .hrow .ht b{display:block; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}",
+    ".hrow .ht small{color:var(--muted); font-weight:700; font-size:11.5px;}",
+    ".hrow .hx{font-family:'Baloo 2',sans-serif; font-weight:800; font-size:14px; color:var(--ok); flex-shrink:0;} .hrow.lost .hx{color:var(--muted);}",
     ".hidden{display:none !important;}",
     "@media (prefers-reduced-motion:reduce){*{transition-duration:.001ms !important;}}"
   ].join("\n");
@@ -80,9 +107,11 @@
     '  <section class="panel" id="cardPanel">',
     '    <div class="head"><h2>Ma carte</h2><button type="button" class="gear" id="gear" aria-label="Modifier ma carte" aria-expanded="false" title="Modifier ma carte">⚙️</button></div>',
     '    <div class="card" id="card">',
-    '      <div class="avatarbox"><div class="avatar" id="avatar"><span>?</span></div><div class="who"><div class="nm" id="avName">Sans pseudo</div><div class="fv" id="avFav">Pokémon préféré : à choisir</div><span class="tchip hidden" id="avType"></span></div></div>',
+    '      <div class="avatarbox"><div class="avatar" id="avatar"><span>?</span></div><div class="who"><div class="nm" id="avName">Sans pseudo</div><div class="ttl hidden" id="avTitle"></div><div class="fv" id="avFav">Pokémon préféré : à choisir</div><span class="lvbadge" id="avLvl">Niv. 1</span><span class="tchip hidden" id="avType"></span></div></div>',
     '      <div class="motto" id="avMotto"></div>',
+    '      <div class="team hidden" id="avTeam"></div>',
     '    </div>',
+    '    <div class="xp"><div class="xprow"><b id="xpLvl">Niveau 1</b><small id="xpTxt"></small></div><div class="bar"><i id="xpFill"></i></div><div class="xphint" id="xpHint"></div></div>',
     '    <div id="editor" class="hidden">',
     '    <p class="sub" style="margin-top:12px">Ton pseudo, ta photo et ton style seront utilisés automatiquement dans tous les modes de jeu.</p>',
     '    <label for="pName">Ton pseudo</label>',
@@ -94,6 +123,11 @@
     '    <label>Style du sprite</label><div class="seg" id="styles"></div>',
     '    <label>Couleur du cadre</label><div class="swatches" id="swatches"></div>',
     '    <label>Type préféré</label><div class="types" id="types"></div>',
+    '    <label>Fond de carte</label><div class="bgs" id="bgs"></div>',
+    '    <label>Titre</label><div class="titles" id="titles"></div>',
+    '    <label for="pTeam">Mon équipe (6 Pokémon max)</label><div class="teamEdit" id="teamEdit"></div>',
+    '    <input type="text" id="pTeam" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Ajoute un Pokémon à ton équipe…">',
+    '    <div class="sugg" id="teamSugg"></div>',
     '    <label for="pMotto">Ma devise</label>',
     '    <input type="text" id="pMotto" maxlength="40" autocomplete="off" placeholder="Attrapez-les tous !">',
     '    <button type="button" class="btn" id="save">Enregistrer mon profil</button>',
@@ -107,6 +141,12 @@
     '    <p class="sub" id="statsSub">Elles se remplissent au fil de tes parties, sur cet appareil.</p>',
     '    <div id="statsBody"></div>',
     '    <button type="button" class="btn alt" id="resetStats">Réinitialiser mes statistiques</button>',
+    '  </section>',
+    '  <section class="panel" id="histPanel">',
+    '    <h2>🕘 Dernières parties</h2>',
+    '    <p class="sub" id="histSub">Tes 20 dernières manches apparaissent ici.</p>',
+    '    <div class="hist" id="histBody"></div>',
+    '    <button type="button" class="btn alt" id="clearHist">Vider l\'historique</button>',
     '  </section>',
     '</div>'
   ].join("\n");
@@ -135,7 +175,7 @@
     var $ = function (id) { return root.getElementById(id); };
     var P = window.PokeProfile;
     var names = [], folded = [];
-    var draft = { favId: null, favName: "", style: 0, color: 0, type: "" };
+    var draft = { favId: null, favName: "", style: 0, color: 0, type: "", bg: 0, title: 0, team: [] };
 
     function fold(s) { return String(s || "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[’']/g, "'").replace(/[\s\-.]+/g, " ").trim(); }
     function nameOf(id) { return names[id - 1] || ("Pokémon n°" + id); }
@@ -158,6 +198,21 @@
     });
     syncTheme();
 
+    function curLevel() { return window.PokeStats ? window.PokeStats.level() : { level: 1, into: 0, need: 50, xp: 0 }; }
+
+    // ---- Niveau / XP ----
+    function renderLevel() {
+      var L = curLevel();
+      $("avLvl").textContent = "Niv. " + L.level;
+      $("xpLvl").textContent = "Niveau " + L.level;
+      $("xpTxt").textContent = L.max ? "Niveau max" : L.into + " / " + L.need + " XP";
+      $("xpFill").style.width = (L.max ? 100 : Math.round(100 * L.into / L.need)) + "%";
+      var next = null;
+      P.bgs.forEach(function (b) { if (b.min > L.level && (!next || b.min < next.min)) next = { min: b.min, what: "fond « " + b.name + " »" }; });
+      P.titles.forEach(function (t) { if (t.min > L.level && (!next || t.min < next.min)) next = { min: t.min, what: "titre « " + t.name + " »" }; });
+      $("xpHint").textContent = next ? "Prochain déblocage au niveau " + next.min + " : " + next.what + "." : "Tout est débloqué !";
+    }
+
     // ---- Aperçu de la carte ----
     function renderPreview() {
       var av = $("avatar"); av.textContent = "";
@@ -172,6 +227,14 @@
       var nm = $("pName").value.trim();
       $("avName").textContent = nm || "Sans pseudo";
       $("avFav").textContent = draft.favId ? "Préféré : " + nameOf(draft.favId) + " · n°" + draft.favId : "Pokémon préféré : à choisir";
+      var bgd = P.bgs[draft.bg] || P.bgs[0];
+      host.style.setProperty("--bg", bgd.css);
+      var tt = $("avTitle"); tt.classList.toggle("hidden", !draft.title); tt.textContent = draft.title ? P.titles[draft.title].name : "";
+      var tm = $("avTeam"); tm.textContent = ""; tm.classList.toggle("hidden", !draft.team.length);
+      draft.team.forEach(function (id) {
+        var sp = el("span"), im = document.createElement("img"); im.alt = nameOf(id); im.loading = "lazy"; im.src = P.sprite(id, 0); sp.appendChild(im); tm.appendChild(sp);
+      });
+      renderLevel();
       $("avMotto").textContent = $("pMotto").value.trim() ? "« " + $("pMotto").value.trim() + " »" : "";
     }
 
@@ -189,6 +252,31 @@
         b.onclick = function () { draft.color = i; say(""); renderOptions(); renderPreview(); };
         sw.appendChild(b);
       });
+      var L = curLevel().level;
+      var bgs = $("bgs"); bgs.textContent = "";
+      P.bgs.forEach(function (b, i) {
+        var locked = b.min > L, btn = el("button", i === draft.bg ? "on" : "", locked ? "🔒 Niv. " + b.min : b.name); btn.type = "button"; btn.disabled = locked;
+        if (locked) btn.title = b.name;
+        btn.onclick = function () { draft.bg = i; say(""); renderOptions(); renderPreview(); };
+        bgs.appendChild(btn);
+      });
+      var tl = $("titles"); tl.textContent = "";
+      P.titles.forEach(function (t, i) {
+        var locked = t.min > L, btn = el("button", i === draft.title ? "on" : "", locked ? "🔒 " + t.name + " (niv. " + t.min + ")" : t.name); btn.type = "button"; btn.disabled = locked;
+        btn.onclick = function () { draft.title = i; say(""); renderOptions(); renderPreview(); };
+        tl.appendChild(btn);
+      });
+      var te = $("teamEdit"); te.textContent = "";
+      for (var k = 0; k < 6; k++) {
+        (function (k) {
+          var id = draft.team[k], btn = el("button", id ? "fill" : "", id ? "" : "+"); btn.type = "button";
+          if (id) {
+            var im = document.createElement("img"); im.alt = nameOf(id); im.src = P.sprite(id, 0); btn.appendChild(im); btn.title = "Retirer " + nameOf(id);
+            btn.onclick = function () { draft.team.splice(k, 1); renderOptions(); renderPreview(); };
+          } else btn.onclick = function () { $("pTeam").focus(); };
+          te.appendChild(btn);
+        })(k);
+      }
       var ty = $("types"); ty.textContent = "";
       var none = el("button", draft.type === "" ? "on" : "", "Aucun"); none.type = "button";
       none.onclick = function () { draft.type = ""; say(""); renderOptions(); renderPreview(); };
@@ -201,8 +289,16 @@
     }
 
     // ---- Recherche du Pokémon préféré ----
-    function renderSugg() {
-      var q = fold($("pFav").value), box = $("sugg"); box.textContent = "";
+    function renderSugg() { suggest("pFav", "sugg", function (id) { draft.favId = id; draft.favName = nameOf(id); $("pFav").value = nameOf(id); }, function (id) { return id === draft.favId; }); }
+    function renderTeamSugg() {
+      suggest("pTeam", "teamSugg", function (id) {
+        if (draft.team.length >= 6) { say("Ton équipe est complète (6 max).", "ko"); return; }
+        if (draft.team.indexOf(id) >= 0) return;
+        draft.team.push(id); $("pTeam").value = ""; renderOptions();
+      }, function (id) { return draft.team.indexOf(id) >= 0; });
+    }
+    function suggest(inputId, boxId, onPick, isOn) {
+      var q = fold($(inputId).value), box = $(boxId); box.textContent = "";
       if (!q) return;
       var out = [];
       if (/^\d{1,4}$/.test(q)) { var n = Number(q); if (n >= 1 && n <= 1025) out.push(n); }
@@ -211,15 +307,16 @@
         for (var j = 0; j < folded.length && out.length < 6; j++) if (folded[j] && folded[j].indexOf(q) > 0 && out.indexOf(j + 1) < 0) out.push(j + 1);
       }
       out.forEach(function (id) {
-        var b = el("button", id === draft.favId ? "on" : ""); b.type = "button";
+        var b = el("button", isOn(id) ? "on" : ""); b.type = "button";
         var img = document.createElement("img"); img.alt = ""; img.loading = "lazy"; img.src = P.sprite(id);
         b.appendChild(img); b.appendChild(document.createTextNode(nameOf(id))); b.appendChild(el("small", "", "n°" + id));
-        b.onclick = function () { draft.favId = id; draft.favName = nameOf(id); $("pFav").value = nameOf(id); box.textContent = ""; say(""); renderPreview(); };
+        b.onclick = function () { onPick(id); box.textContent = ""; say(""); renderPreview(); };
         box.appendChild(b);
       });
       if (!out.length) box.appendChild(el("small", "", names.length ? "Aucun Pokémon trouvé." : "Liste des noms indisponible : tape le numéro du Pokédex."));
     }
     $("pFav").addEventListener("input", renderSugg);
+    $("pTeam").addEventListener("input", renderTeamSugg);
     $("pName").addEventListener("input", function () { say(""); renderPreview(); });
     $("pMotto").addEventListener("input", function () { say(""); renderPreview(); });
 
@@ -228,7 +325,10 @@
       var name = $("pName").value.trim().slice(0, 16);
       if (!name) { say("Choisis un pseudo.", "ko"); $("pName").focus(); return; }
       if (!draft.favId) { say("Choisis ton Pokémon préféré : son sprite sera ta photo.", "ko"); $("pFav").focus(); return; }
-      P.set({ name: name, favId: draft.favId, favName: nameOf(draft.favId), style: draft.style, color: draft.color, type: draft.type, motto: $("pMotto").value });
+      var lv = curLevel().level;
+      if (P.bgs[draft.bg].min > lv) draft.bg = 0;
+      if (P.titles[draft.title].min > lv) draft.title = 0;
+      P.set({ name: name, favId: draft.favId, favName: nameOf(draft.favId), style: draft.style, color: draft.color, type: draft.type, motto: $("pMotto").value, bg: draft.bg, title: draft.title, team: draft.team });
       $("clear").classList.remove("hidden");
       renderPreview();
       setEditor(false);
@@ -236,8 +336,8 @@
     });
     $("clear").addEventListener("click", function () {
       if (!window.confirm("Effacer ton profil ?")) return;
-      P.clear(); draft = { favId: null, favName: "", style: 0, color: 0, type: "" };
-      $("pName").value = ""; $("pFav").value = ""; $("pMotto").value = ""; $("sugg").textContent = ""; $("clear").classList.add("hidden");
+      P.clear(); draft = { favId: null, favName: "", style: 0, color: 0, type: "", bg: 0, title: 0, team: [] };
+      $("pName").value = ""; $("pFav").value = ""; $("pTeam").value = ""; $("pMotto").value = ""; $("sugg").textContent = ""; $("teamSugg").textContent = ""; $("clear").classList.add("hidden");
       say("Profil effacé.", ""); renderOptions(); renderPreview();
     });
 
@@ -268,20 +368,47 @@
       ]));
     }
     $("resetStats").addEventListener("click", function () {
-      if (window.confirm("Réinitialiser toutes tes statistiques ? Cette action est définitive.") && window.PokeStats) window.PokeStats.reset();
+      if (window.confirm("Réinitialiser toutes tes statistiques ? Ton niveau et ton historique sont conservés.") && window.PokeStats) window.PokeStats.reset();
     });
-    window.addEventListener("statschange", renderStats);
-    renderStats();
+    // ---- Historique des dernières parties ----
+    var MODES = { wordle: ["🟩", "Wordle"], whois: ["❔", "Qui est-ce ?"], guess: ["🔴", "Devinette"] };
+    function ago(t) {
+      var s = Math.max(0, Math.round((Date.now() - t) / 1000));
+      if (s < 60) return "à l'instant"; if (s < 3600) return "il y a " + Math.floor(s / 60) + " min";
+      if (s < 86400) return "il y a " + Math.floor(s / 3600) + " h"; var d = Math.floor(s / 86400); return "il y a " + d + " j";
+    }
+    function renderHistory() {
+      var h = window.PokeStats ? window.PokeStats.history() : [], body = $("histBody"); body.textContent = "";
+      $("clearHist").classList.toggle("hidden", !h.length);
+      $("histSub").textContent = h.length ? "Tes " + h.length + " dernières manches, tous modes confondus." : "Tes 20 dernières manches apparaissent ici.";
+      h.forEach(function (e) {
+        var m = MODES[e.m] || ["🎮", e.m], row = el("div", "hrow" + (e.w ? "" : " lost"));
+        var id = e.id || (e.n && folded.length ? folded.indexOf(fold(e.n)) + 1 : 0);
+        if (id > 0) { var im = document.createElement("img"); im.alt = ""; im.loading = "lazy"; im.src = P.sprite(id, 0); row.appendChild(im); }
+        else row.appendChild(el("div", "hi", m[0]));
+        var t = el("div", "ht"); t.appendChild(el("b", "", (e.w ? "✅ " : "❌ ") + (e.n || "Pokémon mystère")));
+        var detail = m[1];
+        if (e.m === "wordle" && e.k) detail += " · " + e.k + (e.k > 1 ? " essais" : " essai");
+        if (e.m === "whois" && e.w && e.k) detail += " · " + secs(e.k);
+        t.appendChild(el("small", "", detail + " · " + ago(e.t))); row.appendChild(t);
+        row.appendChild(el("div", "hx", "+" + (e.xp || 0) + " XP")); body.appendChild(row);
+      });
+    }
+    $("clearHist").addEventListener("click", function () {
+      if (window.confirm("Vider l'historique de tes parties ?") && window.PokeStats) window.PokeStats.clearHistory();
+    });
+    window.addEventListener("statschange", function () { renderStats(); renderHistory(); renderLevel(); renderOptions(); });
+    renderStats(); renderHistory();
 
     // ---- Chargement : profil existant + liste des noms ----
     // Remplit le brouillon et les champs depuis le profil enregistré (utilisé au chargement et à l'annulation).
     function fillFromSaved() {
       var cur = P.get();
-      draft = { favId: null, favName: "", style: 0, color: 0, type: "" };
-      $("pName").value = ""; $("pFav").value = ""; $("pMotto").value = ""; $("sugg").textContent = "";
+      draft = { favId: null, favName: "", style: 0, color: 0, type: "", bg: 0, title: 0, team: [] };
+      $("pName").value = ""; $("pFav").value = ""; $("pTeam").value = ""; $("pMotto").value = ""; $("sugg").textContent = ""; $("teamSugg").textContent = "";
       if (cur) {
         $("pName").value = cur.name; draft.favId = cur.favId || null; draft.favName = cur.favName || "";
-        draft.style = cur.style; draft.color = cur.color; draft.type = cur.type; $("pMotto").value = cur.motto;
+        draft.style = cur.style; draft.color = cur.color; draft.type = cur.type; draft.bg = cur.bg; draft.title = cur.title; draft.team = cur.team.slice(); $("pMotto").value = cur.motto;
         if (cur.favName) $("pFav").value = cur.favName;
       }
       $("clear").classList.toggle("hidden", !cur);
@@ -306,7 +433,7 @@
     fetch("/api/whois?action=names").then(function (r) { return r.json(); }).then(function (j) {
       var list = j.byId || j.names || [];
       names = list; folded = list.map(fold);
-      renderPreview(); if ($("pFav").value) renderSugg();
+      renderPreview(); renderHistory(); if ($("pFav").value) renderSugg();
     }).catch(function () {});
   }
 })();
