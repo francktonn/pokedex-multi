@@ -261,6 +261,8 @@
       // Boutique : achète une crate avec des Pokédollars. Renvoie true si l'achat a réussi (stock plein ou solde insuffisant : false).
       // Ajoute n crates au stock (récompenses du Battle Pass). Renvoie le nombre réellement ajouté (stock plafonné à 99).
       grant: function(n){ var s = read(); grantDaily(s); var add = Math.max(0, Math.min(Math.floor(Number(n)) || 0, 99 - s.stock)); s.stock += add; write(s); return add; },
+      // Admin : tous les objets de crate débloqués et le stock au maximum.
+      unlockAll: function(){ var s = read(); items().forEach(function(it){ if(!s.owned[it.key]) s.owned[it.key] = Date.now(); }); s.stock = 99; write(s); },
       price: 1000,
       buy: function(){
         var s = read(); grantDaily(s);
@@ -366,6 +368,8 @@
         for(var t = 1; t <= MAX_TIER; t++){ var o = this.canClaim(t) ? this.claim(t) : null; if(o){ tot.money += o.money; tot.crates += o.crates; if(o.skin) tot.skins++; } }
         return tot;
       },
+      // Admin : tous les paliers atteints et récupérés, tous les skins débloqués.
+      unlockAll: function(){ var s = read(); s.xp = XP_TIER * MAX_TIER; for(var t = 1; t <= MAX_TIER; t++) s.claimed[t] = true; write(s); },
       ownsSkin: function(id){ var s = read(); return id === "default" || (!!SKINS[id] && !!s.claimed[SKINS[id].tier]); },
       setSkin: function(id){
         if(!SKINS[id] || !this.ownsSkin(id)) return false;
@@ -374,6 +378,12 @@
     };
     applySkin(read().skin);
   })();
+  // Compte admin : appelé par l'onglet Bonus une fois le code validé par le serveur (api/room, action « admin »).
+  window.PokeAdmin = { unlockAll: function(){
+    if(window.PokeCrates) window.PokeCrates.unlockAll();
+    if(window.PokePass) window.PokePass.unlockAll();
+    if(window.PokeMoney) window.PokeMoney.add(99999999);
+  } };
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:ital,wght@0,400;0,600;0,700;1,600&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
@@ -6053,7 +6063,7 @@
     rule:    { btn: "tabRule",    pane: "rulePane",    host: "ruleHost",    src: "rule.js?v=1",    api: "RuleTab",    label: "rule.js" },
     group:   { btn: "tabGroup",   pane: "groupPane",   host: "groupHost",   src: "group.js?v=1",   api: "GroupTab",   label: "group.js" },
     profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=9", api: "ProfileTab", label: "profile.js" },
-    crates:  { btn: "tabCrates",  pane: "cratesPane",  host: "cratesHost",  src: "crates.js?v=6",  api: "CratesTab",  label: "crates.js" }
+    crates:  { btn: "tabCrates",  pane: "cratesPane",  host: "cratesHost",  src: "crates.js?v=7",  api: "CratesTab",  label: "crates.js" }
   };
   var loaded = {};
   function fail(t, msg){

@@ -153,6 +153,12 @@
     '    <p class="hint2">Tu ne tires jamais deux fois le même objet. Si une rareté est épuisée, ses chances sont redistribuées. Une fois tous les objets obtenus, chaque crate donne des Pokédollars.</p>',
     '  </section>',
     '  </div>',
+    '  <details class="panel" id="adminBox"><summary style="cursor:pointer; font-weight:800; font-size:13px; color:var(--muted);">🔑 Accès admin</summary>',
+    '    <p class="sub" style="margin-top:10px;">Débloque tout (objets, paliers, skins, Pokédollars) sur cet appareil.</p>',
+    '    <input id="adminCode" type="password" autocomplete="off" placeholder="Code admin" style="width:100%; min-height:44px; border-radius:12px; border:1px solid var(--line); padding:0 12px; font:inherit; background:var(--card); color:var(--ink);">',
+    '    <button type="button" class="btn" id="adminBtn">Déverrouiller</button>',
+    '    <div class="msg" id="adminMsg" role="status"></div>',
+    '  </details>',
     '</div>'
   ].join("\n");
 
@@ -385,6 +391,21 @@
     $("segShop").addEventListener("click", function () { showSec("shop"); });
     window.addEventListener("moneychange", renderShop);
     window.addEventListener("cratechange", renderShop);
+
+    // ---- Admin : le code est vérifié côté serveur (variable ADMIN_CODE) ----
+    $("adminBtn").addEventListener("click", function () {
+      var code = $("adminCode").value, m = $("adminMsg"), b = $("adminBtn");
+      if (!code) return;
+      b.disabled = true; m.textContent = "Vérification…"; m.className = "msg";
+      fetch("/api/room", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "admin", code: code }) })
+        .then(function (r) { return r.json().catch(function () { return {}; }); })
+        .then(function (d) {
+          if (d && d.ok && window.PokeAdmin) { window.PokeAdmin.unlockAll(); $("adminCode").value = ""; m.textContent = "Mode admin activé : tout est débloqué."; m.className = "msg ok"; }
+          else { m.textContent = "Code incorrect."; m.className = "msg ko"; }
+        })
+        .catch(function () { m.textContent = "Serveur injoignable."; m.className = "msg ko"; })
+        .then(function () { b.disabled = false; });
+    });
 
     // ---- Démarrage : crédite la crate du jour, puis tic-tac jusqu'à minuit ----
     C.sync();
