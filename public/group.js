@@ -261,7 +261,7 @@
     "input{width:100%;box-sizing:border-box;padding:11px 12px;border-radius:12px;border:2px solid #d7dae2;font:800 16px 'Nunito',sans-serif;background:#fff;color:#1d1d1f;}",
     ":host(.dark) input{background:#1b1f29;color:#f2f3f7;border-color:#3a4152;}",
     ".row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;} .row>*{flex:1;}",
-    ".btn{border:0;border-radius:14px;padding:12px 14px;font:900 15px 'Nunito',sans-serif;cursor:pointer;background:#e23b30;color:#fff;box-shadow:0 3px 0 rgba(0,0,0,.2);}",
+    ".btn{border:0;border-radius:14px;padding:12px 14px;font:900 15px 'Nunito',sans-serif;cursor:pointer;background:var(--red,#e23b30);color:#fff;box-shadow:0 3px 0 rgba(0,0,0,.2);}",
     ".btn.alt{background:#e9ebf1;color:#1d1d1f;} :host(.dark) .btn.alt{background:#3a4152;color:#f2f3f7;}",
     ".btn.small{padding:8px 10px;font-size:13px;} .btn:active{transform:translateY(2px);box-shadow:none;}",
     ".err{color:#d12a20;font-weight:800;font-size:13px;min-height:18px;margin-top:6px;}",
@@ -274,7 +274,7 @@
     ".mem .me{font-size:11px;opacity:.6;font-weight:800;}",
     ".modes{display:grid;gap:10px;}",
     ".mode{display:flex;gap:12px;align-items:center;text-align:left;width:100%;border:2px solid transparent;border-radius:16px;padding:12px;background:rgba(127,127,127,.12);color:inherit;font:inherit;cursor:pointer;}",
-    ".mode:hover{border-color:#e23b30;} .mode .ic{font-size:28px;} .mode b{display:block;font-size:16px;font-weight:900;} .mode small{opacity:.75;font-weight:700;}",
+    ".mode:hover{border-color:var(--red,#e23b30);} .mode .ic{font-size:28px;} .mode b{display:block;font-size:16px;font-weight:900;} .mode small{opacity:.75;font-weight:700;}",
     ".status{padding:12px;border-radius:14px;background:rgba(226,59,48,.12);font-weight:800;line-height:1.45;margin-bottom:10px;}",
     ".hint{font-size:12.5px;opacity:.7;font-weight:700;margin-top:8px;line-height:1.4;}",
     ".hidden{display:none !important;}"

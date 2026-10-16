@@ -2005,14 +2005,13 @@
   :root[data-skin="ocean"]  { --red:#2F7FD8; --red-dark:#1B4F94; --red-darker:#0d2a52; --red-mid:#2670c4; --skin-glow:rgba(47,127,216,.30); }
   :root[data-skin="spectre"]{ --red:#7D4FD6; --red-dark:#4B2A96; --red-darker:#22104d; --red-mid:#6A40BC; --skin-glow:rgba(125,79,214,.32); }
   :root[data-skin="gold"]   { --red:#C98A10; --red-dark:#8A5A06; --red-darker:#3d2602; --red-mid:#E0A82A; --skin-glow:rgba(255,201,60,.30); }
-  :root[data-skin] .device{
-    background: linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,0) 22%),
-                linear-gradient(160deg, var(--red) 0%, var(--red-mid) 55%, var(--red-dark) 100%);
-  }
-  :root[data-skin="gold"] .device{
-    background: linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,0) 22%),
-                linear-gradient(160deg, #F6D56A 0%, #D9A21B 30%, #8A5A06 62%, #E0A82A 100%);
-  }
+  :root[data-skin="ocean"]  { --skin-device: linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,0) 22%),linear-gradient(160deg,#2F7FD8,#2670c4 55%,#1B4F94);
+                              --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 22%),linear-gradient(160deg,#1f5fa8,#164a85 55%,#0a2347); }
+  :root[data-skin="spectre"]{ --skin-device: linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,0) 22%),linear-gradient(160deg,#7D4FD6,#6A40BC 55%,#4B2A96);
+                              --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 22%),linear-gradient(160deg,#5b3aa0,#46297e 55%,#1d0e44); }
+  :root[data-skin="gold"]   { --skin-device: linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,0) 22%),linear-gradient(160deg,#F6D56A 0%,#D9A21B 30%,#8A5A06 62%,#E0A82A 100%);
+                              --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,0) 22%),linear-gradient(160deg,#b8860b,#7a4f05 55%,#2e1d01); }
+  :root[data-skin] .device{ background: var(--skin-device); }
   :root[data-skin] body{
     background: radial-gradient(900px 500px at 15% -10%, var(--skin-glow), transparent 60%),
                 radial-gradient(800px 500px at 100% 0%, rgba(255,201,60,.12), transparent 55%),
@@ -6059,11 +6058,11 @@
   // Onglets : chaque onglet (sauf Devinette) est chargé à la première ouverture, dans un Shadow DOM isolé.
   var TABS = {
     guess:   { btn: "tabGuess" },
-    whois:   { btn: "tabWhois",   pane: "whoisPane",   host: "whoisHost",   src: "whois.js?v=5",   api: "WhoIsTab",   label: "whois.js" },
-    rule:    { btn: "tabRule",    pane: "rulePane",    host: "ruleHost",    src: "rule.js?v=1",    api: "RuleTab",    label: "rule.js" },
-    group:   { btn: "tabGroup",   pane: "groupPane",   host: "groupHost",   src: "group.js?v=1",   api: "GroupTab",   label: "group.js" },
-    profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=9", api: "ProfileTab", label: "profile.js" },
-    crates:  { btn: "tabCrates",  pane: "cratesPane",  host: "cratesHost",  src: "crates.js?v=8",  api: "CratesTab",  label: "crates.js" }
+    whois:   { btn: "tabWhois",   pane: "whoisPane",   host: "whoisHost",   src: "whois.js?v=6",   api: "WhoIsTab",   label: "whois.js" },
+    rule:    { btn: "tabRule",    pane: "rulePane",    host: "ruleHost",    src: "rule.js?v=2",    api: "RuleTab",    label: "rule.js" },
+    group:   { btn: "tabGroup",   pane: "groupPane",   host: "groupHost",   src: "group.js?v=2",   api: "GroupTab",   label: "group.js" },
+    profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=10", api: "ProfileTab", label: "profile.js" },
+    crates:  { btn: "tabCrates",  pane: "cratesPane",  host: "cratesHost",  src: "crates.js?v=9",  api: "CratesTab",  label: "crates.js" }
   };
   var loaded = {};
   function fail(t, msg){
