@@ -99,6 +99,9 @@
     ".hrow .ht{min-width:0; flex:1;} .hrow .ht b{display:block; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}",
     ".hrow .ht small{color:var(--muted); font-weight:700; font-size:11.5px;}",
     ".hrow .hx{font-family:'Baloo 2',sans-serif; font-weight:800; font-size:14px; color:var(--ok); flex-shrink:0;} .hrow.lost .hx{color:var(--muted);}",
+    ".skins{display:grid; grid-template-columns:repeat(2,1fr); gap:8px;}",
+    ".sk{border:2px solid var(--line); background:var(--card); color:var(--ink); border-radius:14px; padding:10px 8px; cursor:pointer; font:inherit; font-weight:800; font-size:13px; display:flex; flex-direction:column; align-items:center; gap:6px;}",
+    ".sk .sw{width:44px; height:44px; border-radius:50%; box-shadow:inset 0 0 0 3px rgba(0,0,0,.2);} .sk.on{border-color:var(--ok); box-shadow:0 0 0 2px var(--ok);} .sk.no{opacity:.5; cursor:default; border-style:dashed;} .sk small{color:var(--muted); font-size:11px;}",
     ".hidden{display:none !important;}",
     "@media (prefers-reduced-motion:reduce){*{transition-duration:.001ms !important;}}"
   ].join("\n");
@@ -143,6 +146,11 @@
     '    <button type="button" class="btn alt" id="cancel">Annuler</button>',
     '    <button type="button" class="btn alt hidden" id="clear">Effacer mon profil</button>',
     '    </div>',
+    '  </section>',
+    '  <section class="panel" id="skinPanel">',
+    '    <h2>🎨 Skin du Pokédex</h2>',
+    '    <p class="sub">Change la couleur de ton Pokédex. Les skins exclusifs se débloquent aux paliers 10, 20 et 30 du Battle Pass.</p>',
+    '    <div class="skins" id="skins"></div>',
     '  </section>',
     '  <section class="panel" id="statsPanel">',
     '    <h2>📊 Mes statistiques</h2>',
@@ -431,11 +439,26 @@
     });
     window.addEventListener("statschange", function () { renderStats(); renderHistory(); renderOptions(); });
     renderStats(); renderHistory();
+    // ---- Skin du Pokédex (déblocage via le Battle Pass) ----
+    function renderSkins() {
+      var box = $("skins"), PPs = window.PokePass;
+      if (!box || !PPs) return;
+      box.textContent = "";
+      var cur = PPs.state().skin;
+      Object.keys(PPs.skins).forEach(function (id) {
+        var sk = PPs.skins[id], owned = PPs.ownsSkin(id), b = el("button", "sk" + (cur === id ? " on" : "") + (owned ? "" : " no")); b.type = "button";
+        var sw = el("span", "sw"); sw.style.background = sk.color; b.appendChild(sw); b.appendChild(document.createTextNode(sk.name));
+        b.appendChild(el("small", "", cur === id ? "✅ Équipé" : owned ? "Équiper" : "🔒 Palier " + sk.tier));
+        if (owned) b.onclick = function () { PPs.setSkin(id); };
+        box.appendChild(b);
+      });
+    }
+    renderSkins();
     function renderWallet() { $("wallet").textContent = window.PokeMoney ? window.PokeMoney.format() : ""; }
     renderWallet(); window.addEventListener("moneychange", renderWallet);
     // Un objet vient d'être gagné dans une crate : il se déverrouille tout de suite dans l'éditeur.
     window.addEventListener("cratechange", function () { renderOptions(); renderPreview(); });
-    window.addEventListener("passchange", function () { renderOptions(); renderPreview(); });
+    window.addEventListener("passchange", function () { renderOptions(); renderPreview(); renderSkins(); });
     // Profil modifié ailleurs (ex. « Équiper » depuis l'onglet Crates) : on recharge la carte si l'éditeur est fermé.
     window.addEventListener("profilechange", function () { if ($("editor").classList.contains("hidden")) fillFromSaved(); });
 

@@ -135,23 +135,9 @@
     '    <button type="button" class="btn" id="claimAll"></button>',
     '    <div class="msg" id="passMsg" role="status"></div>',
     '  </section>',
-    '  <section class="panel prem">',
-    '    <h2>👑 Pass Premium</h2>',
-    '    <p class="sub" id="premSub"></p>',
-    '    <button type="button" class="btn" id="premBuy"></button>',
-    '    <div class="msg" id="premMsg" role="status"></div>',
-    '    <h3 class="exh">✨ Personnalisations exclusives</h3>',
-    '    <p class="sub">Aux paliers 10, 20 et 30, récupère la récompense premium pour débloquer de nouveaux éléments de profil, introuvables ailleurs.</p>',
-    '    <div class="excl" id="excl"></div>',
-    '  </section>',
     '  <section class="panel">',
     '    <h2>🎁 Les 30 paliers</h2>',
     '    <div class="dual" id="tiers"></div>',
-    '  </section>',
-    '  <section class="panel">',
-    '    <h2>🎨 Skins du Pokédex</h2>',
-    '    <p class="sub">Les skins exclusifs se débloquent aux paliers 10, 20 et 30.</p>',
-    '    <div class="skins" id="skins"></div>',
     '  </section>',
     '  </div>',
     '  <div id="secShop" class="hidden">',
@@ -163,6 +149,12 @@
     '    <button type="button" class="btn" id="buyBtn"></button>',
     '    <div class="msg" id="shopMsg" role="status"></div>',
     '    <p class="hint2" id="shopStock"></p>',
+    '  </section>',
+    '  <section class="panel prem">',
+    '    <h2>👑 Pass Premium</h2>',
+    '    <p class="sub" id="premSub"></p>',
+    '    <button type="button" class="btn" id="premBuy"></button>',
+    '    <div class="msg" id="premMsg" role="status"></div>',
     '  </section>',
     '  </div>',
     '  <div id="secCrates">',
@@ -354,6 +346,7 @@
       b.disabled = full || money < C.price;
       b.textContent = full ? "Stock plein" : money < C.price ? "🔒 Il te manque " + window.PokeMoney.format(C.price - money) : "🛒 Acheter une crate";
       $("shopStock").textContent = "Crates en stock : " + s.stock + ". Ouvre-les dans la section Crates.";
+      renderPremium();
     }
     $("buyBtn").addEventListener("click", function () {
       var m = $("shopMsg");
@@ -373,17 +366,9 @@
       $("passLvl").textContent = "Palier " + st.level + " / " + PP.maxTier;
       $("passXp").textContent = st.level >= PP.maxTier ? "MAX" : st.into + " / " + PP.xpTier + " XP";
       $("passBar").style.width = Math.round(100 * st.into / PP.xpTier) + "%";
-      $("passHint").textContent = "+" + PP.xpRound + " XP par manche multijoueur terminée, +" + PP.xpCrate + " XP par crate ouverte.";
+      $("passHint").textContent = "+" + PP.xpRound + " XP par manche multijoueur terminée, +" + PP.xpCrate + " XP par crate ouverte." + (st.premium ? "" : " 👑 Le Pass Premium s'achète dans l'onglet Shop.") + " Les skins du Pokédex se choisissent dans ton profil.";
       renderPremium();
       var ca = $("claimAll"); ca.disabled = n === 0; ca.textContent = n ? "🎁 Tout récupérer (" + n + ")" : "Rien à récupérer";
-      var sk = $("skins"); sk.textContent = "";
-      Object.keys(PP.skins).forEach(function (id) {
-        var s = PP.skins[id], owned = PP.ownsSkin(id), b = el("button", "sk" + (st.skin === id ? " on" : "") + (owned ? "" : " no")); b.type = "button";
-        var sw = el("span", "sw"); sw.style.background = s.color; b.appendChild(sw); b.appendChild(document.createTextNode(s.name));
-        b.appendChild(el("small", "", st.skin === id ? "✅ Équipé" : owned ? "Équiper" : "🔒 Palier " + s.tier));
-        if (owned) b.onclick = function () { PP.setSkin(id); };
-        sk.appendChild(b);
-      });
       renderTiers(st);
     }
     // Les deux pistes côte à côte : gratuit à gauche, premium à droite, une ligne par palier.
@@ -423,25 +408,9 @@
       var b = $("premBuy");
       b.classList.toggle("hidden", prem); b.disabled = !prem && money < price;
       b.textContent = money < price ? "👑 Acheter le Pass Premium — " + window.PokeMoney.format(price) + " (solde insuffisant)" : "👑 Acheter le Pass Premium — " + window.PokeMoney.format(price);
-      var ex = $("excl"); ex.textContent = "";
-      PP.passItems().forEach(function (it) {
-        var own = PP.ownsItem(it.list, it.idx), card = el("div", "xi" + (own ? " own" : " no"));
-        var pv = el("div", "pv"); if (it.css) pv.style.background = it.css; card.appendChild(pv);
-        card.appendChild(document.createTextNode(it.name)); card.appendChild(el("small", "", it.catName + " · palier " + it.tier));
-        if (own) {
-          var e = el("button", "", "Équiper"); e.type = "button";
-          e.onclick = function () {
-            var m = $("premMsg");
-            if (PP.equipItem(it.list, it.idx)) { m.textContent = "« " + it.name + " » équipé sur ton profil !"; m.className = "msg ok"; }
-            else { m.textContent = "Crée d'abord ton profil (onglet Profil) pour équiper cet élément."; m.className = "msg ko"; }
-          };
-          card.appendChild(e);
-        } else card.appendChild(el("small", "", prem ? "🔒 À récupérer au palier " + it.tier : "👑 Premium"));
-        ex.appendChild(card);
-      });
     }
     function claimPrem(t) {
-      var o = PP.claimPremium(t), m = $("premMsg");
+      var o = PP.claimPremium(t), m = $("passMsg");
       if (o) { m.textContent = "Récompense premium récupérée !" + (o.items.length ? " Nouveaux éléments de profil débloqués : " + o.items.map(function (i) { return i.name; }).join(", ") + "." : ""); m.className = "msg ok"; }
       else { m.textContent = "Impossible : ton stock de crates est plein (99). Ouvre-en quelques-unes."; m.className = "msg ko"; }
     }
