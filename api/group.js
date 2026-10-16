@@ -1,6 +1,6 @@
 // Fonction serverless Vercel : « Groupe ». Un groupe est un petit « pointeur » persistant : il garde
 // les membres entre les modes de jeu et indique à tout le monde quelle salle (sous-salle) du mode
-// courant rejoindre. Les modes eux-mêmes (api/room.js, api/whois.js, api/wordle.js) ne sont pas touchés :
+// courant rejoindre. Les modes eux-mêmes (api/room.js, api/whois.js, api/rule.js) ne sont pas touchés :
 // chaque jeu crée une NOUVELLE salle, donc les scores repartent naturellement de zéro.
 //
 // Phases : idle (aucun jeu) -> prep (l'hôte configure, les membres attendent) -> live (salle envoyée,
@@ -13,7 +13,7 @@ const MAX_DEX_ID = 1025;
 const TTL = 60 * 60 * 12;
 const MAX_MEMBERS = 12;
 const ONLINE_MS = 15000;
-const MODES = ['guess', 'whois', 'wordle', 'rule'];
+const MODES = ['guess', 'whois', 'rule'];
 
 let redisClient = null;
 function getRedis() {
