@@ -39,12 +39,14 @@ function cleanAvatar(v) {
 }
 function cleanCard(v) {
   const n = (x, max) => { x = Number(x); return Number.isInteger(x) && x >= 0 && x <= max ? x : 0; };
-  if (!v || typeof v !== 'object') return { s: 0, c: 0, t: 0, m: '', x: null, b: 0, ti: 0, l: 1, tm: [] };
+  if (!v || typeof v !== 'object') return { s: 0, c: 0, t: 0, m: '', x: null, b: 0, ti: 0, l: 1, tm: [], f: 0, h: 0, e: 0, j: 0, nf: 0, nc: 0 };
   const src = v.x && typeof v.x === 'object' ? v.x : {};
   const x = {};
   ['wp', 'ww', 'wb', 'qp', 'qc', 'qb', 'gf', 'gm'].forEach(k => { x[k] = n(src[k], 10000000); });
   const tm = (Array.isArray(v.tm) ? v.tm : []).map(Number).filter(id => Number.isInteger(id) && id >= 1 && id <= MAX_DEX_ID).slice(0, 6);
-  return { s: n(v.s, 2), c: n(v.c, 7), t: n(v.t, 18), m: String(v.m || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 40), x, b: n(v.b, 5), ti: n(v.ti, 9), l: Math.max(1, n(v.l, 99)), tm };
+  // c cadre (couleur 0-15) · b fond 0-13 · ti titre 0-15 · f style de cadre 0-5 · h forme de la photo 0-3 · e effet 0-4 · j badge emoji 0-16 · nf police du pseudo 0-3 · nc couleur du pseudo 0-7
+  return { s: n(v.s, 2), c: n(v.c, 15), t: n(v.t, 18), m: String(v.m || '').replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 40), x, b: n(v.b, 13), ti: n(v.ti, 15), l: Math.max(1, n(v.l, 99)), tm,
+    f: n(v.f, 5), h: n(v.h, 3), e: n(v.e, 4), j: n(v.j, 16), nf: n(v.nf, 3), nc: n(v.nc, 7) };
 }
 const cleanCode = v => (v || '').toString().trim().toUpperCase();
 const cleanName = v => (v || '').toString().replace(/[\u0000-\u001f<>]/g, '').trim().slice(0, 16);
