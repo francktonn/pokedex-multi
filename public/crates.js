@@ -94,6 +94,13 @@
     ".odds{display:flex; flex-direction:column; gap:6px;}",
     ".orow{display:flex; align-items:center; gap:10px; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:8px 12px; font-weight:800; font-size:14px;}",
     ".orow i{width:12px; height:12px; border-radius:50%; flex-shrink:0;} .orow span{margin-left:auto; color:var(--muted);}",
+    ".dual{display:grid; grid-template-columns:1fr 1fr; gap:6px;}",
+    ".dual .dh{font-family:'Baloo 2',sans-serif; font-weight:800; font-size:14px; text-align:center; padding:6px 4px; border-radius:10px; background:rgba(0,0,0,.08);} .dual .dh.p{background:rgba(230,167,0,.22);}",
+    ".dual .trow{margin:0; flex-wrap:wrap; gap:6px; padding:6px 8px; font-size:12.5px; line-height:1.25; min-width:0;}",
+    ".dual .trow .tn{width:26px; height:26px; font-size:13px;}",
+    ".dual .trow .tl{flex:1 1 60px;}",
+    ".dual .trow .go{width:100%; min-height:30px; padding:0 6px; font-size:12px;}",
+    ".dual .trow .st{margin-left:auto; font-size:16px;}",
     ".prem{border:2px solid #E6A700; background:linear-gradient(180deg, rgba(230,167,0,.12), transparent 40%), var(--card);}",
     ".trow.p{border-color:#E6A700;} .trow.p.xl{border-color:#9b6bd6; box-shadow:0 0 0 2px rgba(155,107,214,.35);} .trow .ex{display:block; font-size:11.5px; font-weight:800; color:#9b6bd6; margin-top:2px;}",
     ".exh{margin:16px 0 0; font-family:'Baloo 2',sans-serif; font-size:17px;}",
@@ -133,19 +140,18 @@
     '    <p class="sub" id="premSub"></p>',
     '    <button type="button" class="btn" id="premBuy"></button>',
     '    <div class="msg" id="premMsg" role="status"></div>',
-    '    <div class="tiers" id="ptiers"></div>',
     '    <h3 class="exh">✨ Personnalisations exclusives</h3>',
     '    <p class="sub">Aux paliers 10, 20 et 30, récupère la récompense premium pour débloquer de nouveaux éléments de profil, introuvables ailleurs.</p>',
     '    <div class="excl" id="excl"></div>',
     '  </section>',
     '  <section class="panel">',
+    '    <h2>🎁 Les 30 paliers</h2>',
+    '    <div class="dual" id="tiers"></div>',
+    '  </section>',
+    '  <section class="panel">',
     '    <h2>🎨 Skins du Pokédex</h2>',
     '    <p class="sub">Les skins exclusifs se débloquent aux paliers 10, 20 et 30.</p>',
     '    <div class="skins" id="skins"></div>',
-    '  </section>',
-    '  <section class="panel">',
-    '    <h2>🎁 Les 30 paliers</h2>',
-    '    <div id="tiers"></div>',
     '  </section>',
     '  </div>',
     '  <div id="secShop" class="hidden">',
@@ -378,14 +384,31 @@
         if (owned) b.onclick = function () { PP.setSkin(id); };
         sk.appendChild(b);
       });
+      renderTiers(st);
+    }
+    // Les deux pistes côte à côte : gratuit à gauche, premium à droite, une ligne par palier.
+    function renderTiers(st) {
       var list = $("tiers"); list.textContent = "";
-      PP.tiers().forEach(function (t) {
+      list.appendChild(el("div", "dh", "🎁 Gratuit")); list.appendChild(el("div", "dh p", "👑 Premium"));
+      var free = PP.tiers(), prem = PP.premiumTiers();
+      free.forEach(function (t, i) {
         var done = !!st.claimed[t.tier], can = PP.canClaim(t.tier);
         var r = el("div", "trow" + (t.skin ? " skin" : "") + (done ? " done" : can ? " can" : " lock"));
         r.appendChild(el("span", "tn", String(t.tier))); r.appendChild(el("span", "tl", rewardText(t)));
         if (can) { var g = el("button", "go", "Récupérer"); g.type = "button"; g.onclick = function () { claimOne(t.tier); }; r.appendChild(g); }
         else r.appendChild(el("span", "st", done ? "✅" : "🔒"));
         list.appendChild(r);
+        var q = prem[i];
+        if (!q) { list.appendChild(el("div")); return; }
+        var pd = !!st.pclaimed[q.tier], pc = PP.canClaimPremium(q.tier);
+        var pr = el("div", "trow p" + (q.items.length ? " xl" : "") + (pd ? " done" : pc ? " can" : " lock"));
+        pr.appendChild(el("span", "tn", String(q.tier)));
+        var tl = el("span", "tl", premText(q));
+        if (q.items.length) tl.appendChild(el("span", "ex", "✨ " + q.items.map(function (x) { return x.name; }).join(", ")));
+        pr.appendChild(tl);
+        if (pc) { var pg = el("button", "go", "Récupérer"); pg.type = "button"; pg.onclick = function () { claimPrem(q.tier); }; pr.appendChild(pg); }
+        else pr.appendChild(el("span", "st", pd ? "✅" : st.premium ? "🔒" : "👑"));
+        list.appendChild(pr);
       });
     }
     function premText(t) {
@@ -400,18 +423,6 @@
       var b = $("premBuy");
       b.classList.toggle("hidden", prem); b.disabled = !prem && money < price;
       b.textContent = money < price ? "👑 Acheter le Pass Premium — " + window.PokeMoney.format(price) + " (solde insuffisant)" : "👑 Acheter le Pass Premium — " + window.PokeMoney.format(price);
-      var list = $("ptiers"); list.textContent = "";
-      PP.premiumTiers().forEach(function (t) {
-        var done = !!st.pclaimed[t.tier], can = PP.canClaimPremium(t.tier);
-        var r = el("div", "trow p" + (t.items.length ? " xl" : "") + (done ? " done" : can ? " can" : " lock"));
-        r.appendChild(el("span", "tn", String(t.tier)));
-        var tl = el("span", "tl", premText(t));
-        if (t.items.length) tl.appendChild(el("span", "ex", "✨ Exclusif : " + t.items.map(function (i) { return i.name; }).join(", ")));
-        r.appendChild(tl);
-        if (can) { var g = el("button", "go", "Récupérer"); g.type = "button"; g.onclick = function () { claimPrem(t.tier); }; r.appendChild(g); }
-        else r.appendChild(el("span", "st", done ? "✅" : prem ? "🔒" : "👑"));
-        list.appendChild(r);
-      });
       var ex = $("excl"); ex.textContent = "";
       PP.passItems().forEach(function (it) {
         var own = PP.ownsItem(it.list, it.idx), card = el("div", "xi" + (own ? " own" : " no"));
