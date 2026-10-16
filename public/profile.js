@@ -67,6 +67,9 @@
     ".tile{background:var(--card); border:1px solid var(--line); border-radius:14px; padding:10px 6px; text-align:center;}",
     ".tile b{display:block; font-family:'Baloo 2',sans-serif; font-size:22px; line-height:1.1;}",
     ".tile small{display:block; margin-top:2px; color:var(--muted); font-weight:700; font-size:11px; line-height:1.2;}",
+    ".head{display:flex; align-items:center; justify-content:space-between; gap:10px;}",
+    ".gear{border:0; width:40px; height:40px; border-radius:50%; cursor:pointer; font-size:18px; background:var(--card); border:1px solid var(--line); transition:transform .25s var(--ease), background .2s;}",
+    ".gear:hover{transform:rotate(45deg);} .gear.on{background:rgba(255,201,60,.3); border-color:var(--gold-deep); transform:rotate(90deg);}",
     ".hidden{display:none !important;}",
     "@media (prefers-reduced-motion:reduce){*{transition-duration:.001ms !important;}}"
   ].join("\n");
@@ -75,12 +78,13 @@
     '<div class="device">',
     '  <div class="top"><span class="lens"></span><span class="brand">MON PROFIL</span><button type="button" class="themebtn" id="themeBtn" aria-label="Mode sombre">🌙</button></div>',
     '  <section class="panel" id="cardPanel">',
-    '    <h2>Ma carte</h2>',
-    '    <p class="sub">Ton pseudo, ta photo et ton style seront utilisés automatiquement dans tous les modes de jeu.</p>',
+    '    <div class="head"><h2>Ma carte</h2><button type="button" class="gear" id="gear" aria-label="Modifier ma carte" aria-expanded="false" title="Modifier ma carte">⚙️</button></div>',
     '    <div class="card" id="card">',
     '      <div class="avatarbox"><div class="avatar" id="avatar"><span>?</span></div><div class="who"><div class="nm" id="avName">Sans pseudo</div><div class="fv" id="avFav">Pokémon préféré : à choisir</div><span class="tchip hidden" id="avType"></span></div></div>',
     '      <div class="motto" id="avMotto"></div>',
     '    </div>',
+    '    <div id="editor" class="hidden">',
+    '    <p class="sub" style="margin-top:12px">Ton pseudo, ta photo et ton style seront utilisés automatiquement dans tous les modes de jeu.</p>',
     '    <label for="pName">Ton pseudo</label>',
     '    <input type="text" id="pName" maxlength="16" autocomplete="off" placeholder="Sacha">',
     '    <label for="pFav">Ton Pokémon préféré</label>',
@@ -94,7 +98,9 @@
     '    <input type="text" id="pMotto" maxlength="40" autocomplete="off" placeholder="Attrapez-les tous !">',
     '    <button type="button" class="btn" id="save">Enregistrer mon profil</button>',
     '    <div class="msg" id="msg"></div>',
+    '    <button type="button" class="btn alt" id="cancel">Annuler</button>',
     '    <button type="button" class="btn alt hidden" id="clear">Effacer mon profil</button>',
+    '    </div>',
     '  </section>',
     '  <section class="panel" id="statsPanel">',
     '    <h2>📊 Mes statistiques</h2>',
@@ -223,9 +229,10 @@
       if (!name) { say("Choisis un pseudo.", "ko"); $("pName").focus(); return; }
       if (!draft.favId) { say("Choisis ton Pokémon préféré : son sprite sera ta photo.", "ko"); $("pFav").focus(); return; }
       P.set({ name: name, favId: draft.favId, favName: nameOf(draft.favId), style: draft.style, color: draft.color, type: draft.type, motto: $("pMotto").value });
-      say("Profil enregistré ✓ Ta carte sera utilisée dans tous les modes de jeu.", "ok");
       $("clear").classList.remove("hidden");
       renderPreview();
+      setEditor(false);
+      say("");
     });
     $("clear").addEventListener("click", function () {
       if (!window.confirm("Effacer ton profil ?")) return;
@@ -267,14 +274,35 @@
     renderStats();
 
     // ---- Chargement : profil existant + liste des noms ----
-    var cur = P.get();
-    if (cur) {
-      $("pName").value = cur.name; draft.favId = cur.favId || null; draft.favName = cur.favName || "";
-      draft.style = cur.style; draft.color = cur.color; draft.type = cur.type; $("pMotto").value = cur.motto;
-      if (cur.favName) $("pFav").value = cur.favName;
-      $("clear").classList.remove("hidden");
+    // Remplit le brouillon et les champs depuis le profil enregistré (utilisé au chargement et à l'annulation).
+    function fillFromSaved() {
+      var cur = P.get();
+      draft = { favId: null, favName: "", style: 0, color: 0, type: "" };
+      $("pName").value = ""; $("pFav").value = ""; $("pMotto").value = ""; $("sugg").textContent = "";
+      if (cur) {
+        $("pName").value = cur.name; draft.favId = cur.favId || null; draft.favName = cur.favName || "";
+        draft.style = cur.style; draft.color = cur.color; draft.type = cur.type; $("pMotto").value = cur.motto;
+        if (cur.favName) $("pFav").value = cur.favName;
+      }
+      $("clear").classList.toggle("hidden", !cur);
+      say(""); renderOptions(); renderPreview();
     }
-    renderOptions(); renderPreview();
+
+    // ---- Engrenage : affiche / masque l'éditeur de carte ----
+    function setEditor(open) {
+      $("editor").classList.toggle("hidden", !open);
+      $("gear").classList.toggle("on", open);
+      $("gear").setAttribute("aria-expanded", String(open));
+    }
+    $("gear").addEventListener("click", function () {
+      var open = $("editor").classList.contains("hidden");
+      if (!open) fillFromSaved(); // fermeture sans enregistrer : on revient à la carte enregistrée
+      setEditor(open);
+    });
+    $("cancel").addEventListener("click", function () { fillFromSaved(); setEditor(false); });
+
+    fillFromSaved();
+    if (!P.get()) setEditor(true); // pas encore de profil : on ouvre directement l'éditeur
     fetch("/api/whois?action=names").then(function (r) { return r.json(); }).then(function (j) {
       var list = j.byId || j.names || [];
       names = list; folded = list.map(fold);
