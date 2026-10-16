@@ -46,7 +46,7 @@
     if (host) return;
     host = document.createElement("div"); host.id = "pokeCardHost";
     root = host.attachShadow({ mode: "open" });
-    var st = document.createElement("style"); st.textContent = CSS; root.appendChild(st);
+    var st = document.createElement("style"); st.textContent = CSS + "\n" + (window.PokeProfile && window.PokeProfile.cardCss || ""); root.appendChild(st);
     var back = el("div", "back"); back.id = "back"; root.appendChild(back);
     back.addEventListener("click", function (e) { if (e.target === back) close(); });
     document.body.appendChild(host);
@@ -79,7 +79,7 @@
     if (p.me && window.PokeProfile && window.PokeProfile.get()) {
       card = window.PokeProfile.card() || card;
     }
-    var style = Number(card.s) || 0, frame = FRAMES[Number(card.c)] || FRAMES[0];
+    var style = Number(card.s) || 0, frameList = (window.PokeProfile && window.PokeProfile.frames) || FRAMES, frame = frameList[Number(card.c)] || frameList[0];
     var ti = card.t > 0 ? TYPES[card.t - 1] : null;
     var PP = window.PokeProfile, bgs = PP && PP.bgs, titles = PP && PP.titles;
     var bgDef = bgs && bgs[Number(card.b)] ? bgs[Number(card.b)] : null, ttl = titles && Number(card.ti) > 0 ? titles[Number(card.ti)] : null;
@@ -98,7 +98,8 @@
       if (style === 2) im.className = "art"; av.appendChild(im);
     } else av.appendChild(el("span", "", "?"));
     var who = el("div", "who"); row.appendChild(who);
-    who.appendChild(el("div", "nm", p.name || "Joueur"));
+    var nmEl = el("div", "nm"); who.appendChild(nmEl);
+    if (PP && PP.paint) PP.paint({ card: c, avatar: av, name: nmEl }, card, p.name || "Joueur"); else nmEl.textContent = p.name || "Joueur";
     if (ttl) who.appendChild(el("div", "ttl", ttl.name));
     var fv = el("div", "fv", p.avatar ? "Préféré : n°" + p.avatar : "Pas de Pokémon préféré"); who.appendChild(fv);
     if (card.l > 0 || (p.me && window.PokeStats)) who.appendChild(el("span", "lv", "Niv. " + (p.me && window.PokeStats ? window.PokeStats.level().level : card.l)));

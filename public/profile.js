@@ -90,6 +90,17 @@
     ".teamEdit button{aspect-ratio:1; border-radius:12px; border:2px dashed var(--line); background:var(--card); color:var(--muted); cursor:pointer; font:inherit; font-weight:800; padding:0; position:relative;}",
     ".teamEdit button.fill{border-style:solid;} .teamEdit img{width:100%; height:100%; object-fit:contain; image-rendering:pixelated;}",
     ".teamEdit button.fill::after{content:'×'; position:absolute; top:-6px; right:-6px; width:18px; height:18px; line-height:16px; border-radius:50%; background:var(--ko); color:#fff; font-size:13px;}",
+    /* éléments verrouillés (aperçu possible) + nouvelles options */
+    ".locked{opacity:.62; border-style:dashed !important;}",
+    ".bgs button small, .titles button small{display:block; font-weight:700; font-size:10.5px; color:var(--muted); margin-top:1px;}",
+    ".badges{display:grid; grid-template-columns:repeat(6,1fr); gap:6px;}",
+    ".badges button{min-height:44px; border-radius:12px; cursor:pointer; font:inherit; font-size:20px; color:var(--ink); background:var(--card); border:2px solid var(--line); padding:0; position:relative;}",
+    ".badges button.on{border-color:var(--gold-deep); background:rgba(255,201,60,.22);}",
+    ".badges button small{position:absolute; right:2px; bottom:0; font-size:9px; font-weight:800; color:var(--muted);}",
+    ".swatches button{position:relative;}",
+    ".swatches button.locked::after{content:'🔒'; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:15px;}",
+    ".pvnote{margin-top:10px; padding:9px 12px; border-radius:12px; font-weight:700; font-size:13px; line-height:1.35; color:var(--ink); background:rgba(255,201,60,.2); border:1px dashed var(--gold-deep);}",
+    ".hint2{margin:6px 0 0; color:var(--muted); font-size:12.5px; font-weight:700; line-height:1.35;}",
     /* historique */
     ".hist{display:flex; flex-direction:column; gap:6px;}",
     ".hrow{display:flex; align-items:center; gap:10px; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:6px 10px; min-height:52px;}",
@@ -111,9 +122,11 @@
     '      <div class="motto" id="avMotto"></div>',
     '      <div class="team hidden" id="avTeam"></div>',
     '    </div>',
+    '    <div class="pvnote hidden" id="pvNote"></div>',
     '    <div class="xp"><div class="xprow"><b id="xpLvl">Niveau 1</b><small id="xpTxt"></small></div><div class="bar"><i id="xpFill"></i></div><div class="xphint" id="xpHint"></div></div>',
     '    <div id="editor" class="hidden">',
     '    <p class="sub" style="margin-top:12px">Ton pseudo, ta photo et ton style seront utilisés automatiquement dans tous les modes de jeu.</p>',
+    '    <p class="hint2">👁️ Les éléments marqués 🔒 sont déjà prévisualisables sur ta carte : ils seront enregistrés dès que tu auras le niveau requis.</p>',
     '    <label for="pName">Ton pseudo</label>',
     '    <input type="text" id="pName" maxlength="16" autocomplete="off" placeholder="Sacha">',
     '    <label for="pFav">Ton Pokémon préféré</label>',
@@ -125,6 +138,12 @@
     '    <label>Type préféré</label><div class="types" id="types"></div>',
     '    <label>Fond de carte</label><div class="bgs" id="bgs"></div>',
     '    <label>Titre</label><div class="titles" id="titles"></div>',
+    '    <label>Style du cadre</label><div class="bgs" id="frameStyles"></div>',
+    '    <label>Forme de la photo</label><div class="bgs" id="shapes"></div>',
+    '    <label>Effet animé</label><div class="bgs" id="effects"></div>',
+    '    <label>Badge à côté du pseudo</label><div class="badges" id="badges"></div>',
+    '    <label>Police du pseudo</label><div class="bgs" id="nameFonts"></div>',
+    '    <label>Couleur du pseudo</label><div class="swatches" id="nameColors"></div>',
     '    <label for="pTeam">Mon équipe (6 Pokémon max)</label><div class="teamEdit" id="teamEdit"></div>',
     '    <input type="text" id="pTeam" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Ajoute un Pokémon à ton équipe…">',
     '    <div class="sugg" id="teamSugg"></div>',
@@ -156,14 +175,18 @@
     ["psychic","Psy","#F95587"],["bug","Insecte","#8FA015"],["rock","Roche","#A28F2C"],["ghost","Spectre","#735797"],["dragon","Dragon","#6F35FC"],
     ["dark","Ténèbres","#705746"],["steel","Acier","#8E8EAA"],["fairy","Fée","#D685AD"]];
   var STYLES = ["Normal", "✨ Shiny", "🖼️ Artwork"];
-  var FRAME_NAMES = ["Or", "Rouge", "Bleu", "Vert", "Rose", "Violet", "Orange", "Argent"];
+  var FRAME_NAMES = ["Or", "Rouge", "Bleu", "Vert", "Rose", "Violet", "Orange", "Argent", "Turquoise", "Citron vert", "Corail", "Ciel", "Lilas", "Bronze", "Ardoise", "Champagne"];
+  // [clé du brouillon, liste dans PokeProfile, libellé, nom pour l'indice de déblocage]
+  var LOCKS = [["bg", "bgs", "Fond", "fond"], ["title", "titles", "Titre", "titre"], ["frameStyle", "frameStyles", "Style de cadre", "style de cadre"], ["shape", "shapes", "Forme", "forme de photo"],
+    ["effect", "effects", "Effet", "effet"], ["badge", "badges", "Badge", "badge"], ["nameFont", "nameFonts", "Police du pseudo", "police de pseudo"], ["nameColor", "nameColors", "Couleur du pseudo", "couleur de pseudo"]];
+  function newDraft() { return { favId: null, favName: "", style: 0, color: 0, type: "", bg: 0, title: 0, team: [], frameStyle: 0, shape: 0, effect: 0, badge: 0, nameFont: 0, nameColor: 0 }; }
 
   var mounted = false;
   window.ProfileTab = {
     mount: function (host) {
       if (mounted) return; mounted = true;
       var root = host.attachShadow({ mode: "open" });
-      var style = document.createElement("style"); style.textContent = CSS;
+      var style = document.createElement("style"); style.textContent = CSS + "\n" + (window.PokeProfile && window.PokeProfile.cardCss || "");
       var box = document.createElement("div"); box.innerHTML = HTML;
       root.appendChild(style);
       while (box.firstChild) root.appendChild(box.firstChild);
@@ -175,7 +198,7 @@
     var $ = function (id) { return root.getElementById(id); };
     var P = window.PokeProfile;
     var names = [], folded = [];
-    var draft = { favId: null, favName: "", style: 0, color: 0, type: "", bg: 0, title: 0, team: [] };
+    var draft = newDraft();
 
     function fold(s) { return String(s || "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[’']/g, "'").replace(/[\s\-.]+/g, " ").trim(); }
     function nameOf(id) { return names[id - 1] || ("Pokémon n°" + id); }
@@ -208,8 +231,7 @@
       $("xpTxt").textContent = L.max ? "Niveau max" : L.into + " / " + L.need + " XP";
       $("xpFill").style.width = (L.max ? 100 : Math.round(100 * L.into / L.need)) + "%";
       var next = null;
-      P.bgs.forEach(function (b) { if (b.min > L.level && (!next || b.min < next.min)) next = { min: b.min, what: "fond « " + b.name + " »" }; });
-      P.titles.forEach(function (t) { if (t.min > L.level && (!next || t.min < next.min)) next = { min: t.min, what: "titre « " + t.name + " »" }; });
+      LOCKS.forEach(function (k) { P[k[1]].forEach(function (it) { if (it.min > L.level && (!next || it.min < next.min)) next = { min: it.min, what: k[3] + " « " + it.name + " »" }; }); });
       $("xpHint").textContent = next ? "Prochain déblocage au niveau " + next.min + " : " + next.what + "." : "Tout est débloqué !";
     }
 
@@ -225,7 +247,8 @@
       host.style.setProperty("--accent", ti ? ti[2] : "#D99A12");
       var chip = $("avType"); chip.classList.toggle("hidden", !ti); if (ti) chip.textContent = "Type " + ti[1];
       var nm = $("pName").value.trim();
-      $("avName").textContent = nm || "Sans pseudo";
+      P.paint({ card: $("card"), avatar: $("avatar"), name: $("avName") },
+        { f: draft.frameStyle, h: draft.shape, e: draft.effect, j: draft.badge, nf: draft.nameFont, nc: draft.nameColor }, nm || "Sans pseudo");
       $("avFav").textContent = draft.favId ? "Préféré : " + nameOf(draft.favId) + " · n°" + draft.favId : "Pokémon préféré : à choisir";
       var bgd = P.bgs[draft.bg] || P.bgs[0];
       host.style.setProperty("--bg", bgd.css);
@@ -234,8 +257,27 @@
       draft.team.forEach(function (id) {
         var sp = el("span"), im = document.createElement("img"); im.alt = nameOf(id); im.loading = "lazy"; im.src = P.sprite(id, 0); sp.appendChild(im); tm.appendChild(sp);
       });
-      renderLevel();
+      renderLevel(); renderLockNote();
       $("avMotto").textContent = $("pMotto").value.trim() ? "« " + $("pMotto").value.trim() + " »" : "";
+    }
+
+    // ---- Éléments verrouillés : aperçu autorisé, enregistrement refusé ----
+    function lockedPicks() {
+      var lv = curLevel().level, out = [];
+      LOCKS.forEach(function (k) { var it = P[k[1]][draft[k[0]]]; if (it && it.min > lv) out.push({ key: k[0], list: k[1], label: k[2], name: it.name, min: it.min }); });
+      return out;
+    }
+    function renderLockNote() {
+      var n = $("pvNote"), lk = lockedPicks();
+      n.classList.toggle("hidden", !lk.length);
+      if (lk.length) n.textContent = "👁️ Aperçu uniquement : " + lk.map(function (x) { return "« " + x.name + " » (niv. " + x.min + ")"; }).join(", ") + ". Ces éléments ne seront pas enregistrés tant que tu ne les auras pas débloqués.";
+    }
+    function optBtn(label, i, key, list, lv) {
+      var it = list[i], locked = it.min > lv;
+      var b = el("button", (i === draft[key] ? "on" : "") + (locked ? " locked" : ""), label); b.type = "button";
+      if (locked) { b.appendChild(el("small", "", "🔒 niv. " + it.min)); b.title = "Se débloque au niveau " + it.min + " (aperçu possible)"; }
+      b.onclick = function () { draft[key] = i; say(""); renderOptions(); renderPreview(); };
+      return b;
     }
 
     // ---- Options de personnalisation ----
@@ -253,18 +295,27 @@
         sw.appendChild(b);
       });
       var L = curLevel().level;
-      var bgs = $("bgs"); bgs.textContent = "";
-      P.bgs.forEach(function (b, i) {
-        var locked = b.min > L, btn = el("button", i === draft.bg ? "on" : "", locked ? "🔒 Niv. " + b.min : b.name); btn.type = "button"; btn.disabled = locked;
-        if (locked) btn.title = b.name;
-        btn.onclick = function () { draft.bg = i; say(""); renderOptions(); renderPreview(); };
-        bgs.appendChild(btn);
+      function fill(id, key, list, labelOf) { var box = $(id); box.textContent = ""; list.forEach(function (it, i) { box.appendChild(optBtn(labelOf(it), i, key, list, L)); }); }
+      fill("bgs", "bg", P.bgs, function (it) { return it.name; });
+      fill("titles", "title", P.titles, function (it) { return it.name; });
+      fill("frameStyles", "frameStyle", P.frameStyles, function (it) { return it.name; });
+      fill("shapes", "shape", P.shapes, function (it) { return it.name; });
+      fill("effects", "effect", P.effects, function (it) { return it.name; });
+      fill("nameFonts", "nameFont", P.nameFonts, function (it) { return it.name; });
+      var bd = $("badges"); bd.textContent = "";
+      P.badges.forEach(function (it, i) {
+        var locked = it.min > L, b = el("button", (i === draft.badge ? "on" : "") + (locked ? " locked" : ""), it.e || "∅"); b.type = "button";
+        b.title = it.name + (locked ? " — niv. " + it.min + " (aperçu)" : ""); b.setAttribute("aria-label", "Badge " + it.name);
+        if (locked) b.appendChild(el("small", "", "🔒" + it.min));
+        b.onclick = function () { draft.badge = i; say(""); renderOptions(); renderPreview(); };
+        bd.appendChild(b);
       });
-      var tl = $("titles"); tl.textContent = "";
-      P.titles.forEach(function (t, i) {
-        var locked = t.min > L, btn = el("button", i === draft.title ? "on" : "", locked ? "🔒 " + t.name + " (niv. " + t.min + ")" : t.name); btn.type = "button"; btn.disabled = locked;
-        btn.onclick = function () { draft.title = i; say(""); renderOptions(); renderPreview(); };
-        tl.appendChild(btn);
+      var nc = $("nameColors"); nc.textContent = "";
+      P.nameColors.forEach(function (c, i) {
+        var locked = c.min > L, b = el("button", (i === draft.nameColor ? "on" : "") + (locked ? " locked" : "")); b.type = "button"; b.style.background = c.css;
+        b.title = c.name + (locked ? " — niv. " + c.min + " (aperçu)" : ""); b.setAttribute("aria-label", "Couleur du pseudo " + c.name);
+        b.onclick = function () { draft.nameColor = i; say(""); renderOptions(); renderPreview(); };
+        nc.appendChild(b);
       });
       var te = $("teamEdit"); te.textContent = "";
       for (var k = 0; k < 6; k++) {
@@ -325,10 +376,19 @@
       var name = $("pName").value.trim().slice(0, 16);
       if (!name) { say("Choisis un pseudo.", "ko"); $("pName").focus(); return; }
       if (!draft.favId) { say("Choisis ton Pokémon préféré : son sprite sera ta photo.", "ko"); $("pFav").focus(); return; }
-      var lv = curLevel().level;
-      if (P.bgs[draft.bg].min > lv) draft.bg = 0;
-      if (P.titles[draft.title].min > lv) draft.title = 0;
-      P.set({ name: name, favId: draft.favId, favName: nameOf(draft.favId), style: draft.style, color: draft.color, type: draft.type, motto: $("pMotto").value, bg: draft.bg, title: draft.title, team: draft.team });
+      // Éléments encore verrouillés : on garde la valeur déjà enregistrée (si elle est débloquée), sinon la valeur par défaut.
+      var lv = curLevel().level, saved = P.get(), reverted = [];
+      LOCKS.forEach(function (k) {
+        var list = P[k[1]];
+        if (list[draft[k[0]]].min > lv) {
+          var old = saved ? saved[k[0]] : 0;
+          draft[k[0]] = list[old] && list[old].min <= lv ? old : 0;
+          reverted.push(k[2]);
+        }
+      });
+      P.set({ name: name, favId: draft.favId, favName: nameOf(draft.favId), style: draft.style, color: draft.color, type: draft.type, motto: $("pMotto").value, bg: draft.bg, title: draft.title, team: draft.team,
+        frameStyle: draft.frameStyle, shape: draft.shape, effect: draft.effect, badge: draft.badge, nameFont: draft.nameFont, nameColor: draft.nameColor });
+      if (reverted.length && window.toast) window.toast("Profil enregistré. Encore verrouillé, donc non appliqué : " + reverted.join(", ") + ".", { kind: "warn", icon: "🔒", ttl: 6000 });
       $("clear").classList.remove("hidden");
       renderPreview();
       setEditor(false);
@@ -336,7 +396,7 @@
     });
     $("clear").addEventListener("click", function () {
       if (!window.confirm("Effacer ton profil ?")) return;
-      P.clear(); draft = { favId: null, favName: "", style: 0, color: 0, type: "", bg: 0, title: 0, team: [] };
+      P.clear(); draft = newDraft();
       $("pName").value = ""; $("pFav").value = ""; $("pTeam").value = ""; $("pMotto").value = ""; $("sugg").textContent = ""; $("teamSugg").textContent = ""; $("clear").classList.add("hidden");
       say("Profil effacé.", ""); renderOptions(); renderPreview();
     });
@@ -404,11 +464,12 @@
     // Remplit le brouillon et les champs depuis le profil enregistré (utilisé au chargement et à l'annulation).
     function fillFromSaved() {
       var cur = P.get();
-      draft = { favId: null, favName: "", style: 0, color: 0, type: "", bg: 0, title: 0, team: [] };
+      draft = newDraft();
       $("pName").value = ""; $("pFav").value = ""; $("pTeam").value = ""; $("pMotto").value = ""; $("sugg").textContent = ""; $("teamSugg").textContent = "";
       if (cur) {
         $("pName").value = cur.name; draft.favId = cur.favId || null; draft.favName = cur.favName || "";
         draft.style = cur.style; draft.color = cur.color; draft.type = cur.type; draft.bg = cur.bg; draft.title = cur.title; draft.team = cur.team.slice(); $("pMotto").value = cur.motto;
+        draft.frameStyle = cur.frameStyle || 0; draft.shape = cur.shape || 0; draft.effect = cur.effect || 0; draft.badge = cur.badge || 0; draft.nameFont = cur.nameFont || 0; draft.nameColor = cur.nameColor || 0;
         if (cur.favName) $("pFav").value = cur.favName;
       }
       $("clear").classList.toggle("hidden", !cur);

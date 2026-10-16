@@ -21,13 +21,14 @@
   (function(){
     var KEY = "pokeProfile_v1", SKEY = "pokeStats_v1";
     var TYPE_KEYS = ["normal","fire","water","grass","electric","ice","fighting","poison","ground","flying","psychic","bug","rock","ghost","dragon","dark","steel","fairy"];
-    var FRAMES = ["#FFC93C","#E23B30","#3a86d6","#5ee06a","#F95587","#9b6bd6","#ff8a3c","#e8e8e8"];
+    var FRAMES = ["#FFC93C","#E23B30","#3a86d6","#5ee06a","#F95587","#9b6bd6","#ff8a3c","#e8e8e8","#2dd4bf","#a3e635","#ff5f6d","#38bdf8","#c084fc","#8b5a2b","#64748b","#fde68a"];
     function int(v, max){ v = Number(v); return Math.floor(v) === v && v >= 0 && v <= max ? v : 0; }
     function clean(p){
       return { name: String(p.name || "").trim().slice(0,16), favId: Number(p.favId) || null, favName: String(p.favName || ""),
-        style: int(p.style, 2), color: int(p.color, 7), motto: String(p.motto || "").trim().slice(0,40),
+        style: int(p.style, 2), color: int(p.color, 15), motto: String(p.motto || "").trim().slice(0,40),
         type: /^[a-z]{3,10}$/.test(p.type || "") ? p.type : "",
-        bg: int(p.bg, 5), title: int(p.title, 9),
+        bg: int(p.bg, 13), title: int(p.title, 15),
+        frameStyle: int(p.frameStyle, 5), shape: int(p.shape, 3), effect: int(p.effect, 4), badge: int(p.badge, 16), nameFont: int(p.nameFont, 3), nameColor: int(p.nameColor, 7),
         team: (Array.isArray(p.team) ? p.team : []).map(Number).filter(function(n){ return Math.floor(n) === n && n >= 1 && n <= 1025; }).slice(0,6) };
     }
     // Fonds de carte et titres (min = niveau requis pour les débloquer).
@@ -37,13 +38,62 @@
       { name:"Rayures",   min:0,  css:"repeating-linear-gradient(45deg, rgba(255,255,255,.07) 0 10px, transparent 10px 20px), linear-gradient(150deg, color-mix(in srgb, var(--accent) 55%, #1a1411), #1a1411 85%)" },
       { name:"Pois",      min:5,  css:"radial-gradient(rgba(255,255,255,.16) 2px, transparent 3px) 0 0/18px 18px, linear-gradient(150deg, color-mix(in srgb, var(--accent) 55%, #1a1411), #1a1411 85%)" },
       { name:"Nuit",      min:10, css:"radial-gradient(1.5px 1.5px at 20% 30%, #fff, transparent), radial-gradient(1.5px 1.5px at 70% 20%, #fff, transparent), radial-gradient(1px 1px at 50% 70%, #fff, transparent), radial-gradient(1.5px 1.5px at 85% 80%, #fff, transparent), linear-gradient(160deg, #0b1030, color-mix(in srgb, var(--accent) 35%, #0b1030))" },
-      { name:"Holo",      min:20, css:"linear-gradient(120deg, rgba(255,110,196,.55), rgba(120,115,245,.5), rgba(74,222,128,.5), rgba(253,224,71,.55)), linear-gradient(150deg, #2a2230, #1a1411)" }
+      { name:"Holo",      min:20, css:"linear-gradient(120deg, rgba(255,110,196,.55), rgba(120,115,245,.5), rgba(74,222,128,.5), rgba(253,224,71,.55)), linear-gradient(150deg, #2a2230, #1a1411)" },
+      { name:"Océan",     min:3,  css:"radial-gradient(120% 60% at 50% 115%, rgba(120,200,255,.4), transparent 60%), linear-gradient(180deg, #0a2a4a, color-mix(in srgb, var(--accent) 30%, #06162a))" },
+      { name:"Braise",    min:7,  css:"radial-gradient(90% 70% at 50% 125%, rgba(255,140,40,.7), transparent 65%), linear-gradient(180deg, #1a0d0a, #3a120a)" },
+      { name:"Forêt",     min:9,  css:"repeating-linear-gradient(90deg, rgba(0,0,0,.14) 0 6px, transparent 6px 14px), linear-gradient(160deg, #0f3b1f, color-mix(in srgb, var(--accent) 35%, #07170c))" },
+      { name:"Damier",    min:12, css:"conic-gradient(rgba(255,255,255,.09) 25%, transparent 0 50%, rgba(255,255,255,.09) 0 75%, transparent 0) 0 0/26px 26px, linear-gradient(150deg, color-mix(in srgb, var(--accent) 55%, #1a1411), #1a1411 85%)" },
+      { name:"Crépuscule",min:15, css:"linear-gradient(180deg, #2b1055, #d53a7a 58%, #ffb347)" },
+      { name:"Grille néon",min:18,css:"linear-gradient(rgba(0,255,200,.2) 1px, transparent 1px) 0 0/22px 22px, linear-gradient(90deg, rgba(0,255,200,.2) 1px, transparent 1px) 0 0/22px 22px, linear-gradient(180deg, #0b0620, #1c0b3a)" },
+      { name:"Neige",     min:22, css:"radial-gradient(2px 2px at 15% 25%, #fff, transparent), radial-gradient(2px 2px at 60% 15%, #fff, transparent), radial-gradient(2px 2px at 82% 60%, #fff, transparent), radial-gradient(2px 2px at 35% 78%, #fff, transparent), linear-gradient(180deg, #5f93bf, #1f3d5e)" },
+      { name:"Or pur",    min:30, css:"linear-gradient(135deg, #5a420b, #c99a1c 38%, #7a5a10 66%, #d9ae35)" }
     ];
     var TITLES = [
       { name:"Aucun titre", min:0 }, { name:"Dresseur novice", min:0 }, { name:"Apprenti dresseur", min:3 }, { name:"Chasseur de shiny", min:5 },
       { name:"Pro du Wordle", min:8 }, { name:"Œil de lynx", min:12 }, { name:"Maître Pokédex", min:15 }, { name:"Champion d'arène", min:20 },
-      { name:"Membre du Conseil 4", min:30 }, { name:"Maître Pokémon", min:40 }
+      { name:"Membre du Conseil 4", min:30 }, { name:"Maître Pokémon", min:40 },
+      { name:"Explorateur", min:6 }, { name:"Collectionneur", min:10 }, { name:"Stratège", min:18 }, { name:"Légende vivante", min:25 },
+      { name:"Gardien du Pokédex", min:35 }, { name:"Dresseur étoilé", min:50 }, { name:"Entité mythique", min:70 }
     ];
+    // Personnalisation avancée (min = niveau requis ; les éléments verrouillés restent visibles en aperçu).
+    var FRAME_STYLES = [ { name:"Solide", min:0 }, { name:"Double", min:0 }, { name:"Pointillé", min:2 }, { name:"Relief", min:4 }, { name:"Néon", min:8 }, { name:"Arc-en-ciel", min:14 } ];
+    var SHAPES = [ { name:"Rond", min:0 }, { name:"Carré arrondi", min:0 }, { name:"Hexagone", min:6 }, { name:"Écusson", min:11 } ];
+    var EFFECTS = [ { name:"Aucun", min:0 }, { name:"Brillance", min:4 }, { name:"Étoiles", min:9 }, { name:"Holographique", min:16 }, { name:"Halo", min:22 } ];
+    var BADGES = [ { e:"", name:"Aucun", min:0 }, { e:"⭐", name:"Étoile", min:0 }, { e:"🔥", name:"Feu", min:0 }, { e:"💧", name:"Goutte", min:0 }, { e:"🌿", name:"Feuille", min:0 }, { e:"⚡", name:"Éclair", min:0 },
+      { e:"❄️", name:"Flocon", min:3 }, { e:"🍀", name:"Trèfle", min:3 }, { e:"🎵", name:"Musique", min:5 }, { e:"🌙", name:"Lune", min:7 }, { e:"☀️", name:"Soleil", min:7 }, { e:"👻", name:"Fantôme", min:10 },
+      { e:"🎯", name:"Cible", min:12 }, { e:"❤️", name:"Cœur", min:15 }, { e:"💎", name:"Diamant", min:20 }, { e:"🐉", name:"Dragon", min:30 }, { e:"👑", name:"Couronne", min:40 } ];
+    var NAME_FONTS = [ { name:"Normal", min:0 }, { name:"Pixel", min:0 }, { name:"Élégant", min:7 }, { name:"Machine", min:13 } ];
+    var NAME_COLORS = [ { name:"Blanc", css:"#ffffff", min:0 }, { name:"Or", css:"#FFC93C", min:0 }, { name:"Menthe", css:"#8ff0a4", min:2 }, { name:"Ciel", css:"#7cc8ff", min:5 },
+      { name:"Rose", css:"#ff9cc4", min:8 }, { name:"Lavande", css:"#c9a8ff", min:12 }, { name:"Orange", css:"#ffa24a", min:17 },
+      { name:"Arc-en-ciel", css:"linear-gradient(90deg,#ff6b6b,#ffd93d,#6bff95,#4dc3ff,#c084fc)", grad:true, min:25 } ];
+    // CSS partagé (carte du profil + fenêtre de profil des autres joueurs) : style de cadre, forme de la photo, effets, police du pseudo.
+    var CARD_CSS = [
+      ".card{position:relative; overflow:hidden;}",
+      ".card.fs1{border-style:double; border-width:6px;}",
+      ".card.fs2{border-style:dashed;}",
+      ".card.fs3{box-shadow:0 0 0 1px var(--frame), 0 0 16px var(--frame), inset 0 0 18px color-mix(in srgb, var(--frame) 45%, transparent);}",
+      ".card.fs4{border-width:0;}",
+      ".card.fs4::before{content:''; position:absolute; inset:0; border-radius:inherit; padding:4px; pointer-events:none; background:linear-gradient(120deg,#ff5f6d,#ffc371,#5ee06a,#38bdf8,#c084fc,#ff5f6d); background-size:300% 300%; animation:pk-rb 6s linear infinite; -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite:xor; mask-composite:exclude;}",
+      ".card.fs5{border-style:ridge; border-width:6px;}",
+      "@keyframes pk-rb{to{background-position:300% 0}}",
+      ".avatar.sh1{border-radius:28%;}",
+      ".avatar.sh2{border-radius:0; clip-path:polygon(25% 5%,75% 5%,100% 50%,75% 95%,25% 95%,0 50%); border-color:var(--frame); box-shadow:none;}",
+      ".avatar.sh3{border-radius:0; clip-path:polygon(50% 0,100% 14%,100% 62%,50% 100%,0 62%,0 14%); border-color:var(--frame); box-shadow:none;}",
+      ".card.ef1::after, .card.ef2::after, .card.ef3::after{content:''; position:absolute; inset:0; pointer-events:none;}",
+      ".card.ef1::after{background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.3) 50%,transparent 65%); background-size:250% 100%; background-position:150% 0; animation:pk-shine 3.2s ease-in-out infinite;}",
+      "@keyframes pk-shine{to{background-position:-50% 0}}",
+      ".card.ef2::after{background:radial-gradient(2px 2px at 12% 20%,#fff,transparent),radial-gradient(2px 2px at 78% 14%,#fff,transparent),radial-gradient(1.5px 1.5px at 90% 70%,#fff,transparent),radial-gradient(2px 2px at 30% 85%,#fff,transparent),radial-gradient(1.5px 1.5px at 55% 45%,#fff,transparent),radial-gradient(1.5px 1.5px at 8% 60%,#fff,transparent); animation:pk-tw 2.4s ease-in-out infinite alternate;}",
+      "@keyframes pk-tw{from{opacity:.2}to{opacity:1}}",
+      ".card.ef3::after{background:linear-gradient(125deg,rgba(255,0,150,0),rgba(255,0,150,.3),rgba(0,200,255,.3),rgba(120,255,120,.3),rgba(255,230,0,0)); background-size:300% 300%; animation:pk-holo 5s linear infinite alternate;}",
+      "@keyframes pk-holo{from{background-position:0 0}to{background-position:100% 100%}}",
+      ".card.ef4 .avatar{animation:pk-halo 2.2s ease-in-out infinite;}",
+      "@keyframes pk-halo{50%{box-shadow:0 0 0 3px var(--frame), 0 0 26px 6px var(--frame);}}",
+      ".nm.nf1{font-family:'Silkscreen',monospace; font-size:17px; font-weight:700; letter-spacing:.02em;}",
+      ".nm.nf2{font-family:Georgia,'Times New Roman',serif; font-style:italic; font-weight:700;}",
+      ".nm.nf3{font-family:ui-monospace,Menlo,Consolas,monospace; font-size:20px; font-weight:800;}",
+      ".nm.ncg{-webkit-background-clip:text; background-clip:text; color:transparent;}",
+      "@media (prefers-reduced-motion:reduce){.card::before,.card::after,.card .avatar{animation:none !important;}}"
+    ].join("\n");
     function read(){
       try{
         var p = JSON.parse(localStorage.getItem(KEY) || "null");
@@ -65,8 +115,22 @@
         if(style === 2) return BASE + "other/official-artwork/" + id + ".png";
         return BASE + (style === 1 ? "shiny/" : "") + id + ".png";
       },
-      frame: function(i){ return FRAMES[int(i, 7)]; },
-      frames: FRAMES, bgs: BGS, titles: TITLES,
+      frame: function(i){ return FRAMES[int(i, 15)]; },
+      frames: FRAMES, bgs: BGS, titles: TITLES, frameStyles: FRAME_STYLES, shapes: SHAPES, effects: EFFECTS, badges: BADGES, nameFonts: NAME_FONTS, nameColors: NAME_COLORS, cardCss: CARD_CSS,
+      // Applique les options avancées d'une carte {f,h,e,j,nf,nc} sur les éléments (carte, photo, pseudo). Utilisé par l'éditeur et par la fenêtre de profil.
+      paint: function(els, c, nameText){
+        c = c || {};
+        var f = int(c.f, 5), h = int(c.h, 3), e = int(c.e, 4), j = int(c.j, 16), nf = int(c.nf, 3), nc = int(c.nc, 7);
+        if(els.card) els.card.className = "card" + (f ? " fs" + f : "") + (e ? " ef" + e : "");
+        if(els.avatar) els.avatar.className = "avatar" + (h ? " sh" + h : "");
+        if(els.name){
+          var col = NAME_COLORS[nc];
+          els.name.className = "nm" + (nf ? " nf" + nf : "") + (col.grad ? " ncg" : "");
+          els.name.style.color = col.grad ? "" : (nc ? col.css : "");
+          els.name.style.backgroundImage = col.grad ? col.css : "";
+          els.name.textContent = (BADGES[j].e ? BADGES[j].e + " " : "") + (nameText || "");
+        }
+      },
       // Ce qui est envoyé aux serveurs de jeu pour que les autres joueurs voient ta carte.
       card: function(){
         var p = read(); if(!p) return null;
@@ -74,7 +138,7 @@
         if(S) x = { wp:S.wordle.played, ww:S.wordle.won, wb:S.wordle.best, qp:S.whois.played, qc:S.whois.correct, qb:S.whois.bestMs, gf:S.guess.found, gm:S.guess.missed };
         var t = p.type ? TYPE_KEYS.indexOf(p.type) + 1 : 0;
         var lv = window.PokeStats ? window.PokeStats.level().level : 1;
-        return { s: p.style, c: p.color, t: t > 0 ? t : 0, m: p.motto, x: x, b: p.bg, ti: p.title, l: lv, tm: p.team };
+        return { s: p.style, c: p.color, t: t > 0 ? t : 0, m: p.motto, x: x, b: p.bg, ti: p.title, l: lv, tm: p.team, f: p.frameStyle, h: p.shape, e: p.effect, j: p.badge, nf: p.nameFont, nc: p.nameColor };
       }
     };
 
@@ -5784,7 +5848,7 @@
   mpClearSession(); // on ne recolle plus automatiquement à l'ancienne partie après un rechargement
 })();
 </script>
-<script src="profilecard.js?v=1"></script>
+<script src="profilecard.js?v=2"></script>
 <script src="enhance.js"></script>
 <script>
 (function(){
@@ -5795,7 +5859,7 @@
     wordle:  { btn: "tabWordle",  pane: "wordlePane",  host: "wordleHost",  src: "wordle.js?v=2",  api: "WordleTab",  label: "wordle.js" },
     rule:    { btn: "tabRule",    pane: "rulePane",    host: "ruleHost",    src: "rule.js?v=1",    api: "RuleTab",    label: "rule.js" },
     group:   { btn: "tabGroup",   pane: "groupPane",   host: "groupHost",   src: "group.js?v=1",   api: "GroupTab",   label: "group.js" },
-    profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=3", api: "ProfileTab", label: "profile.js" }
+    profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=4", api: "ProfileTab", label: "profile.js" }
   };
   var loaded = {};
   function fail(t, msg){
