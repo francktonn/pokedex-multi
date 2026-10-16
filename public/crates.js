@@ -94,6 +94,14 @@
     ".odds{display:flex; flex-direction:column; gap:6px;}",
     ".orow{display:flex; align-items:center; gap:10px; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:8px 12px; font-weight:800; font-size:14px;}",
     ".orow i{width:12px; height:12px; border-radius:50%; flex-shrink:0;} .orow span{margin-left:auto; color:var(--muted);}",
+    ".prem{border:2px solid #E6A700; background:linear-gradient(180deg, rgba(230,167,0,.12), transparent 40%), var(--card);}",
+    ".trow.p{border-color:#E6A700;} .trow.p.xl{border-color:#9b6bd6; box-shadow:0 0 0 2px rgba(155,107,214,.35);} .trow .ex{display:block; font-size:11.5px; font-weight:800; color:#9b6bd6; margin-top:2px;}",
+    ".exh{margin:16px 0 0; font-family:'Baloo 2',sans-serif; font-size:17px;}",
+    ".excl{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; margin-top:8px;}",
+    ".xi{border:2px solid var(--line); border-radius:12px; padding:8px; background:var(--card); display:flex; flex-direction:column; gap:4px; font-weight:800; font-size:12.5px;}",
+    ".xi.own{border-color:#E6A700;} .xi.no{opacity:.6;} .xi small{color:var(--muted); font-size:11px;}",
+    ".xi .pv{height:26px; border-radius:8px; border:1px solid var(--line); background:var(--line);}",
+    ".xi button{min-height:34px; border-radius:10px; border:0; cursor:pointer; font:inherit; font-weight:800; font-size:12px; background:var(--gold); color:#221d17;}",
     ".hint2{margin:10px 0 0; color:var(--muted); font-size:12.5px; font-weight:700; line-height:1.35;}",
     "@media (prefers-reduced-motion:reduce){*{animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important;}}"
   ].join("\n");
@@ -119,6 +127,16 @@
     '    <p class="hint2" id="passHint"></p>',
     '    <button type="button" class="btn" id="claimAll"></button>',
     '    <div class="msg" id="passMsg" role="status"></div>',
+    '  </section>',
+    '  <section class="panel prem">',
+    '    <h2>👑 Pass Premium</h2>',
+    '    <p class="sub" id="premSub"></p>',
+    '    <button type="button" class="btn" id="premBuy"></button>',
+    '    <div class="msg" id="premMsg" role="status"></div>',
+    '    <div class="tiers" id="ptiers"></div>',
+    '    <h3 class="exh">✨ Personnalisations exclusives</h3>',
+    '    <p class="sub">Aux paliers 10, 20 et 30, récupère la récompense premium pour débloquer de nouveaux éléments de profil, introuvables ailleurs.</p>',
+    '    <div class="excl" id="excl"></div>',
     '  </section>',
     '  <section class="panel">',
     '    <h2>🎨 Skins du Pokédex</h2>',
@@ -350,6 +368,7 @@
       $("passXp").textContent = st.level >= PP.maxTier ? "MAX" : st.into + " / " + PP.xpTier + " XP";
       $("passBar").style.width = Math.round(100 * st.into / PP.xpTier) + "%";
       $("passHint").textContent = "+" + PP.xpRound + " XP par manche multijoueur terminée, +" + PP.xpCrate + " XP par crate ouverte.";
+      renderPremium();
       var ca = $("claimAll"); ca.disabled = n === 0; ca.textContent = n ? "🎁 Tout récupérer (" + n + ")" : "Rien à récupérer";
       var sk = $("skins"); sk.textContent = "";
       Object.keys(PP.skins).forEach(function (id) {
@@ -369,6 +388,57 @@
         list.appendChild(r);
       });
     }
+    function premText(t) {
+      var a = [];
+      if (t.money) a.push("💰 " + window.PokeMoney.format(t.money));
+      if (t.crates) a.push("🎁 " + t.crates + " crate" + (t.crates > 1 ? "s" : ""));
+      return a.join(" + ");
+    }
+    function renderPremium() {
+      var st = PP.state(), prem = st.premium, price = PP.premiumPrice, money = window.PokeMoney.get();
+      $("premSub").textContent = prem ? "Pass Premium actif : une 2e piste de récompenses est débloquée." : "Débloque une 2e piste de récompenses (Pokédollars + crates) et 3 packs de personnalisations de profil exclusives, pour " + window.PokeMoney.format(price) + ".";
+      var b = $("premBuy");
+      b.classList.toggle("hidden", prem); b.disabled = !prem && money < price;
+      b.textContent = money < price ? "👑 Acheter le Pass Premium — " + window.PokeMoney.format(price) + " (solde insuffisant)" : "👑 Acheter le Pass Premium — " + window.PokeMoney.format(price);
+      var list = $("ptiers"); list.textContent = "";
+      PP.premiumTiers().forEach(function (t) {
+        var done = !!st.pclaimed[t.tier], can = PP.canClaimPremium(t.tier);
+        var r = el("div", "trow p" + (t.items.length ? " xl" : "") + (done ? " done" : can ? " can" : " lock"));
+        r.appendChild(el("span", "tn", String(t.tier)));
+        var tl = el("span", "tl", premText(t));
+        if (t.items.length) tl.appendChild(el("span", "ex", "✨ Exclusif : " + t.items.map(function (i) { return i.name; }).join(", ")));
+        r.appendChild(tl);
+        if (can) { var g = el("button", "go", "Récupérer"); g.type = "button"; g.onclick = function () { claimPrem(t.tier); }; r.appendChild(g); }
+        else r.appendChild(el("span", "st", done ? "✅" : prem ? "🔒" : "👑"));
+        list.appendChild(r);
+      });
+      var ex = $("excl"); ex.textContent = "";
+      PP.passItems().forEach(function (it) {
+        var own = PP.ownsItem(it.list, it.idx), card = el("div", "xi" + (own ? " own" : " no"));
+        var pv = el("div", "pv"); if (it.css) pv.style.background = it.css; card.appendChild(pv);
+        card.appendChild(document.createTextNode(it.name)); card.appendChild(el("small", "", it.catName + " · palier " + it.tier));
+        if (own) {
+          var e = el("button", "", "Équiper"); e.type = "button";
+          e.onclick = function () {
+            var m = $("premMsg");
+            if (PP.equipItem(it.list, it.idx)) { m.textContent = "« " + it.name + " » équipé sur ton profil !"; m.className = "msg ok"; }
+            else { m.textContent = "Crée d'abord ton profil (onglet Profil) pour équiper cet élément."; m.className = "msg ko"; }
+          };
+          card.appendChild(e);
+        } else card.appendChild(el("small", "", prem ? "🔒 À récupérer au palier " + it.tier : "👑 Premium"));
+        ex.appendChild(card);
+      });
+    }
+    function claimPrem(t) {
+      var o = PP.claimPremium(t), m = $("premMsg");
+      if (o) { m.textContent = "Récompense premium récupérée !" + (o.items.length ? " Nouveaux éléments de profil débloqués : " + o.items.map(function (i) { return i.name; }).join(", ") + "." : ""); m.className = "msg ok"; }
+      else { m.textContent = "Impossible : ton stock de crates est plein (99). Ouvre-en quelques-unes."; m.className = "msg ko"; }
+    }
+    $("premBuy").addEventListener("click", function () {
+      var m = $("premMsg");
+      if (PP.buyPremium()) { m.textContent = "Pass Premium acheté ! Récupère tes récompenses."; m.className = "msg ok"; }
+      else { m.textContent = "Solde insuffisant : il te faut " + window.PokeMoney.format(PP.premiumPrice) + "."; m.className = "msg ko"; }
+    });
     function claimOne(t) {
       var o = PP.claim(t), m = $("passMsg");
       if (o) { m.textContent = "Récompense récupérée !"; m.className = "msg ok"; }
@@ -378,8 +448,10 @@
       var before = PP.claimable(), o = PP.claimAll(), m = $("passMsg");
       var left = PP.claimable();
       if (left > 0) { m.textContent = "Récupéré, sauf " + left + " palier(s) : stock de crates plein (99)."; m.className = "msg ko"; }
-      else if (before) { m.textContent = "Tout est récupéré : +" + window.PokeMoney.format(o.money) + ", " + o.crates + " crate(s)" + (o.skins ? ", " + o.skins + " skin(s)" : "") + "."; m.className = "msg ok"; }
+      else if (before) { m.textContent = "Tout est récupéré : +" + window.PokeMoney.format(o.money) + ", " + o.crates + " crate(s)" + (o.skins ? ", " + o.skins + " skin(s)" : "") + (o.items ? ", " + o.items + " élément(s) de profil exclusif(s)" : "") + "."; m.className = "msg ok"; }
     });
+    window.addEventListener("moneychange", function () { renderPass(); });
+    window.addEventListener("profilechange", function () { renderPass(); });
     window.addEventListener("passchange", function () { renderPass(); renderShop(); refreshMain(); });
 
     function showSec(which) {

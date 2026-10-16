@@ -116,7 +116,7 @@
     '    <div class="pvnote hidden" id="pvNote"></div>',
     '    <div id="editor" class="hidden">',
     '    <p class="sub" style="margin-top:12px">Ton pseudo, ta photo et ton style seront utilisés automatiquement dans tous les modes de jeu.</p>',
-    '    <p class="hint2">👁️ Les éléments marqués 🔒 sont déjà prévisualisables sur ta carte : ils seront enregistrés dès que tu les auras obtenus dans une crate (onglet 🎁 Crates).</p>',
+    '    <p class="hint2">👁️ Les éléments marqués 🔒 sont déjà prévisualisables sur ta carte : ils seront enregistrés dès que tu les auras obtenus dans une crate (onglet Bonus) ou, pour les éléments 👑, avec le Pass Premium.</p>',
     '    <label for="pName">Ton pseudo</label>',
     '    <input type="text" id="pName" maxlength="16" autocomplete="off" placeholder="Sacha">',
     '    <label for="pFav">Ton Pokémon préféré</label>',
@@ -191,8 +191,14 @@
     // Objets de crate : les éléments avec min > 0 ne sont débloqués que si tu les as obtenus dans une crate.
     var C = window.PokeCrates, LISTOF = {};
     LOCKS.forEach(function (k) { LISTOF[k[0]] = k[1]; });
+    var PS = window.PokePass;
     function owned(list, i) { return !!(C && C.owns(list, i)); }
-    function isLocked(list, i) { var it = P[list][i]; return !!it && it.min > 0 && !owned(list, i); }
+    // Objets de crate (min > 0) ou exclusifs du Pass Premium (pass = palier) : verrouillés tant qu'ils ne sont pas obtenus.
+    function isLocked(list, i) {
+      var it = P[list][i]; if (!it) return false;
+      if (it.pass) return !(PS && PS.ownsItem(list, i));
+      return it.min > 0 && !owned(list, i);
+    }
 
     function fold(s) { return String(s || "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[’']/g, "'").replace(/[\s\-.]+/g, " ").trim(); }
     function nameOf(id) { return names[id - 1] || ("Pokémon n°" + id); }
@@ -255,7 +261,7 @@
     function optBtn(label, i, key, list) {
       var locked = isLocked(LISTOF[key], i);
       var b = el("button", (i === draft[key] ? "on" : "") + (locked ? " locked" : ""), label); b.type = "button";
-      if (locked) { b.appendChild(el("small", "", "🔒 Crate")); b.title = "À obtenir dans une crate (aperçu possible)"; }
+      if (locked) { var pi = P[LISTOF[key]][i]; b.appendChild(el("small", "", pi && pi.pass ? "👑 Palier " + pi.pass : "🔒 Crate")); b.title = pi && pi.pass ? "Exclusif du Pass Premium, palier " + pi.pass + " (aperçu possible)" : "À obtenir dans une crate (aperçu possible)"; }
       b.onclick = function () { draft[key] = i; say(""); renderOptions(); renderPreview(); };
       return b;
     }
@@ -284,7 +290,7 @@
       var nc = $("nameColors"); nc.textContent = "";
       P.nameColors.forEach(function (c, i) {
         var locked = isLocked("nameColors", i), b = el("button", (i === draft.nameColor ? "on" : "") + (locked ? " locked" : "")); b.type = "button"; b.style.background = c.css;
-        b.title = c.name + (locked ? " — à obtenir dans une crate (aperçu)" : ""); b.setAttribute("aria-label", "Couleur du pseudo " + c.name);
+        b.title = c.name + (locked ? (c.pass ? " — exclusif du Pass Premium, palier " + c.pass + " (aperçu)" : " — à obtenir dans une crate (aperçu)") : ""); b.setAttribute("aria-label", "Couleur du pseudo " + c.name);
         b.onclick = function () { draft.nameColor = i; say(""); renderOptions(); renderPreview(); };
         nc.appendChild(b);
       });
@@ -429,6 +435,7 @@
     renderWallet(); window.addEventListener("moneychange", renderWallet);
     // Un objet vient d'être gagné dans une crate : il se déverrouille tout de suite dans l'éditeur.
     window.addEventListener("cratechange", function () { renderOptions(); renderPreview(); });
+    window.addEventListener("passchange", function () { renderOptions(); renderPreview(); });
     // Profil modifié ailleurs (ex. « Équiper » depuis l'onglet Crates) : on recharge la carte si l'éditeur est fermé.
     window.addEventListener("profilechange", function () { if ($("editor").classList.contains("hidden")) fillFromSaved(); });
 

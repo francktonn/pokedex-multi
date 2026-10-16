@@ -27,8 +27,8 @@
       return { name: String(p.name || "").trim().slice(0,16), favId: Number(p.favId) || null, favName: String(p.favName || ""),
         style: int(p.style, 2), color: int(p.color, 15), motto: String(p.motto || "").trim().slice(0,40),
         type: /^[a-z]{3,10}$/.test(p.type || "") ? p.type : "",
-        bg: int(p.bg, 13), title: int(p.title, 15),
-        frameStyle: int(p.frameStyle, 5), shape: int(p.shape, 3), effect: int(p.effect, 4), nameFont: int(p.nameFont, 3), nameColor: int(p.nameColor, 7),
+        bg: int(p.bg, 20), title: int(p.title, 25),
+        frameStyle: int(p.frameStyle, 9), shape: int(p.shape, 6), effect: int(p.effect, 9), nameFont: int(p.nameFont, 6), nameColor: int(p.nameColor, 11),
         team: (Array.isArray(p.team) ? p.team : []).map(Number).filter(function(n){ return Math.floor(n) === n && n >= 1 && n <= 1025; }).slice(0,6) };
     }
     // Fonds de carte et titres (min > 0 = objet de crate ; sa valeur ne sert plus qu'à définir la rareté).
@@ -46,23 +46,30 @@
       { name:"Crépuscule",min:15, css:"linear-gradient(180deg, #2b1055, #d53a7a 58%, #ffb347)" },
       { name:"Grille néon",min:18,css:"linear-gradient(rgba(0,255,200,.2) 1px, transparent 1px) 0 0/22px 22px, linear-gradient(90deg, rgba(0,255,200,.2) 1px, transparent 1px) 0 0/22px 22px, linear-gradient(180deg, #0b0620, #1c0b3a)" },
       { name:"Neige",     min:22, css:"radial-gradient(2px 2px at 15% 25%, #fff, transparent), radial-gradient(2px 2px at 60% 15%, #fff, transparent), radial-gradient(2px 2px at 82% 60%, #fff, transparent), radial-gradient(2px 2px at 35% 78%, #fff, transparent), linear-gradient(180deg, #5f93bf, #1f3d5e)" },
-      { name:"Or pur",    min:30, css:"linear-gradient(135deg, #5a420b, #c99a1c 38%, #7a5a10 66%, #d9ae35)" }
+      { name:"Or pur",    min:30, css:"linear-gradient(135deg, #5a420b, #c99a1c 38%, #7a5a10 66%, #d9ae35)" },
+      // Exclusifs du Pass Premium (pass = palier qui les débloque, jamais dans les crates)
+      { name:"Sakura",          min:0, pass:10, css:"radial-gradient(circle at 20% 25%, rgba(255,190,215,.55) 0 6px, transparent 7px), radial-gradient(circle at 75% 60%, rgba(255,190,215,.45) 0 8px, transparent 9px), radial-gradient(circle at 45% 85%, rgba(255,190,215,.5) 0 5px, transparent 6px), linear-gradient(160deg, #4a1233, #a8325f 60%, #ffb3cf)" },
+      { name:"Aurore boréale",  min:0, pass:20, css:"linear-gradient(115deg, rgba(60,255,170,.5), rgba(90,120,255,.45) 45%, rgba(200,90,255,.5)), linear-gradient(180deg, #06121f, #0b2a3a)" },
+      { name:"Galaxie",         min:0, pass:30, css:"radial-gradient(1.5px 1.5px at 18% 22%, #fff, transparent), radial-gradient(1.5px 1.5px at 72% 30%, #fff, transparent), radial-gradient(1px 1px at 40% 75%, #fff, transparent), radial-gradient(1.5px 1.5px at 88% 82%, #fff, transparent), radial-gradient(60% 50% at 30% 30%, rgba(160,90,255,.55), transparent 70%), radial-gradient(50% 40% at 75% 70%, rgba(50,160,255,.45), transparent 70%), #080616" }
     ];
     var TITLES = [
       { name:"Aucun titre", min:0 }, { name:"Dresseur novice", min:0 }, { name:"Apprenti dresseur", min:3 }, { name:"Chasseur de shiny", min:5 },
       { name:"As du quiz", min:8 }, { name:"Œil de lynx", min:12 }, { name:"Maître Pokédex", min:15 }, { name:"Champion d'arène", min:20 },
       { name:"Membre du Conseil 4", min:30 }, { name:"Maître Pokémon", min:40 },
       { name:"Explorateur", min:6 }, { name:"Collectionneur", min:10 }, { name:"Stratège", min:18 }, { name:"Légende vivante", min:25 },
-      { name:"Gardien du Pokédex", min:35 }, { name:"Dresseur étoilé", min:50 }, { name:"Entité mythique", min:70 }
+      { name:"Gardien du Pokédex", min:35 }, { name:"Dresseur étoilé", min:50 }, { name:"Entité mythique", min:70 },
+      { name:"Pionnier du Pass", min:0, pass:10 }, { name:"Élite du Pass", min:0, pass:20 }, { name:"Maître du Pass", min:0, pass:30 }
     ];
     // Personnalisation avancée (min > 0 = objet de crate, rareté selon min ; les éléments verrouillés restent visibles en aperçu).
-    var FRAME_STYLES = [ { name:"Solide", min:0 }, { name:"Double", min:0 }, { name:"Pointillé", min:2 }, { name:"Relief", min:4 }, { name:"Néon", min:8 }, { name:"Arc-en-ciel", min:14 } ];
-    var SHAPES = [ { name:"Rond", min:0 }, { name:"Carré arrondi", min:0 }, { name:"Hexagone", min:6 }, { name:"Écusson", min:11 } ];
-    var EFFECTS = [ { name:"Aucun", min:0 }, { name:"Brillance", min:4 }, { name:"Étoiles", min:9 }, { name:"Holographique", min:16 }, { name:"Halo", min:22 } ];
-    var NAME_FONTS = [ { name:"Normal", min:0 }, { name:"Pixel", min:0 }, { name:"Élégant", min:7 }, { name:"Machine", min:13 } ];
+    var FRAME_STYLES = [ { name:"Solide", min:0 }, { name:"Double", min:0 }, { name:"Pointillé", min:2 }, { name:"Relief", min:4 }, { name:"Néon", min:8 }, { name:"Arc-en-ciel", min:14 }, { name:"Cristal", min:0, pass:20 }, { name:"Flammes", min:0, pass:30 } ];
+    var SHAPES = [ { name:"Rond", min:0 }, { name:"Carré arrondi", min:0 }, { name:"Hexagone", min:6 }, { name:"Écusson", min:11 }, { name:"Étoile", min:0, pass:30 } ];
+    var EFFECTS = [ { name:"Aucun", min:0 }, { name:"Brillance", min:4 }, { name:"Étoiles", min:9 }, { name:"Holographique", min:16 }, { name:"Halo", min:22 }, { name:"Aurore", min:0, pass:20 }, { name:"Éclairs", min:0, pass:30 } ];
+    var NAME_FONTS = [ { name:"Normal", min:0 }, { name:"Pixel", min:0 }, { name:"Élégant", min:7 }, { name:"Machine", min:13 }, { name:"Royal", min:0, pass:30 } ];
     var NAME_COLORS = [ { name:"Blanc", css:"#ffffff", min:0 }, { name:"Or", css:"#FFC93C", min:0 }, { name:"Menthe", css:"#8ff0a4", min:2 }, { name:"Ciel", css:"#7cc8ff", min:5 },
       { name:"Rose", css:"#ff9cc4", min:8 }, { name:"Lavande", css:"#c9a8ff", min:12 }, { name:"Orange", css:"#ffa24a", min:17 },
-      { name:"Arc-en-ciel", css:"linear-gradient(90deg,#ff6b6b,#ffd93d,#6bff95,#4dc3ff,#c084fc)", grad:true, min:25 } ];
+      { name:"Arc-en-ciel", css:"linear-gradient(90deg,#ff6b6b,#ffd93d,#6bff95,#4dc3ff,#c084fc)", grad:true, min:25 },
+      { name:"Rubis", css:"#ff4d6d", min:0, pass:10 },
+      { name:"Cosmique", css:"linear-gradient(90deg,#7c3aed,#38bdf8,#f0abfc,#7c3aed)", grad:true, min:0, pass:30 } ];
     // CSS partagé (carte du profil + fenêtre de profil des autres joueurs) : style de cadre, forme de la photo, effets, police du pseudo.
     var CARD_CSS = [
       ".card{position:relative; overflow:hidden;}",
@@ -72,11 +79,20 @@
       ".card.fs4{border-width:0;}",
       ".card.fs4::before{content:''; position:absolute; inset:0; border-radius:inherit; padding:4px; pointer-events:none; background:linear-gradient(120deg,#ff5f6d,#ffc371,#5ee06a,#38bdf8,#c084fc,#ff5f6d); background-size:300% 300%; animation:pk-rb 6s linear infinite; -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite:xor; mask-composite:exclude;}",
       ".card.fs5{border-style:ridge; border-width:6px;}",
+      ".card.fs6{border-style:groove; border-width:6px; box-shadow:0 0 16px rgba(160,230,255,.65), inset 0 0 24px rgba(160,230,255,.28);}",
+      ".card.fs7{border-width:0;}",
+      ".card.fs7::before{content:''; position:absolute; inset:0; border-radius:inherit; padding:5px; pointer-events:none; background:linear-gradient(0deg,#ff3d00,#ff9100,#ffd600,#ff9100,#ff3d00); background-size:100% 300%; animation:pk-fire 2.4s linear infinite; -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite:xor; mask-composite:exclude;}",
+      "@keyframes pk-fire{to{background-position:0 300%}}",
       "@keyframes pk-rb{to{background-position:300% 0}}",
       ".avatar.sh1{border-radius:28%;}",
       ".avatar.sh2{border-radius:0; clip-path:polygon(25% 5%,75% 5%,100% 50%,75% 95%,25% 95%,0 50%); border-color:var(--frame); box-shadow:none;}",
+      ".avatar.sh4{border-radius:0; clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%); border-color:var(--frame); box-shadow:none;}",
       ".avatar.sh3{border-radius:0; clip-path:polygon(50% 0,100% 14%,100% 62%,50% 100%,0 62%,0 14%); border-color:var(--frame); box-shadow:none;}",
-      ".card.ef1::after, .card.ef2::after, .card.ef3::after{content:''; position:absolute; inset:0; pointer-events:none;}",
+      ".card.ef1::after, .card.ef2::after, .card.ef3::after, .card.ef5::after, .card.ef6::after{content:''; position:absolute; inset:0; pointer-events:none;}",
+      ".card.ef5::after{background:linear-gradient(180deg,rgba(60,255,170,0),rgba(60,255,170,.28) 40%,rgba(150,90,255,.3) 70%,rgba(150,90,255,0)); background-size:100% 220%; animation:pk-aur 5s ease-in-out infinite alternate;}",
+      "@keyframes pk-aur{from{background-position:0 0; opacity:.55}to{background-position:0 100%; opacity:1}}",
+      ".card.ef6::after{background:radial-gradient(60% 40% at 25% 0,rgba(180,220,255,.65),transparent 70%),radial-gradient(50% 35% at 80% 100%,rgba(180,220,255,.55),transparent 70%); animation:pk-zap 3.4s steps(1) infinite;}",
+      "@keyframes pk-zap{0%,100%{opacity:0}6%{opacity:1}10%{opacity:.1}14%{opacity:.9}20%{opacity:0}55%{opacity:0}58%{opacity:.8}62%{opacity:0}}",
       ".card.ef1::after{background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.3) 50%,transparent 65%); background-size:250% 100%; background-position:150% 0; animation:pk-shine 3.2s ease-in-out infinite;}",
       "@keyframes pk-shine{to{background-position:-50% 0}}",
       ".card.ef2::after{background:radial-gradient(2px 2px at 12% 20%,#fff,transparent),radial-gradient(2px 2px at 78% 14%,#fff,transparent),radial-gradient(1.5px 1.5px at 90% 70%,#fff,transparent),radial-gradient(2px 2px at 30% 85%,#fff,transparent),radial-gradient(1.5px 1.5px at 55% 45%,#fff,transparent),radial-gradient(1.5px 1.5px at 8% 60%,#fff,transparent); animation:pk-tw 2.4s ease-in-out infinite alternate;}",
@@ -88,6 +104,7 @@
       ".nm.nf1{font-family:'Silkscreen',monospace; font-size:17px; font-weight:700; letter-spacing:.02em;}",
       ".nm.nf2{font-family:Georgia,'Times New Roman',serif; font-style:italic; font-weight:700;}",
       ".nm.nf3{font-family:ui-monospace,Menlo,Consolas,monospace; font-size:20px; font-weight:800;}",
+      ".nm.nf4{font-family:Georgia,'Times New Roman',serif; font-weight:800; font-variant:small-caps; letter-spacing:.08em; text-shadow:0 0 10px rgba(255,255,255,.35);}",
       ".nm.ncg{-webkit-background-clip:text; background-clip:text; color:transparent;}",
       "@media (prefers-reduced-motion:reduce){.card::before,.card::after,.card .avatar{animation:none !important;}}"
     ].join("\n");
@@ -117,7 +134,7 @@
       // Applique les options avancées d'une carte {f,h,e,nf,nc} sur les éléments (carte, photo, pseudo). Utilisé par l'éditeur et par la fenêtre de profil.
       paint: function(els, c, nameText){
         c = c || {};
-        var f = int(c.f, 5), h = int(c.h, 3), e = int(c.e, 4), nf = int(c.nf, 3), nc = int(c.nc, 7);
+        var f = int(c.f, 9), h = int(c.h, 6), e = int(c.e, 9), nf = int(c.nf, 6), nc = int(c.nc, 11);
         if(els.card) els.card.className = "card" + (f ? " fs" + f : "") + (e ? " ef" + e : "");
         if(els.avatar) els.avatar.className = "avatar" + (h ? " sh" + h : "");
         if(els.name){
@@ -315,11 +332,31 @@
     var R = [ {m:100},{c:1},{m:150},{c:1},{m:250},{c:1},{m:300},{c:1},{m:400},{s:"ocean"},
               {c:1},{m:400},{c:1},{m:500},{c:2},{m:600},{c:1},{m:700},{c:2},{s:"spectre"},
               {c:1},{m:800},{c:2},{m:900},{c:2},{m:1000},{c:2},{m:1500},{c:3},{s:"gold"} ];
+    // Pass Premium (3000 ₽) : une 2e piste de récompenses (Pokédollars + crates) et, aux paliers 10, 20 et 30,
+    // des personnalisations de profil exclusives (objets de PokeProfile marqués pass = palier).
+    var PREMIUM_PRICE = 3000;
+    var PR = [ {m:200},{c:1},{m:300},{c:1},{m:400},{c:2},{m:500},{c:1},{m:600},{m:1000,c:2},
+               {c:2},{m:700},{c:2},{m:800},{c:3},{m:900},{c:2},{m:1000},{c:3},{m:1500,c:3},
+               {c:3},{m:1200},{c:3},{m:1300},{c:4},{m:1500},{c:4},{m:2000},{c:5},{m:3000,c:5} ];
+    var ITEM_LISTS = [ ["bgs","bg","Fond de carte"], ["titles","title","Titre"], ["frameStyles","frameStyle","Style de cadre"], ["shapes","shape","Forme de photo"],
+      ["effects","effect","Effet animé"], ["nameFonts","nameFont","Police du pseudo"], ["nameColors","nameColor","Couleur du pseudo"] ];
+    function passItems(tier){
+      var P = window.PokeProfile, out = [];
+      if(!P) return out;
+      ITEM_LISTS.forEach(function(c){
+        (P[c[0]] || []).forEach(function(it, i){
+          if(it.pass && (!tier || it.pass === tier)) out.push({ list:c[0], field:c[1], catName:c[2], idx:i, name:it.name, css:it.css || "", tier:it.pass });
+        });
+      });
+      return out;
+    }
     function read(){
-      var s = { xp:0, claimed:{}, skin:"default" };
+      var s = { xp:0, claimed:{}, skin:"default", premium:false, pclaimed:{} };
       try{
         var o = JSON.parse(localStorage.getItem(KEY) || "null");
         if(o && typeof o === "object"){
+          s.premium = o.premium === true;
+          if(s.premium && o.pclaimed && typeof o.pclaimed === "object") Object.keys(o.pclaimed).forEach(function(k){ var t = Number(k); if(t >= 1 && t <= MAX_TIER && o.pclaimed[k]) s.pclaimed[t] = true; });
           s.xp = Math.min(XP_TIER * MAX_TIER, Math.max(0, Math.floor(Number(o.xp)) || 0));
           if(o.claimed && typeof o.claimed === "object") Object.keys(o.claimed).forEach(function(k){ var t = Number(k); if(t >= 1 && t <= MAX_TIER && o.claimed[k]) s.claimed[t] = true; });
           if(typeof o.skin === "string" && SKINS[o.skin]) s.skin = o.skin;
@@ -335,11 +372,12 @@
       if(id && id !== "default" && SKINS[id]) el.setAttribute("data-skin", id); else el.removeAttribute("data-skin");
     }
     function tiers(){ return R.map(function(r, i){ return { tier:i + 1, money:r.m || 0, crates:r.c || 0, skin:r.s || null }; }); }
+    function premiumTiers(){ return PR.map(function(r, i){ return { tier:i + 1, money:r.m || 0, crates:r.c || 0, items:passItems(i + 1) }; }); }
     var API = window.PokePass = {
-      xpTier: XP_TIER, maxTier: MAX_TIER, xpRound: 50, xpCrate: 25, skins: SKINS, tiers: tiers,
+      xpTier: XP_TIER, maxTier: MAX_TIER, xpRound: 50, xpCrate: 25, skins: SKINS, tiers: tiers, premiumTiers: premiumTiers, premiumPrice: PREMIUM_PRICE, passItems: passItems,
       state: function(){
         var s = read(), lv = level(s.xp);
-        return { xp:s.xp, level:lv, into: lv >= MAX_TIER ? XP_TIER : s.xp - lv * XP_TIER, claimed:s.claimed, skin:s.skin };
+        return { xp:s.xp, level:lv, into: lv >= MAX_TIER ? XP_TIER : s.xp - lv * XP_TIER, claimed:s.claimed, skin:s.skin, premium:s.premium, pclaimed:s.pclaimed };
       },
       addXp: function(n){
         n = Math.floor(Number(n)); if(!(n > 0)) return;
@@ -349,7 +387,42 @@
         if(after > before && window.toast) window.toast("Battle Pass : palier " + after + " atteint !", { kind:"win", icon:"🏆" });
       },
       canClaim: function(t){ var s = read(); return t >= 1 && t <= MAX_TIER && level(s.xp) >= t && !s.claimed[t]; },
-      claimable: function(){ var s = read(), lv = level(s.xp), n = 0; for(var t = 1; t <= lv; t++) if(!s.claimed[t]) n++; return n; },
+      claimable: function(){ var s = read(), lv = level(s.xp), n = 0; for(var t = 1; t <= lv; t++){ if(!s.claimed[t]) n++; if(s.premium && !s.pclaimed[t]) n++; } return n; },
+      isPremium: function(){ return read().premium; },
+      // Achète le Pass Premium avec des Pokédollars. false si déjà acheté ou solde insuffisant.
+      buyPremium: function(){
+        var s = read();
+        if(s.premium) return false;
+        if(!window.PokeMoney || !window.PokeMoney.spend(PREMIUM_PRICE)) return false;
+        s.premium = true; write(s);
+        if(window.toast) window.toast("Pass Premium activé ! Récupère tes récompenses premium.", { kind:"win", icon:"👑" });
+        return true;
+      },
+      canClaimPremium: function(t){ var s = read(); return s.premium && t >= 1 && t <= MAX_TIER && level(s.xp) >= t && !s.pclaimed[t]; },
+      // Récupère la récompense premium d'un palier. Renvoie { money, crates, items } ou null.
+      claimPremium: function(t){
+        if(!this.canClaimPremium(t)) return null;
+        var r = PR[t - 1], s = read(), out = { money:0, crates:0, items:passItems(t) };
+        if(r.c){
+          if(!window.PokeCrates || window.PokeCrates.state().stock + r.c > 99) return null;
+          out.crates = window.PokeCrates.grant(r.c);
+        }
+        s.pclaimed[t] = true; write(s);
+        if(r.m){ window.PokeMoney.add(r.m); out.money = r.m; }
+        return out;
+      },
+      // Un objet de profil exclusif est possédé une fois la récompense premium de son palier récupérée.
+      ownsItem: function(list, idx){
+        var P = window.PokeProfile, it = P && P[list] && P[list][idx], s = read();
+        return !!(it && it.pass && s.premium && s.pclaimed[it.pass]);
+      },
+      // Équipe un objet exclusif sur le profil enregistré. false s'il n'est pas débloqué ou sans profil.
+      equipItem: function(list, idx){
+        var P = window.PokeProfile, cur = P && P.get(), f = null;
+        ITEM_LISTS.forEach(function(c){ if(c[0] === list) f = c[1]; });
+        if(!cur || !f || !this.ownsItem(list, idx)) return false;
+        cur[f] = idx; P.set(cur); return true;
+      },
       // Récupère la récompense d'un palier. Renvoie { money, crates, skin } ou null.
       claim: function(t){
         if(!this.canClaim(t)) return null;
@@ -364,12 +437,15 @@
         return out;
       },
       claimAll: function(){
-        var tot = { money:0, crates:0, skins:0 };
-        for(var t = 1; t <= MAX_TIER; t++){ var o = this.canClaim(t) ? this.claim(t) : null; if(o){ tot.money += o.money; tot.crates += o.crates; if(o.skin) tot.skins++; } }
+        var tot = { money:0, crates:0, skins:0, items:0 };
+        for(var t = 1; t <= MAX_TIER; t++){
+          var o = this.canClaim(t) ? this.claim(t) : null; if(o){ tot.money += o.money; tot.crates += o.crates; if(o.skin) tot.skins++; }
+          var q = this.canClaimPremium(t) ? this.claimPremium(t) : null; if(q){ tot.money += q.money; tot.crates += q.crates; tot.items += q.items.length; }
+        }
         return tot;
       },
       // Admin : tous les paliers atteints et récupérés, tous les skins débloqués.
-      unlockAll: function(){ var s = read(); s.xp = XP_TIER * MAX_TIER; for(var t = 1; t <= MAX_TIER; t++) s.claimed[t] = true; write(s); },
+      unlockAll: function(){ var s = read(); s.xp = XP_TIER * MAX_TIER; s.premium = true; for(var t = 1; t <= MAX_TIER; t++){ s.claimed[t] = true; s.pclaimed[t] = true; } write(s); },
       ownsSkin: function(id){ var s = read(); return id === "default" || (!!SKINS[id] && !!s.claimed[SKINS[id].tier]); },
       setSkin: function(id){
         if(!SKINS[id] || !this.ownsSkin(id)) return false;
