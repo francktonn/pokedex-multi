@@ -20,6 +20,7 @@
   // + statistiques personnelles (window.PokeStats), alimentées par chaque mode de jeu.
   (function(){
     var KEY = "pokeProfile_v1", SKEY = "pokeStats_v1";
+    var TYPE_KEYS = ["normal","fire","water","grass","electric","ice","fighting","poison","ground","flying","psychic","bug","rock","ghost","dragon","dark","steel","fairy"];
     var FRAMES = ["#FFC93C","#E23B30","#3a86d6","#5ee06a","#F95587","#9b6bd6","#ff8a3c","#e8e8e8"];
     function int(v, max){ v = Number(v); return Math.floor(v) === v && v >= 0 && v <= max ? v : 0; }
     function clean(p){
@@ -51,7 +52,13 @@
       frame: function(i){ return FRAMES[int(i, 7)]; },
       frames: FRAMES,
       // Ce qui est envoyé aux serveurs de jeu pour que les autres joueurs voient ta carte.
-      card: function(){ var p = read(); return p ? { s: p.style, c: p.color } : null; }
+      card: function(){
+        var p = read(); if(!p) return null;
+        var S = window.PokeStats ? window.PokeStats.get() : null, x = null;
+        if(S) x = { wp:S.wordle.played, ww:S.wordle.won, wb:S.wordle.best, qp:S.whois.played, qc:S.whois.correct, qb:S.whois.bestMs, gf:S.guess.found, gm:S.guess.missed };
+        var t = p.type ? TYPE_KEYS.indexOf(p.type) + 1 : 0;
+        return { s: p.style, c: p.color, t: t > 0 ? t : 0, m: p.motto, x: x };
+      }
     };
 
     function blank(){ return {
@@ -850,6 +857,7 @@
     box-shadow: inset 0 0 0 1px rgba(0,0,0,.06);
     font-family:'Nunito', sans-serif;
   }
+  .mp-profile-link{ cursor:pointer; }
   .mp-player-row.is-me{ box-shadow: inset 0 0 0 1.5px var(--gold); }
   .mp-player-name{ font-weight:700; font-size:13.5px; color:var(--ink); }
   .mp-avatar{
@@ -4660,6 +4668,27 @@
     return pr && pr.favId ? pr.favId : null;
   }
   function mpCardOf(){ return window.PokeProfile ? window.PokeProfile.card() : null; }
+  function mpProfileAttr(p, isMe){
+    return mpEscapeHtml(JSON.stringify({ name: p.name, avatar: p.avatar || null, card: p.card || null, me: !!isMe }));
+  }
+  // Toucher un joueur (hors boutons) ouvre son profil.
+  document.addEventListener("click", (e) => {
+    const row = e.target.closest && e.target.closest(".mp-profile-link");
+    if(!row || e.target.closest("button, a, input") || !window.PokeCard) return;
+    try{ window.PokeCard.show(JSON.parse(row.getAttribute("data-profile"))); }catch(err){}
+  });
+  // Garde ta carte à jour chez les autres joueurs (profil ou statistiques modifiés pendant une partie).
+  let mpCardTimer = null;
+  function mpPushCard(){
+    clearTimeout(mpCardTimer);
+    mpCardTimer = setTimeout(() => {
+      if(mpRoomCode && mpPlayerId && window.PokeProfile && window.PokeProfile.get()){
+        mpApiPost("card", { code: mpRoomCode, playerId: mpPlayerId, card: mpCardOf() }).catch(() => {});
+      }
+    }, 800);
+  }
+  window.addEventListener("statschange", mpPushCard);
+  window.addEventListener("profilechange", mpPushCard);
   function mpAvatarHtml(p){
     if(!p || !p.avatar || !window.PokeProfile) return "";
     const c = p.card || {};
@@ -4868,7 +4897,7 @@
         ? `<button class="mp-kick-btn" data-kick-pid="${mpEscapeHtml(p.id)}" data-kick-name="${mpEscapeHtml(p.name)}" title="Exclure ${mpEscapeHtml(p.name)} de la partie">✕</button>`
         : "";
       return `
-        <div class="mp-player-row${isMe ? " is-me" : ""}">
+        <div class="mp-player-row mp-profile-link${isMe ? " is-me" : ""}" data-profile="${mpProfileAttr(p, isMe)}" title="Voir le profil">
           ${mpAvatarHtml(p)}
           <span class="mp-player-name">${mpEscapeHtml(p.name)}${isMe ? " (toi)" : ""}${p.id === state.hostId ? " 👑" : ""}${teamBadge}</span>
           <span class="mp-player-score">${p.score} pt${p.score > 1 ? "s" : ""}</span>
@@ -5229,7 +5258,7 @@
       }
       const teamBadge = mpTeamBadgeHtml(p);
       return `
-        <div class="mp-player-row${isMe ? " is-me" : ""}">
+        <div class="mp-player-row mp-profile-link${isMe ? " is-me" : ""}" data-profile="${mpProfileAttr(p, isMe)}" title="Voir le profil">
           ${mpAvatarHtml(p)}
           <span class="mp-player-name">${mpEscapeHtml(p.name)}${isMe ? " (toi)" : ""}${p.id === state.hostId ? " 👑" : ""}${teamBadge}</span>
           <span class="mp-player-score">${p.score} pt${p.score > 1 ? "s" : ""}</span>
@@ -5297,7 +5326,7 @@
       }
       const teamBadge = mpTeamBadgeHtml(p, true);
       return `
-        <div class="mp-quick-chip${isMe ? " is-me" : ""}">
+        <div class="mp-quick-chip mp-profile-link${isMe ? " is-me" : ""}" data-profile="${mpProfileAttr(p, isMe)}" title="Voir le profil">
           ${mpAvatarHtml(p)}
           <span class="mp-quick-name">${mpEscapeHtml(p.name)}${isMe ? " (toi)" : ""}${p.id === state.hostId ? " 👑" : ""}${teamBadge}</span>
           <span class="mp-quick-score">${p.score} pt${p.score > 1 ? "s" : ""}</span>
@@ -5668,6 +5697,7 @@
   mpClearSession(); // on ne recolle plus automatiquement à l'ancienne partie après un rechargement
 })();
 </script>
+<script src="profilecard.js?v=1"></script>
 <script src="enhance.js"></script>
 <script>
 (function(){

@@ -95,6 +95,14 @@
   }
   renderProfile();
   window.addEventListener("profilechange", renderProfile);
+  // Garde ta carte à jour chez les autres joueurs (profil ou statistiques modifiés pendant la partie).
+  var cardTimer = null;
+  function pushCard() {
+    clearTimeout(cardTimer);
+    cardTimer = setTimeout(function () { if (S.code && S.playerId && profile()) post("card", { card: cardOf() }).catch(function () {}); }, 800);
+  }
+  window.addEventListener("statschange", pushCard);
+  window.addEventListener("profilechange", pushCard);
   $("profEdit").onclick = function(){ var t = document.getElementById("tabProfile"); if (t) t.click(); };
 
   function pseudo(){
@@ -156,6 +164,11 @@
         k.onclick = function(){ post("kick",{targetPlayerId:p.id}).then(function(s){ S.state = s; render(); }).catch(function(e){ toast(e.message,"ko"); }); };
         li.appendChild(k);
       }
+      li.style.cursor = "pointer"; li.title = "Voir le profil";
+      li.addEventListener("click", function (ev) {
+        if (ev.target.closest && ev.target.closest("button") || !window.PokeCard) return;
+        window.PokeCard.show({ name: p.name, avatar: p.avatar, card: p.card, me: p.id === S.playerId });
+      });
       ul.appendChild(li);
     });
   }
