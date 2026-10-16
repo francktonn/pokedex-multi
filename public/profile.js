@@ -149,7 +149,7 @@
     '  </section>',
     '  <section class="panel" id="skinPanel">',
     '    <h2>🎨 Skin du Pokédex</h2>',
-    '    <p class="sub">Change la couleur de ton Pokédex. Les skins exclusifs se débloquent aux paliers 10, 20 et 30 du Battle Pass.</p>',
+    '    <p class="sub" id="skinSub">Change la couleur de ton Pokédex.</p>',
     '    <div class="skins" id="skins"></div>',
     '  </section>',
     '  <section class="panel" id="statsPanel">',
@@ -444,12 +444,13 @@
       var box = $("skins"), PPs = window.PokePass;
       if (!box || !PPs) return;
       box.textContent = "";
-      var cur = PPs.state().skin;
-      Object.keys(PPs.skins).forEach(function (id) {
-        var sk = PPs.skins[id], owned = PPs.ownsSkin(id), b = el("button", "sk" + (cur === id ? " on" : "") + (owned ? "" : " no")); b.type = "button";
+      var cur = PPs.state().skin, se = PPs.season();
+      var sub = $("skinSub"); if (sub) sub.textContent = se.icon + " Saison " + se.n + " · " + se.name + " : débloque les skins aux paliers 10, 20 et 30 du Battle Pass. Les skins obtenus restent à toi pour toujours.";
+      PPs.skinList().forEach(function (sk) {
+        var b = el("button", "sk" + (cur === sk.id ? " on" : "") + (sk.owned ? "" : " no")); b.type = "button";
         var sw = el("span", "sw"); sw.style.background = sk.color; b.appendChild(sw); b.appendChild(document.createTextNode(sk.name));
-        b.appendChild(el("small", "", cur === id ? "✅ Équipé" : owned ? "Équiper" : "🔒 Palier " + sk.tier));
-        if (owned) b.onclick = function () { PPs.setSkin(id); };
+        b.appendChild(el("small", "", cur === sk.id ? "✅ Équipé" : sk.owned ? "Équiper" : "🔒 Palier " + sk.tier));
+        if (sk.owned) b.onclick = function () { PPs.setSkin(sk.id); };
         box.appendChild(b);
       });
     }

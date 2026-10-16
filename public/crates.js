@@ -101,6 +101,19 @@
     ".dual .trow .tl{flex:1 1 60px;}",
     ".dual .trow .go{width:100%; min-height:30px; padding:0 6px; font-size:12px;}",
     ".dual .trow .st{margin-left:auto; font-size:16px;}",
+    ".seg{flex-wrap:wrap;} .seg button{flex:1 1 30%;}",
+    ".mrow{display:flex; flex-direction:column; gap:6px; background:var(--card); border:2px solid var(--line); border-radius:12px; padding:10px; margin-bottom:6px; font-weight:800; font-size:14px;}",
+    ".mrow.can{border-color:var(--gold); box-shadow:0 0 0 2px rgba(255,201,60,.4);} .mrow.done{opacity:.6;} .mrow.done .mt span:first-child{text-decoration:line-through;}",
+    ".mrow .mt{display:flex; justify-content:space-between; gap:8px;} .mrow .mt span:last-child{color:var(--muted);}",
+    ".mrow .mb{height:10px; border-radius:99px; background:rgba(0,0,0,.15); overflow:hidden;} .mrow .mb i{display:block; height:100%; background:linear-gradient(90deg,#ffd96b,var(--gold-deep)); transition:width .4s var(--ease);}",
+    ".mrow .mf{display:flex; align-items:center; justify-content:space-between; gap:8px; font-size:12.5px; color:var(--muted);}",
+    ".mrow .go{border:0; border-radius:10px; min-height:34px; padding:0 12px; cursor:pointer; font-family:'Baloo 2',sans-serif; font-weight:800; font-size:13px; color:#221d17; background:var(--gold); box-shadow:0 3px 0 var(--gold-deep);}",
+    ".days{display:grid; grid-template-columns:repeat(7,1fr); gap:4px; margin:10px 0 0;}",
+    ".sd{border:2px solid var(--line); background:var(--card); border-radius:10px; padding:6px 1px; text-align:center; font-weight:800; font-size:10px; line-height:1.25; min-width:0;} .sd b{display:block; font-family:'Baloo 2',sans-serif; font-size:13px;}",
+    ".sd.done{opacity:.5;} .sd.now{border-color:var(--gold); box-shadow:0 0 0 2px rgba(255,201,60,.45);} .sd.big{border-color:#9b6bd6;}",
+    ".offers{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px;}",
+    ".xi .big{font-family:'Baloo 2',sans-serif; font-size:22px; text-align:center; min-height:26px; line-height:26px;} .xi .pr{font-family:'Baloo 2',sans-serif; font-size:15px; color:var(--gold-deep);} .xi .old{text-decoration:line-through; color:var(--muted); font-size:11px; font-weight:700;}",
+    ".xi button:disabled{opacity:.55; cursor:default;} .xi .tag{align-self:flex-start; font-size:10.5px; font-weight:800; color:#fff; background:#2fa84f; border-radius:99px; padding:1px 7px;}",
     ".prem{border:2px solid #E6A700; background:linear-gradient(180deg, rgba(230,167,0,.12), transparent 40%), var(--card);}",
     ".trow.p{border-color:#E6A700;} .trow.p.xl{border-color:#9b6bd6; box-shadow:0 0 0 2px rgba(155,107,214,.35);} .trow .ex{display:block; font-size:11.5px; font-weight:800; color:#9b6bd6; margin-top:2px;}",
     ".exh{margin:16px 0 0; font-family:'Baloo 2',sans-serif; font-size:17px;}",
@@ -135,7 +148,7 @@
   var HTML = [
     '<div class="device">',
     '  <div class="top"><span class="lens"></span><span class="brand">BONUS</span><span class="wallet" id="wallet" title="Tes Pokédollars"></span><button type="button" class="themebtn" id="themeBtn" aria-label="Mode sombre">🌙</button></div>',
-    '  <div class="seg" role="tablist"><button type="button" class="on" id="segCrates">🎁 Crates</button><button type="button" id="segPass">🏆 Pass</button><button type="button" id="segShop">🛒 Shop</button><button type="button" id="segAdmin">🔑 Admin</button></div>',
+    '  <div class="seg" role="tablist"><button type="button" class="on" id="segCrates">🎁 Crates</button><button type="button" id="segPass">🏆 Pass</button><button type="button" id="segQuests">🎯 Missions</button><button type="button" id="segShop">🛒 Shop</button><button type="button" id="segAdmin">🔑 Admin</button></div>',
     '  <div id="secAdmin" class="hidden">',
     '  <section class="panel">',
     '    <h2>🔑 Accès admin</h2>',
@@ -148,15 +161,38 @@
     '  <div id="secPass" class="hidden">',
     '  <section class="panel">',
     '    <h2>🏆 Battle Pass</h2>',
+    '    <p class="sub" id="passSeason"></p>',
     '    <div class="head"><span class="lvl" id="passLvl"></span><span class="xpt" id="passXp"></span></div>',
     '    <div class="bar"><i id="passBar"></i></div>',
     '    <p class="hint2" id="passHint"></p>',
+    '    <p class="hint2 hidden" id="passRecap"></p>',
     '    <button type="button" class="btn" id="claimAll"></button>',
     '    <div class="msg" id="passMsg" role="status"></div>',
     '  </section>',
     '  <section class="panel">',
     '    <h2>🎁 Les 30 paliers</h2>',
     '    <div class="dual" id="tiers"></div>',
+    '  </section>',
+    '  </div>',
+    '  <div id="secQuests" class="hidden">',
+    '  <section class="panel">',
+    '    <h2>🔥 Série de connexion</h2>',
+    '    <div class="head"><span class="lvl" id="stkNum"></span><span class="xpt" id="stkBest"></span></div>',
+    '    <p class="sub" id="stkSub"></p>',
+    '    <div class="days" id="stkDays"></div>',
+    '    <button type="button" class="btn" id="stkClaim"></button>',
+    '    <div class="msg" id="stkMsg" role="status"></div>',
+    '  </section>',
+    '  <section class="panel">',
+    '    <h2>📅 Missions du jour</h2>',
+    '    <p class="sub" id="dqSub"></p>',
+    '    <div id="dq"></div>',
+    '  </section>',
+    '  <section class="panel">',
+    '    <h2>🗓️ Missions de la semaine</h2>',
+    '    <p class="sub" id="wqSub"></p>',
+    '    <div id="wq"></div>',
+    '    <div class="msg" id="qMsg" role="status"></div>',
     '  </section>',
     '  </div>',
     '  <div id="secShop" class="hidden">',
@@ -168,6 +204,15 @@
     '    <button type="button" class="btn" id="buyBtn"></button>',
     '    <div class="msg" id="shopMsg" role="status"></div>',
     '    <p class="hint2" id="shopStock"></p>',
+    '  </section>',
+    '  <section class="panel">',
+    '    <h2>✨ Offres du jour</h2>',
+    '    <p class="sub" id="offDSub"></p>',
+    '    <div class="offers" id="offD"></div>',
+    '    <h3 class="exh">🗓️ Offres de la semaine</h3>',
+    '    <p class="sub" id="offWSub"></p>',
+    '    <div class="offers" id="offW"></div>',
+    '    <div class="msg" id="offMsg" role="status"></div>',
     '  </section>',
     '  <section class="panel prem">',
     '    <h2>👑 Pass Premium</h2>',
@@ -366,6 +411,7 @@
       b.textContent = full ? "Stock plein" : money < C.price ? "🔒 Il te manque " + window.PokeMoney.format(C.price - money) : "🛒 Acheter une crate";
       $("shopStock").textContent = "Crates en stock : " + s.stock + ". Ouvre-les dans la section Crates.";
       renderPremium();
+      renderOffers();
     }
     $("buyBtn").addEventListener("click", function () {
       var m = $("shopMsg");
@@ -386,6 +432,7 @@
       $("passXp").textContent = st.level >= PP.maxTier ? "MAX" : st.into + " / " + PP.xpTier + " XP";
       $("passBar").style.width = Math.round(100 * st.into / PP.xpTier) + "%";
       $("passHint").textContent = "+" + PP.xpRound + " XP par manche multijoueur terminée, +" + PP.xpCrate + " XP par crate ouverte." + (st.premium ? "" : " 👑 Le Pass Premium s'achète dans l'onglet Shop.") + " Les skins du Pokédex se choisissent dans ton profil.";
+      renderSeason();
       renderPremium();
       var ca = $("claimAll"); ca.disabled = n === 0; ca.textContent = n ? "🎁 Tout récupérer (" + n + ")" : "Rien à récupérer";
       renderTiers(st);
@@ -423,7 +470,7 @@
     }
     function renderPremium() {
       var st = PP.state(), prem = st.premium, price = PP.premiumPrice, money = window.PokeMoney.get();
-      $("premSub").textContent = prem ? "Pass Premium actif : une 2e piste de récompenses est débloquée." : "Débloque une 2e piste de récompenses (Pokédollars + crates) et 3 packs de personnalisations de profil exclusives, pour " + window.PokeMoney.format(price) + ".";
+      $("premSub").textContent = prem ? "Pass Premium actif pour cette saison : une 2e piste de récompenses est débloquée." : "Débloque pour la saison en cours une 2e piste de récompenses (Pokédollars + crates) et 3 packs de personnalisations de profil exclusives, à toi pour toujours. À racheter à chaque nouvelle saison, pour " + window.PokeMoney.format(price) + ".";
       var b = $("premBuy");
       b.classList.toggle("hidden", prem); b.disabled = !prem && money < price;
       b.textContent = money < price ? "👑 Acheter le Pass Premium — " + window.PokeMoney.format(price) + " (solde insuffisant)" : "👑 Acheter le Pass Premium — " + window.PokeMoney.format(price);
@@ -440,7 +487,7 @@
     });
     function claimOne(t) {
       var o = PP.claim(t), m = $("passMsg");
-      if (o) { m.textContent = "Récompense récupérée !"; m.className = "msg ok"; }
+      if (o) { m.textContent = o.dup ? "Skin déjà possédé : tu reçois " + window.PokeMoney.format(500) + " à la place." : "Récompense récupérée !"; m.className = "msg ok"; }
       else { m.textContent = "Impossible : ton stock de crates est plein (99). Ouvre-en quelques-unes."; m.className = "msg ko"; }
     }
     $("claimAll").addEventListener("click", function () {
@@ -453,20 +500,130 @@
     window.addEventListener("profilechange", function () { renderPass(); });
     window.addEventListener("passchange", function () { renderPass(); renderShop(); refreshMain(); });
 
-    function showSec(which) {
-      var shop = which === "shop", pass = which === "pass", adm = which === "admin";
-      $("secAdmin").classList.toggle("hidden", !adm); $("segAdmin").classList.toggle("on", adm);
-      $("secShop").classList.toggle("hidden", !shop); $("secPass").classList.toggle("hidden", !pass); $("secCrates").classList.toggle("hidden", shop || pass || adm);
-      $("segShop").classList.toggle("on", shop); $("segPass").classList.toggle("on", pass); $("segCrates").classList.toggle("on", !shop && !pass && !adm);
-      if (shop) { $("shopMsg").textContent = ""; renderShop(); }
-      if (pass) { $("passMsg").textContent = ""; renderPass(); }
+    // ---- Saison du Battle Pass ----
+    function daysLeft(ms) { return ms < 86400000 ? "moins d'un jour" : Math.ceil(ms / 86400000) + " jours"; }
+    function renderSeason() {
+      var se = PP.season();
+      $("passSeason").textContent = se.icon + " Saison " + se.n + " · " + se.name + " — fin dans " + daysLeft(se.msLeft) + ". À la fin, tes récompenses non récupérées sont créditées automatiquement ; la progression et le Pass Premium repartent de zéro, tes skins et personnalisations sont conservés.";
+      var rc = $("passRecap");
+      if (se.last && se.last.n) { rc.classList.remove("hidden"); rc.textContent = "Saison " + se.last.n + " terminée : palier " + se.last.level + " atteint" + (se.last.money || se.last.crates ? " · récompenses créditées : " + window.PokeMoney.format(se.last.money) + " + " + se.last.crates + " crate" + (se.last.crates > 1 ? "s" : "") : "") + "."; }
+      else rc.classList.add("hidden");
     }
+
+    // ---- Missions & série de connexion ----
+    var Q = window.PokeQuests, SH = window.PokeShop;
+    function fmt(v) { return window.PokeMoney.format(v); }
+    function rewardLabel(r) { return (r.m ? r.m : "") + (r.c ? " +🎁" + (r.c > 1 ? "×" + r.c : "") : "") + (r.xp ? " +⚡" : ""); }
+    function renderStreak() {
+      var st = Q.streak.state();
+      $("stkNum").textContent = "🔥 " + st.streak + " jour" + (st.streak > 1 ? "s" : "");
+      $("stkBest").textContent = "Record : " + st.best;
+      $("stkSub").textContent = "Reviens chaque jour pour récupérer un bonus. Si tu rates un jour, la série repart de zéro. Le cycle dure 7 jours.";
+      var box = $("stkDays"); box.textContent = "";
+      st.rewards.forEach(function (r, i) {
+        var d = i + 1, done = d < st.day || (d === st.day && st.claimedToday);
+        var c = el("div", "sd" + (done ? " done" : "") + (d === st.day ? " now" : "") + (r.c ? " big" : ""));
+        c.appendChild(el("b", "", "J" + d)); c.appendChild(document.createTextNode(rewardLabel(r)));
+        box.appendChild(c);
+      });
+      var b = $("stkClaim");
+      b.disabled = !st.canClaim;
+      b.textContent = st.canClaim ? "🎁 Récupérer le bonus du jour" : st.claimedToday ? "✅ Bonus du jour récupéré, reviens demain" : "Reviens demain";
+    }
+    function questRow(q, kind) {
+      var r = el("div", "mrow" + (q.claimed ? " done" : q.done ? " can" : ""));
+      var t = el("div", "mt"); t.appendChild(el("span", "", q.text)); t.appendChild(el("span", "", q.progress + " / " + q.target)); r.appendChild(t);
+      var bar = el("div", "mb"), i = document.createElement("i"); i.style.width = Math.round(100 * q.progress / q.target) + "%"; bar.appendChild(i); r.appendChild(bar);
+      var f = el("div", "mf"); f.appendChild(el("span", "", "💰 " + fmt(q.money) + " · ⚡ " + q.xp + " XP"));
+      if (q.claimed) f.appendChild(el("span", "", "✅"));
+      else if (q.done) { var g = el("button", "go", "Récupérer"); g.type = "button"; g.onclick = function () { claimQuest(kind, q.id); }; f.appendChild(g); }
+      else f.appendChild(el("span", "", "🔒"));
+      r.appendChild(f);
+      return r;
+    }
+    function renderQuests() {
+      if (!Q) return;
+      renderStreak();
+      var st = Q.state();
+      [["dq", st.daily, "daily"], ["wq", st.weekly, "weekly"]].forEach(function (x) {
+        var box = $(x[0]); box.textContent = "";
+        x[1].forEach(function (q) { box.appendChild(questRow(q, x[2])); });
+      });
+      renderQuestTimers(st);
+    }
+    function renderQuestTimers(st) {
+      if (!Q) return; st = st || Q.state();
+      $("dqSub").textContent = "Nouvelles missions dans " + clock(st.msDaily) + ".";
+      $("wqSub").textContent = "Nouvelles missions dans " + daysLeft(st.msWeekly) + ". Plus gros gains que les missions du jour.";
+    }
+    function claimQuest(kind, id) {
+      var o = Q.claim(kind, id), m = $("qMsg");
+      if (o) { m.textContent = "Mission récupérée : +" + fmt(o.money) + " et +" + o.xp + " XP !"; m.className = "msg ok"; }
+    }
+    $("stkClaim").addEventListener("click", function () {
+      var o = Q.streak.claim(), m = $("stkMsg");
+      if (!o) return;
+      if (o.error) { m.textContent = "Ton stock de crates est plein (99) : ouvre-en quelques-unes puis réessaie."; m.className = "msg ko"; return; }
+      m.textContent = "Bonus du jour : +" + fmt(o.m) + (o.c ? " · +" + o.c + " crate" + (o.c > 1 ? "s" : "") : "") + (o.xp ? " · +" + o.xp + " XP" : "") + " !"; m.className = "msg ok";
+    });
+
+    // ---- Offres rotatives du shop ----
+    function offerCard(o, money) {
+      var c = el("div", "xi" + (o.bought || o.owned ? " no" : ""));
+      if (o.rarity) c.style.borderColor = o.rarity.color;
+      var pv;
+      if (o.kind === "item") { if (o.css) { pv = el("div", "pv"); pv.style.background = o.css; } else pv = el("div", "big", o.e || "🎨"); }
+      else if (o.kind === "crates") pv = el("div", "big", "🎁 ×" + o.n);
+      else pv = el("div", "big", "⚡ +" + o.xp);
+      c.appendChild(pv); c.appendChild(document.createTextNode(o.name));
+      if (o.kind === "item") c.appendChild(el("small", "", o.catName + (o.rarity ? " · " + o.rarity.name : "")));
+      var pr = el("div", "pr", fmt(o.price)); if (o.base > o.price) pr.appendChild(el("span", "old", " " + fmt(o.base)));
+      c.appendChild(pr);
+      if (o.base > o.price) c.appendChild(el("span", "tag", "-" + Math.round(100 * (1 - o.price / o.base)) + " %"));
+      var b = el("button", "", o.bought ? "✅ Acheté" : o.owned ? "Déjà possédé" : money < o.price ? "🔒 Solde insuffisant" : "Acheter"); b.type = "button";
+      b.disabled = o.bought || o.owned || money < o.price;
+      b.onclick = function () {
+        var r = SH.buy(o.id), m = $("offMsg");
+        if (r.ok) { m.textContent = r.text; m.className = "msg ok"; } else { m.textContent = r.error; m.className = "msg ko"; }
+      };
+      c.appendChild(b);
+      return c;
+    }
+    function renderOffers() {
+      if (!SH) return;
+      var st = SH.state(), money = window.PokeMoney.get();
+      [["offD", st.daily], ["offW", st.weekly]].forEach(function (x) {
+        var box = $(x[0]); box.textContent = "";
+        x[1].forEach(function (o) { box.appendChild(offerCard(o, money)); });
+      });
+      renderOfferTimers(st);
+    }
+    function renderOfferTimers(st) {
+      if (!SH) return; st = st || SH.state();
+      $("offDSub").textContent = "Change dans " + clock(st.msDaily) + ". Un seul achat par offre.";
+      $("offWSub").textContent = "Change dans " + daysLeft(st.msWeekly) + ".";
+    }
+
+    function showSec(which) {
+      var shop = which === "shop", pass = which === "pass", adm = which === "admin", qs = which === "quests";
+      $("secAdmin").classList.toggle("hidden", !adm); $("segAdmin").classList.toggle("on", adm);
+      $("secShop").classList.toggle("hidden", !shop); $("secPass").classList.toggle("hidden", !pass); $("secQuests").classList.toggle("hidden", !qs);
+      $("secCrates").classList.toggle("hidden", shop || pass || adm || qs);
+      $("segShop").classList.toggle("on", shop); $("segPass").classList.toggle("on", pass); $("segQuests").classList.toggle("on", qs);
+      $("segCrates").classList.toggle("on", !shop && !pass && !adm && !qs);
+      if (shop) { $("shopMsg").textContent = ""; $("offMsg").textContent = ""; renderShop(); }
+      if (pass) { $("passMsg").textContent = ""; renderPass(); }
+      if (qs) { $("qMsg").textContent = ""; $("stkMsg").textContent = ""; renderQuests(); }
+    }
+    $("segQuests").addEventListener("click", function () { showSec("quests"); });
     $("segCrates").addEventListener("click", function () { showSec("crates"); });
     $("segPass").addEventListener("click", function () { showSec("pass"); });
     $("segShop").addEventListener("click", function () { showSec("shop"); });
     $("segAdmin").addEventListener("click", function () { showSec("admin"); });
     window.addEventListener("moneychange", renderShop);
     window.addEventListener("cratechange", renderShop);
+    window.addEventListener("shopchange", renderShop);
+    window.addEventListener("questchange", function () { renderQuests(); });
 
     // ---- Admin : le code est vérifié côté serveur (variable ADMIN_CODE) ----
     $("adminBtn").addEventListener("click", function () {
@@ -485,13 +642,16 @@
 
     // ---- Démarrage : crédite la crate du jour, puis tic-tac jusqu'à minuit ----
     C.sync();
+    if (PP.sync) PP.sync(); // fin de saison éventuelle
     renderWallet(); window.addEventListener("moneychange", renderWallet);
-    renderOdds(); renderCollection(); refreshMain(); renderShop(); renderPass();
+    renderOdds(); renderCollection(); refreshMain(); renderShop(); renderPass(); renderQuests();
     var timer = setInterval(function () {
       if (!host.isConnected) { clearInterval(timer); return; }
       if (document.hidden || busy) return;
       if (C.state().stock === 0 && C.available()) C.sync(); // minuit est passé : nouvelle crate
       refreshMain();
+      if (!$("secQuests").classList.contains("hidden")) renderQuestTimers();
+      if (!$("secShop").classList.contains("hidden")) renderOfferTimers();
     }, 1000);
     window.addEventListener("cratechange", function () { if (!busy) { renderCollection(); refreshMain(); } });
   }

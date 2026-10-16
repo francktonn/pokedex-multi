@@ -278,6 +278,12 @@
       // Boutique : achète une crate avec des Pokédollars. Renvoie true si l'achat a réussi (stock plein ou solde insuffisant : false).
       // Ajoute n crates au stock (récompenses du Battle Pass). Renvoie le nombre réellement ajouté (stock plafonné à 99).
       grant: function(n){ var s = read(); grantDaily(s); var add = Math.max(0, Math.min(Math.floor(Number(n)) || 0, 99 - s.stock)); s.stock += add; write(s); return add; },
+      // Donne directement un objet de crate (achat dans le shop rotatif). false s'il n'existe pas ou s'il est déjà possédé.
+      grantItem: function(key){
+        var s = read();
+        if(!items().some(function(it){ return it.key === key; }) || s.owned[key]) return false;
+        s.owned[key] = Date.now(); write(s); return true;
+      },
       // Admin : tous les objets de crate débloqués et le stock au maximum.
       unlockAll: function(){ var s = read(); items().forEach(function(it){ if(!s.owned[it.key]) s.owned[it.key] = Date.now(); }); s.stock = 99; write(s); },
       price: 1000,
@@ -299,6 +305,7 @@
           s.stock--; s.opened++; write(s);
           window.PokeMoney.add(amount);
           if(window.PokePass) window.PokePass.addXp(window.PokePass.xpCrate);
+          if(window.PokeQuests) window.PokeQuests.track("crates", 1);
           return { money:{ amount:amount, rar:rar } };
         }
         var byRar = RARITIES.map(function(r, i){ return all.filter(function(it){ return it.rar === i; }); });
@@ -307,6 +314,7 @@
         s.stock--; s.opened++; s.owned[item.key] = Date.now();
         write(s);
         if(window.PokePass) window.PokePass.addXp(window.PokePass.xpCrate);
+        if(window.PokeQuests) window.PokeQuests.track("crates", 1);
         return { item:item };
       },
       // Équipe directement l'objet sur le profil enregistré. false s'il n'y a pas encore de profil.
@@ -317,23 +325,37 @@
       }
     };
   })();
-  // Battle Pass (window.PokePass) : 30 paliers, de l'XP gagnée en finissant des manches multijoueur et en ouvrant des crates.
-  // Chaque palier a une récompense à récupérer (Pokédollars, crates) ; les paliers 10, 20 et 30 donnent un skin exclusif du Pokédex
-  // (couleur de la coque), appliqué via l'attribut data-skin sur <html> (voir les règles CSS :root[data-skin=...]).
+  // Battle Pass (window.PokePass) : saisons mensuelles de 30 paliers. L'XP vient des manches multijoueur, des crates ouvertes et des missions.
+  // Une saison = un mois calendaire (la saison 1 est octobre 2026) avec un thème et ses propres skins de Pokédex aux paliers 10, 20 et 30.
+  // En fin de saison, les récompenses non récupérées sont créditées automatiquement, puis la progression et le Pass Premium repartent de zéro.
+  // Les skins et les personnalisations exclusives déjà obtenus restent acquis. Le skin équipé s'applique via l'attribut data-skin sur <html>
+  // (voir les règles CSS :root[data-skin=...]).
   (function(){
-    var KEY = "pokePass_v1", XP_TIER = 100, MAX_TIER = 30;
+    var KEY = "pokePass_v1", XP_TIER = 100, MAX_TIER = 30, DUP_MONEY = 500;
     var SKINS = {
       "default": { name:"Rouge classique", color:"#E23B30", tier:0 },
       ocean:     { name:"Océan",           color:"#2F7FD8", tier:10 },
       spectre:   { name:"Spectre",         color:"#7D4FD6", tier:20 },
-      gold:      { name:"Légendaire",      color:"#D9A21B", tier:30 }
+      gold:      { name:"Légendaire",      color:"#D9A21B", tier:30 },
+      foret:     { name:"Forêt",           color:"#2E9B57", tier:10 },
+      braise:    { name:"Braise",          color:"#E8651F", tier:20 },
+      aurore:    { name:"Aurore boréale",  color:"linear-gradient(135deg,#3ef0c0,#4a8cff 50%,#c05cff)", tier:30 },
+      glace:     { name:"Glace",           color:"#58B7D9", tier:10 },
+      rubis:     { name:"Rubis",           color:"#C2185B", tier:20 },
+      nuit:      { name:"Nuit étoilée",    color:"#323F7A", tier:30 }
     };
-    // m = Pokédollars, c = crates, s = skin
-    var R = [ {m:100},{c:1},{m:150},{c:1},{m:250},{c:1},{m:300},{c:1},{m:400},{s:"ocean"},
-              {c:1},{m:400},{c:1},{m:500},{c:2},{m:600},{c:1},{m:700},{c:2},{s:"spectre"},
-              {c:1},{m:800},{c:2},{m:900},{c:2},{m:1000},{c:2},{m:1500},{c:3},{s:"gold"} ];
-    // Pass Premium (3000 ₽) : une 2e piste de récompenses (Pokédollars + crates) et, aux paliers 10, 20 et 30,
-    // des personnalisations de profil exclusives (objets de PokeProfile marqués pass = palier).
+    // Les thèmes tournent : saison 1 = Horizons, 2 = Forêt enchantée, 3 = Hiver éternel, 4 = Horizons, etc.
+    var THEMES = [
+      { name:"Horizons",        icon:"🌊", skins:["ocean","spectre","gold"] },
+      { name:"Forêt enchantée", icon:"🌲", skins:["foret","braise","aurore"] },
+      { name:"Hiver éternel",   icon:"❄️", skins:["glace","rubis","nuit"] }
+    ];
+    // m = Pokédollars, c = crates, s = skin de la saison (paliers 10, 20, 30)
+    var R = [ {m:100},{c:1},{m:150},{c:1},{m:250},{c:1},{m:300},{c:1},{m:400},{s:1},
+              {c:1},{m:400},{c:1},{m:500},{c:2},{m:600},{c:1},{m:700},{c:2},{s:1},
+              {c:1},{m:800},{c:2},{m:900},{c:2},{m:1000},{c:2},{m:1500},{c:3},{s:1} ];
+    // Pass Premium (3000 ₽, à racheter chaque saison) : une 2e piste de récompenses (Pokédollars + crates) et, aux paliers 10, 20 et 30,
+    // des personnalisations de profil exclusives (objets de PokeProfile marqués pass = palier) qu'on garde pour toujours.
     var PREMIUM_PRICE = 3000;
     var PR = [ {m:200},{c:1},{m:300},{c:1},{m:400},{c:2},{m:500},{c:1},{m:600},{m:1000,c:2},
                {c:2},{m:700},{c:2},{m:800},{c:3},{m:900},{c:2},{m:1000},{c:3},{m:1500,c:3},
@@ -350,31 +372,88 @@
       });
       return out;
     }
-    function read(){
-      var s = { xp:0, claimed:{}, skin:"default", premium:false, pclaimed:{} };
-      try{
-        var o = JSON.parse(localStorage.getItem(KEY) || "null");
-        if(o && typeof o === "object"){
-          s.premium = o.premium === true;
-          if(s.premium && o.pclaimed && typeof o.pclaimed === "object") Object.keys(o.pclaimed).forEach(function(k){ var t = Number(k); if(t >= 1 && t <= MAX_TIER && o.pclaimed[k]) s.pclaimed[t] = true; });
-          s.xp = Math.min(XP_TIER * MAX_TIER, Math.max(0, Math.floor(Number(o.xp)) || 0));
-          if(o.claimed && typeof o.claimed === "object") Object.keys(o.claimed).forEach(function(k){ var t = Number(k); if(t >= 1 && t <= MAX_TIER && o.claimed[k]) s.claimed[t] = true; });
-          if(typeof o.skin === "string" && SKINS[o.skin]) s.skin = o.skin;
-        }
-      }catch(e){}
-      if(s.skin !== "default" && !s.claimed[SKINS[s.skin].tier]) s.skin = "default";
+    function seasonNum(d){ d = d || new Date(); return Math.max(1, (d.getFullYear() - 2026) * 12 + d.getMonth() - 8); }
+    function themeOf(n){ return THEMES[(n - 1) % THEMES.length]; }
+    function seasonEnd(n){ return new Date(2026, 9 + n, 1).getTime(); }
+    function skinOfTier(t, n){ return themeOf(n || seasonNum()).skins[t / 10 - 1] || null; }
+
+    function parse(){
+      var s = { season:0, xp:0, claimed:{}, skin:"default", premium:false, pclaimed:{}, skins:{}, items:{}, last:null }, o = null;
+      try{ o = JSON.parse(localStorage.getItem(KEY) || "null"); }catch(e){}
+      if(o && typeof o === "object"){
+        s.season = Math.max(0, Math.floor(Number(o.season)) || 0); // 0 = ancien format (avant les saisons) : adopté comme saison en cours
+        s.premium = o.premium === true;
+        if(s.premium && o.pclaimed && typeof o.pclaimed === "object") Object.keys(o.pclaimed).forEach(function(k){ var t = Number(k); if(t >= 1 && t <= MAX_TIER && o.pclaimed[k]) s.pclaimed[t] = true; });
+        s.xp = Math.min(XP_TIER * MAX_TIER, Math.max(0, Math.floor(Number(o.xp)) || 0));
+        if(o.claimed && typeof o.claimed === "object") Object.keys(o.claimed).forEach(function(k){ var t = Number(k); if(t >= 1 && t <= MAX_TIER && o.claimed[k]) s.claimed[t] = true; });
+        if(o.skins && typeof o.skins === "object") Object.keys(o.skins).forEach(function(k){ if(SKINS[k] && k !== "default" && o.skins[k]) s.skins[k] = true; });
+        else THEMES[0].skins.forEach(function(id, i){ if(s.claimed[(i + 1) * 10]) s.skins[id] = true; }); // migration
+        if(o.items && typeof o.items === "object") Object.keys(o.items).forEach(function(k){ if(/^[a-zA-Z]+:\d{1,2}$/.test(k) && o.items[k]) s.items[k] = true; });
+        else if(s.premium) Object.keys(s.pclaimed).forEach(function(t){ passItems(Number(t)).forEach(function(it){ s.items[it.list + ":" + it.idx] = true; }); }); // migration
+        if(typeof o.skin === "string" && (o.skin === "default" || s.skins[o.skin])) s.skin = o.skin;
+        if(o.last && typeof o.last === "object") s.last = { n:Math.floor(Number(o.last.n)) || 0, level:Math.floor(Number(o.last.level)) || 0, money:Math.floor(Number(o.last.money)) || 0, crates:Math.floor(Number(o.last.crates)) || 0 };
+      }
       return s;
     }
     function write(s){ try{ localStorage.setItem(KEY, JSON.stringify(s)); }catch(e){} window.dispatchEvent(new CustomEvent("passchange")); }
     function level(xp){ return Math.min(MAX_TIER, Math.floor(xp / XP_TIER)); }
+    var syncing = false;
+    // Fin de saison : crédite tout ce qui n'a pas été récupéré, puis repart de zéro (skins et objets exclusifs conservés).
+    function sync(){
+      if(syncing) return;
+      var s = parse(), n = seasonNum();
+      if(!s.season || s.season >= n) return;
+      syncing = true;
+      try{
+        var lv = level(s.xp), gain = { money:0, crates:0 };
+        for(var t = 1; t <= lv; t++){
+          if(!s.claimed[t]){
+            var r = R[t - 1]; s.claimed[t] = true;
+            if(r.m) gain.money += r.m;
+            if(r.c) gain.crates += r.c;
+            if(r.s){ var id = skinOfTier(t, s.season); if(id && !s.skins[id]) s.skins[id] = true; else gain.money += DUP_MONEY; }
+          }
+          if(s.premium && !s.pclaimed[t]){
+            var q = PR[t - 1]; s.pclaimed[t] = true;
+            if(q.m) gain.money += q.m;
+            if(q.c) gain.crates += q.c;
+            passItems(t).forEach(function(it){ s.items[it.list + ":" + it.idx] = true; });
+          }
+        }
+        if(gain.money && window.PokeMoney) window.PokeMoney.add(gain.money);
+        if(gain.crates && window.PokeCrates) gain.crates = window.PokeCrates.grant(gain.crates); else gain.crates = 0;
+        var fresh = { season:n, xp:0, claimed:{}, skin:s.skin, premium:false, pclaimed:{}, skins:s.skins, items:s.items, last:{ n:s.season, level:lv, money:gain.money, crates:gain.crates } };
+        write(fresh);
+        if(window.toast) window.toast("Nouvelle saison : " + themeOf(n).name + " ! Récompenses de la saison " + s.season + " récupérées (niveau " + lv + ").", { kind:"win", icon:themeOf(n).icon, ttl:6000 });
+      } finally { syncing = false; }
+    }
+    function read(){ sync(); var s = parse(); if(!s.season) s.season = seasonNum(); return s; }
     function applySkin(id){
       var el = document.documentElement;
       if(id && id !== "default" && SKINS[id]) el.setAttribute("data-skin", id); else el.removeAttribute("data-skin");
     }
-    function tiers(){ return R.map(function(r, i){ return { tier:i + 1, money:r.m || 0, crates:r.c || 0, skin:r.s || null }; }); }
-    function premiumTiers(){ return PR.map(function(r, i){ return { tier:i + 1, money:r.m || 0, crates:r.c || 0, items:passItems(i + 1) }; }); }
+    function tiers(){ return R.map(function(r, i){ return { tier:i + 1, money:r.m || 0, crates:r.c || 0, skin:r.s ? skinOfTier(i + 1) : null }; }); }
+    function premiumTiers(){
+      var s = read();
+      return PR.map(function(r, i){
+        var items = passItems(i + 1).filter(function(it){ return !s.items[it.list + ":" + it.idx] || s.pclaimed[i + 1]; });
+        return { tier:i + 1, money:r.m || 0, crates:r.c || 0, items:items };
+      });
+    }
     var API = window.PokePass = {
-      xpTier: XP_TIER, maxTier: MAX_TIER, xpRound: 50, xpCrate: 25, skins: SKINS, tiers: tiers, premiumTiers: premiumTiers, premiumPrice: PREMIUM_PRICE, passItems: passItems,
+      xpTier: XP_TIER, maxTier: MAX_TIER, xpRound: 50, xpCrate: 25, skins: SKINS, themes: THEMES, tiers: tiers, premiumTiers: premiumTiers, premiumPrice: PREMIUM_PRICE, passItems: passItems, sync: sync,
+      // Saison en cours : numéro, thème, skins à gagner, date de fin, et récapitulatif de la saison précédente (si elle vient de se terminer).
+      season: function(){
+        var n = seasonNum(), t = themeOf(n);
+        return { n:n, name:t.name, icon:t.icon, skins:t.skins.slice(), endsAt:seasonEnd(n), msLeft:Math.max(0, seasonEnd(n) - Date.now()), last:read().last };
+      },
+      // Skins à afficher dans le profil : le skin par défaut, ceux déjà obtenus et ceux de la saison en cours.
+      skinList: function(){
+        var s = read(), cur = themeOf(seasonNum()).skins;
+        return Object.keys(SKINS).filter(function(id){ return id === "default" || s.skins[id] || cur.indexOf(id) >= 0; })
+          .map(function(id){ return { id:id, name:SKINS[id].name, color:SKINS[id].color, tier:SKINS[id].tier, owned:id === "default" || !!s.skins[id], current:cur.indexOf(id) >= 0 }; })
+          .sort(function(a, b){ return (a.tier - b.tier) || (a.current ? 1 : 0) - (b.current ? 1 : 0); });
+      },
       state: function(){
         var s = read(), lv = level(s.xp);
         return { xp:s.xp, level:lv, into: lv >= MAX_TIER ? XP_TIER : s.xp - lv * XP_TIER, claimed:s.claimed, skin:s.skin, premium:s.premium, pclaimed:s.pclaimed };
@@ -389,7 +468,7 @@
       canClaim: function(t){ var s = read(); return t >= 1 && t <= MAX_TIER && level(s.xp) >= t && !s.claimed[t]; },
       claimable: function(){ var s = read(), lv = level(s.xp), n = 0; for(var t = 1; t <= lv; t++){ if(!s.claimed[t]) n++; if(s.premium && !s.pclaimed[t]) n++; } return n; },
       isPremium: function(){ return read().premium; },
-      // Achète le Pass Premium avec des Pokédollars. false si déjà acheté ou solde insuffisant.
+      // Achète le Pass Premium de la saison avec des Pokédollars. false si déjà acheté ou solde insuffisant.
       buyPremium: function(){
         var s = read();
         if(s.premium) return false;
@@ -402,19 +481,20 @@
       // Récupère la récompense premium d'un palier. Renvoie { money, crates, items } ou null.
       claimPremium: function(t){
         if(!this.canClaimPremium(t)) return null;
-        var r = PR[t - 1], s = read(), out = { money:0, crates:0, items:passItems(t) };
+        var r = PR[t - 1], s = read(), out = { money:0, crates:0, items:[] };
         if(r.c){
           if(!window.PokeCrates || window.PokeCrates.state().stock + r.c > 99) return null;
           out.crates = window.PokeCrates.grant(r.c);
         }
+        passItems(t).forEach(function(it){ var k = it.list + ":" + it.idx; if(!s.items[k]){ s.items[k] = true; out.items.push(it); } });
         s.pclaimed[t] = true; write(s);
         if(r.m){ window.PokeMoney.add(r.m); out.money = r.m; }
         return out;
       },
-      // Un objet de profil exclusif est possédé une fois la récompense premium de son palier récupérée.
+      // Un objet de profil exclusif est possédé une fois obtenu avec le Pass Premium (il reste acquis d'une saison à l'autre).
       ownsItem: function(list, idx){
-        var P = window.PokeProfile, it = P && P[list] && P[list][idx], s = read();
-        return !!(it && it.pass && s.premium && s.pclaimed[it.pass]);
+        var P = window.PokeProfile, it = P && P[list] && P[list][idx];
+        return !!(it && it.pass && read().items[list + ":" + idx]);
       },
       // Équipe un objet exclusif sur le profil enregistré. false s'il n'est pas débloqué ou sans profil.
       equipItem: function(list, idx){
@@ -423,30 +503,41 @@
         if(!cur || !f || !this.ownsItem(list, idx)) return false;
         cur[f] = idx; P.set(cur); return true;
       },
-      // Récupère la récompense d'un palier. Renvoie { money, crates, skin } ou null.
+      // Récupère la récompense d'un palier. Renvoie { money, crates, skin, dup } ou null. Un skin déjà possédé donne des Pokédollars à la place.
       claim: function(t){
         if(!this.canClaim(t)) return null;
-        var r = R[t - 1], s = read(), out = { money:0, crates:0, skin:null };
+        var r = R[t - 1], s = read(), out = { money:0, crates:0, skin:null, dup:false };
         if(r.c){
           if(!window.PokeCrates || window.PokeCrates.state().stock + r.c > 99) return null; // stock plein : on ne perd pas la récompense
           out.crates = window.PokeCrates.grant(r.c);
         }
-        s.claimed[t] = true; write(s);
-        if(r.m){ window.PokeMoney.add(r.m); out.money = r.m; }
-        if(r.s){ out.skin = r.s; }
+        s.claimed[t] = true;
+        if(r.s){
+          var id = skinOfTier(t); out.skin = id;
+          if(!id || s.skins[id]){ out.dup = true; out.money += DUP_MONEY; } else s.skins[id] = true;
+        }
+        write(s);
+        if(r.m) out.money += r.m;
+        if(out.money) window.PokeMoney.add(out.money);
         return out;
       },
       claimAll: function(){
         var tot = { money:0, crates:0, skins:0, items:0 };
         for(var t = 1; t <= MAX_TIER; t++){
-          var o = this.canClaim(t) ? this.claim(t) : null; if(o){ tot.money += o.money; tot.crates += o.crates; if(o.skin) tot.skins++; }
+          var o = this.canClaim(t) ? this.claim(t) : null; if(o){ tot.money += o.money; tot.crates += o.crates; if(o.skin && !o.dup) tot.skins++; }
           var q = this.canClaimPremium(t) ? this.claimPremium(t) : null; if(q){ tot.money += q.money; tot.crates += q.crates; tot.items += q.items.length; }
         }
         return tot;
       },
-      // Admin : tous les paliers atteints et récupérés, tous les skins débloqués.
-      unlockAll: function(){ var s = read(); s.xp = XP_TIER * MAX_TIER; s.premium = true; for(var t = 1; t <= MAX_TIER; t++){ s.claimed[t] = true; s.pclaimed[t] = true; } write(s); },
-      ownsSkin: function(id){ var s = read(); return id === "default" || (!!SKINS[id] && !!s.claimed[SKINS[id].tier]); },
+      // Admin : tous les paliers atteints et récupérés, tous les skins et objets exclusifs débloqués.
+      unlockAll: function(){
+        var s = read(); s.xp = XP_TIER * MAX_TIER; s.premium = true;
+        for(var t = 1; t <= MAX_TIER; t++){ s.claimed[t] = true; s.pclaimed[t] = true; }
+        Object.keys(SKINS).forEach(function(id){ if(id !== "default") s.skins[id] = true; });
+        passItems().forEach(function(it){ s.items[it.list + ":" + it.idx] = true; });
+        write(s);
+      },
+      ownsSkin: function(id){ return id === "default" || (!!SKINS[id] && !!read().skins[id]); },
       setSkin: function(id){
         if(!SKINS[id] || !this.ownsSkin(id)) return false;
         var s = read(); s.skin = id; write(s); applySkin(id); return true;
@@ -2087,6 +2178,24 @@
                               --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 22%),linear-gradient(160deg,#5b3aa0,#46297e 55%,#1d0e44); }
   :root[data-skin="gold"]   { --skin-device: linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,0) 22%),linear-gradient(160deg,#F6D56A 0%,#D9A21B 30%,#8A5A06 62%,#E0A82A 100%);
                               --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,0) 22%),linear-gradient(160deg,#b8860b,#7a4f05 55%,#2e1d01); }
+  :root[data-skin="foret"] { --red:#2E9B57; --red-dark:#1B6137; --red-darker:#0b2e1a; --red-mid:#278a4c; --skin-glow:rgba(70,200,120,.30);
+    --skin-device: linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,0) 22%),linear-gradient(160deg,#4fcf84,#2e9b57 55%,#1b6137);
+    --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 22%),linear-gradient(160deg,#1f7a43,#16603a 55%,#0a2b18); }
+  :root[data-skin="braise"] { --red:#E8651F; --red-dark:#A33B0B; --red-darker:#4a1704; --red-mid:#D4561A; --skin-glow:rgba(255,140,60,.32);
+    --skin-device: linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,0) 22%),linear-gradient(160deg,#FF9A4D,#E8651F 55%,#A33B0B);
+    --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 22%),linear-gradient(160deg,#b8480f,#8a330a 55%,#3a1203); }
+  :root[data-skin="aurore"] { --red:#4a8cff; --red-dark:#2a4fb0; --red-darker:#101a4d; --red-mid:#3b78e0; --skin-glow:rgba(90,200,255,.32);
+    --skin-device: linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,0) 22%),linear-gradient(160deg,#3ef0c0 0%,#4a8cff 45%,#c05cff 100%);
+    --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 22%),linear-gradient(160deg,#1fb08a,#2f5fc0 50%,#7a3cb0); }
+  :root[data-skin="glace"] { --red:#58B7D9; --red-dark:#277a9e; --red-darker:#0f3a4d; --red-mid:#46a6c9; --skin-glow:rgba(140,220,255,.34);
+    --skin-device: linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,0) 22%),linear-gradient(160deg,#7fd0ee,#4aa8cc 55%,#277a9e);
+    --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 22%),linear-gradient(160deg,#2f87ab,#226a8a 55%,#0b2f40); }
+  :root[data-skin="rubis"] { --red:#C2185B; --red-dark:#7f0f3a; --red-darker:#3a0519; --red-mid:#ad1450; --skin-glow:rgba(255,80,140,.30);
+    --skin-device: linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,0) 22%),linear-gradient(160deg,#E8467F,#C2185B 55%,#7f0f3a);
+    --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 22%),linear-gradient(160deg,#9c1248,#770d34 55%,#32041a); }
+  :root[data-skin="nuit"] { --red:#3b4a8a; --red-dark:#222c5c; --red-darker:#0a0e22; --red-mid:#323f7a; --skin-glow:rgba(100,120,255,.30);
+    --skin-device: linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,0) 22%),linear-gradient(160deg,#4a5aa8,#323f7a 55%,#1a2150);
+    --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 22%),linear-gradient(160deg,#28336a,#1c2550 55%,#080b1c); }
   :root[data-skin] .device{ background: var(--skin-device); }
   :root[data-skin] body{
     background: radial-gradient(900px 500px at 15% -10%, var(--skin-glow), transparent 60%),
@@ -4908,6 +5017,7 @@
       for(let i = mpRoundsFinishedSeen; i < n; i++) total += MP_ROUND_REWARD_MIN + Math.floor(Math.random() * (MP_ROUND_REWARD_MAX - MP_ROUND_REWARD_MIN + 1));
       mpRoundsFinishedSeen = n;
       if(window.PokeMoney) window.PokeMoney.add(total);
+      if(window.PokeQuests) window.PokeQuests.track("rounds", n - prevSeen);
       const xp = (window.PokePass ? window.PokePass.xpRound : 0) * (n - prevSeen);
       if(window.PokePass) window.PokePass.addXp(xp);
       if(window.toast) window.toast("Manche terminée ! +" + total + " ₽" + (xp ? " · +" + xp + " XP" : ""), { kind:"ok", icon:"💰" });
@@ -6129,6 +6239,7 @@
 </script>
 <script src="profilecard.js?v=4"></script>
 <script src="enhance.js"></script>
+<script src="bonus.js?v=1"></script>
 <script>
 (function(){
   // Onglets : chaque onglet (sauf Devinette) est chargé à la première ouverture, dans un Shadow DOM isolé.
@@ -6137,8 +6248,8 @@
     whois:   { btn: "tabWhois",   pane: "whoisPane",   host: "whoisHost",   src: "whois.js?v=6",   api: "WhoIsTab",   label: "whois.js" },
     rule:    { btn: "tabRule",    pane: "rulePane",    host: "ruleHost",    src: "rule.js?v=2",    api: "RuleTab",    label: "rule.js" },
     group:   { btn: "tabGroup",   pane: "groupPane",   host: "groupHost",   src: "group.js?v=2",   api: "GroupTab",   label: "group.js" },
-    profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=10", api: "ProfileTab", label: "profile.js" },
-    crates:  { btn: "tabCrates",  pane: "cratesPane",  host: "cratesHost",  src: "crates.js?v=9",  api: "CratesTab",  label: "crates.js" }
+    profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=11", api: "ProfileTab", label: "profile.js" },
+    crates:  { btn: "tabCrates",  pane: "cratesPane",  host: "cratesHost",  src: "crates.js?v=10",  api: "CratesTab",  label: "crates.js" }
   };
   var loaded = {};
   function fail(t, msg){
@@ -6175,8 +6286,8 @@
   Object.keys(TABS).forEach(function(k){ document.getElementById(TABS[k].btn).onclick = function(){ setTab(k); }; });
   window.PokeTabs = { set: setTab, load: load, current: function(){ var a = "guess"; Object.keys(TABS).forEach(function(k){ if (document.getElementById(TABS[k].btn).classList.contains("active")) a = k; }); return a; } };
   // Pastille rouge sur l'onglet Bonus tant qu'une crate attend d'être ouverte.
-  function crateDot(){ try{ document.getElementById("tabCrates").classList.toggle("has-dot", !!((window.PokeCrates && window.PokeCrates.available()) || (window.PokePass && window.PokePass.claimable() > 0))); }catch(e){} }
-  window.addEventListener("cratechange", crateDot); window.addEventListener("passchange", crateDot);
+  function crateDot(){ try{ document.getElementById("tabCrates").classList.toggle("has-dot", !!((window.PokeCrates && window.PokeCrates.available()) || (window.PokePass && window.PokePass.claimable() > 0) || (window.PokeQuests && window.PokeQuests.claimable() > 0))); }catch(e){} }
+  window.addEventListener("cratechange", crateDot); window.addEventListener("passchange", crateDot); window.addEventListener("questchange", crateDot);
   document.addEventListener("visibilitychange", function(){ if (!document.hidden) crateDot(); });
   setInterval(crateDot, 60000); crateDot();
   var start = "guess";
