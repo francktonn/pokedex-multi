@@ -258,6 +258,14 @@
         return { stock:s.stock, opened:s.opened, ownedCount:n, last:s.last, owned:owned };
       },
       available: function(){ var s = read(); return s.stock > 0 || s.last !== today(); },
+      // Boutique : achète une crate avec des Pokédollars. Renvoie true si l'achat a réussi (stock plein ou solde insuffisant : false).
+      price: 1000,
+      buy: function(){
+        var s = read(); grantDaily(s);
+        if(s.stock >= 99) return false;
+        if(!window.PokeMoney.spend(this.price)) return false;
+        s.stock++; write(s); return true;
+      },
       msUntilNext: function(){ var d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime() - d.getTime(); },
       // Ouvre une crate : renvoie { item }, { money:{ amount, rar } } ou null (aucune crate disponible).
       open: function(){
@@ -1915,7 +1923,7 @@
   <button type="button" role="tab" id="tabWhois" class="modetab" aria-selected="false" data-tab="whois"><span class="ic">❔</span><span class="lb">Qui est-ce ?</span></button>
   <button type="button" role="tab" id="tabRule" class="modetab" aria-selected="false" data-tab="rule"><span class="ic">🧩</span><span class="lb">La règle</span></button>
   <button type="button" role="tab" id="tabProfile" class="modetab" aria-selected="false" data-tab="profile"><span class="ic">👤</span><span class="lb">Profil</span></button>
-  <button type="button" role="tab" id="tabCrates" class="modetab" aria-selected="false" data-tab="crates"><span class="ic">🎁</span><span class="lb">Crates</span></button>
+  <button type="button" role="tab" id="tabCrates" class="modetab" aria-selected="false" data-tab="crates"><span class="ic">🎁</span><span class="lb">Bonus</span></button>
 </nav>
 <div id="grpBar" class="grpbar" style="display:none;"></div>
 <div id="groupPane" style="display:none;"><div id="groupHost"></div></div>
@@ -5944,7 +5952,7 @@
     rule:    { btn: "tabRule",    pane: "rulePane",    host: "ruleHost",    src: "rule.js?v=1",    api: "RuleTab",    label: "rule.js" },
     group:   { btn: "tabGroup",   pane: "groupPane",   host: "groupHost",   src: "group.js?v=1",   api: "GroupTab",   label: "group.js" },
     profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=9", api: "ProfileTab", label: "profile.js" },
-    crates:  { btn: "tabCrates",  pane: "cratesPane",  host: "cratesHost",  src: "crates.js?v=4",  api: "CratesTab",  label: "crates.js" }
+    crates:  { btn: "tabCrates",  pane: "cratesPane",  host: "cratesHost",  src: "crates.js?v=5",  api: "CratesTab",  label: "crates.js" }
   };
   var loaded = {};
   function fail(t, msg){
@@ -5980,7 +5988,7 @@
   }
   Object.keys(TABS).forEach(function(k){ document.getElementById(TABS[k].btn).onclick = function(){ setTab(k); }; });
   window.PokeTabs = { set: setTab, load: load, current: function(){ var a = "guess"; Object.keys(TABS).forEach(function(k){ if (document.getElementById(TABS[k].btn).classList.contains("active")) a = k; }); return a; } };
-  // Pastille rouge sur l'onglet Crates tant qu'une crate attend d'être ouverte.
+  // Pastille rouge sur l'onglet Bonus tant qu'une crate attend d'être ouverte.
   function crateDot(){ try{ document.getElementById("tabCrates").classList.toggle("has-dot", !!(window.PokeCrates && window.PokeCrates.available())); }catch(e){} }
   window.addEventListener("cratechange", crateDot);
   document.addEventListener("visibilitychange", function(){ if (!document.hidden) crateDot(); });

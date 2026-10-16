@@ -1,4 +1,4 @@
-/* crates.js — onglet « Crates » : une crate gratuite par jour, contenant un objet de personnalisation de profil au hasard
+/* crates.js — onglet « Bonus » (sections Crates et Shop) : une crate gratuite par jour, contenant un objet de personnalisation de profil au hasard
    (fond de carte, titre, style de cadre, forme de photo, effet, police ou couleur du pseudo).
    Shadow DOM : HTML/CSS/ids isolés du reste du site. La logique (stock, tirage, objets obtenus) est dans window.PokeCrates
    (index.html), pour que l'onglet Profil puisse lire les objets gagnés. */
@@ -31,6 +31,10 @@
     ".head{display:flex; align-items:center; justify-content:space-between; gap:10px;}",
     ".count{font-family:'Baloo 2',sans-serif; font-weight:800; font-size:15px; color:var(--muted);}",
     ".hidden{display:none !important;}",
+    ".seg{display:flex; gap:6px; margin-bottom:12px; background:rgba(0,0,0,.25); padding:5px; border-radius:16px;}",
+    ".seg button{flex:1; min-height:42px; border:0; border-radius:12px; cursor:pointer; font-family:'Baloo 2',sans-serif; font-weight:800; font-size:15px; color:#fff; background:transparent;}",
+    ".seg button.on{background:var(--gold); color:#221d17; box-shadow:0 3px 0 var(--gold-deep);}",
+    ".shopbig{text-align:center; font-family:'Baloo 2',sans-serif; font-weight:800; font-size:22px; color:var(--gold-deep); margin-top:6px;}",
     /* bouton */
     ".btn{width:100%; min-height:50px; border:0; border-radius:16px; cursor:pointer; margin-top:12px; font-family:'Baloo 2',sans-serif; font-weight:800; font-size:17px; color:#221d17;",
     "  background:linear-gradient(180deg,#ffd96b,var(--gold) 55%,#f0b21f); box-shadow:0 5px 0 var(--gold-deep), 0 12px 20px -8px rgba(0,0,0,.4); transition:transform .15s var(--ease), box-shadow .15s var(--ease);}",
@@ -86,7 +90,20 @@
 
   var HTML = [
     '<div class="device">',
-    '  <div class="top"><span class="lens"></span><span class="brand">CRATES</span><span class="wallet" id="wallet" title="Tes Pokédollars"></span><button type="button" class="themebtn" id="themeBtn" aria-label="Mode sombre">🌙</button></div>',
+    '  <div class="top"><span class="lens"></span><span class="brand">BONUS</span><span class="wallet" id="wallet" title="Tes Pokédollars"></span><button type="button" class="themebtn" id="themeBtn" aria-label="Mode sombre">🌙</button></div>',
+    '  <div class="seg" role="tablist"><button type="button" class="on" id="segCrates">🎁 Crates</button><button type="button" id="segShop">🛒 Shop</button></div>',
+    '  <div id="secShop" class="hidden">',
+    '  <section class="panel">',
+    '    <h2>🛒 Shop</h2>',
+    '    <p class="sub">Achète des crates avec tes Pokédollars. Gagne-en en finissant des manches en multijoueur ou en ouvrant des crates.</p>',
+    '    <div class="stage"><div class="crate idle" aria-hidden="true">🎁</div></div>',
+    '    <div class="shopbig" id="shopPrice"></div>',
+    '    <button type="button" class="btn" id="buyBtn"></button>',
+    '    <div class="msg" id="shopMsg" role="status"></div>',
+    '    <p class="hint2" id="shopStock"></p>',
+    '  </section>',
+    '  </div>',
+    '  <div id="secCrates">',
     '  <section class="panel">',
     '    <h2>🎁 Crate du jour</h2>',
     '    <p class="sub">Une crate gratuite chaque jour. Elle contient au hasard un objet pour personnaliser ta carte (fond, titre, cadre, effet…) ou des Pokédollars.</p>',
@@ -106,6 +123,7 @@
     '    <div class="odds" id="odds"></div>',
     '    <p class="hint2">Tu ne tires jamais deux fois le même objet. Si une rareté est épuisée, ses chances sont redistribuées. Une fois tous les objets obtenus, chaque crate donne des Pokédollars.</p>',
     '  </section>',
+    '  </div>',
     '</div>'
   ].join("\n");
 
@@ -266,10 +284,35 @@
       C.rarities.forEach(function (r, i) { row(r.color, r.name, window.PokeMoney.format(C.moneyRanges[i][0]).replace(" ₽", "") + " – " + window.PokeMoney.format(C.moneyRanges[i][1])); });
     }
 
+    // ---- Shop ----
+    function renderShop() {
+      var money = window.PokeMoney.get(), s = C.state(), full = s.stock >= 99;
+      $("shopPrice").textContent = "1 crate = " + window.PokeMoney.format(C.price);
+      var b = $("buyBtn");
+      b.disabled = full || money < C.price;
+      b.textContent = full ? "Stock plein" : money < C.price ? "🔒 Il te manque " + window.PokeMoney.format(C.price - money) : "🛒 Acheter une crate";
+      $("shopStock").textContent = "Crates en stock : " + s.stock + ". Ouvre-les dans la section Crates.";
+    }
+    $("buyBtn").addEventListener("click", function () {
+      var m = $("shopMsg");
+      if (C.buy()) { m.textContent = "Crate achetée ! Elle t'attend dans la section Crates."; m.className = "msg ok"; }
+      else { m.textContent = "Achat impossible."; m.className = "msg ko"; }
+      renderShop(); refreshMain();
+    });
+    function showSec(shop) {
+      $("secShop").classList.toggle("hidden", !shop); $("secCrates").classList.toggle("hidden", shop);
+      $("segShop").classList.toggle("on", shop); $("segCrates").classList.toggle("on", !shop);
+      if (shop) { $("shopMsg").textContent = ""; renderShop(); }
+    }
+    $("segCrates").addEventListener("click", function () { showSec(false); });
+    $("segShop").addEventListener("click", function () { showSec(true); });
+    window.addEventListener("moneychange", renderShop);
+    window.addEventListener("cratechange", renderShop);
+
     // ---- Démarrage : crédite la crate du jour, puis tic-tac jusqu'à minuit ----
     C.sync();
     renderWallet(); window.addEventListener("moneychange", renderWallet);
-    renderOdds(); renderCollection(); refreshMain();
+    renderOdds(); renderCollection(); refreshMain(); renderShop();
     var timer = setInterval(function () {
       if (!host.isConnected) { clearInterval(timer); return; }
       if (document.hidden || busy) return;
