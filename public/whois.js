@@ -81,7 +81,8 @@
 
   // Profil (onglet 👤 Profil) : son pseudo remplace le champ, son sprite est ta photo.
   function profile(){ return window.PokeProfile ? window.PokeProfile.get() : null; }
-  function spriteUrl(id){ return window.PokeProfile.sprite(id); }
+  function spriteUrl(id, st){ return window.PokeProfile.sprite(id, st); }
+  function cardOf(){ return profile() ? window.PokeProfile.card() : null; }
   function renderProfile(){
     var pr = profile();
     $("profCard").classList.toggle("hidden", !pr);
@@ -89,7 +90,7 @@
     if (!pr) return;
     $("profName").textContent = pr.name;
     var av = $("profAv"); av.textContent = "";
-    if (pr.favId){ var im = document.createElement("img"); im.alt = ""; im.src = spriteUrl(pr.favId); av.appendChild(im); }
+    if (pr.favId){ var im = document.createElement("img"); im.alt = ""; im.src = spriteUrl(pr.favId, pr.style); if (pr.style === 2) im.style.imageRendering = "auto"; av.appendChild(im); }
     else av.appendChild(el("span","noav","?"));
   }
   renderProfile();
@@ -106,14 +107,14 @@
   function avatarId(){ var pr = profile(); return pr && pr.favId ? pr.favId : null; }
   $("btnCreate").onclick = function(){
     var n = pseudo(); if(!n) return;
-    api("POST",{action:"create",name:n,avatar:avatarId()}).then(function(r){ enter(r.code, r.playerId); })
+    api("POST",{action:"create",name:n,avatar:avatarId(),card:cardOf()}).then(function(r){ enter(r.code, r.playerId); })
       .catch(function(e){ $("homeErr").textContent = e.message; });
   };
   $("btnJoin").onclick = function(){
     var n = pseudo(); if(!n) return;
     var c = $("codeIn").value.trim().toUpperCase();
     if (!c){ $("homeErr").textContent = "Entre le code de la partie."; return; }
-    api("POST",{action:"join",name:n,code:c,avatar:avatarId()}).then(function(r){ enter(r.code, r.playerId); })
+    api("POST",{action:"join",name:n,code:c,avatar:avatarId(),card:cardOf()}).then(function(r){ enter(r.code, r.playerId); })
       .catch(function(e){ $("homeErr").textContent = e.message; });
   };
 
@@ -146,7 +147,7 @@
     st.players.forEach(function(p, i){
       var li = el("li", (p.id===S.playerId?"me ":"") + (p.solved?"won":""));
       if (opts.rank) li.appendChild(el("span", "", medals[i] || (i+1)+"."));
-      if (p.avatar){ var ai = document.createElement("img"); ai.className = "av"; ai.alt = ""; ai.loading = "lazy"; ai.src = spriteUrl(p.avatar); li.appendChild(ai); }
+      if (p.avatar){ var ai = document.createElement("img"); ai.className = "av"; ai.alt = ""; ai.loading = "lazy"; ai.src = spriteUrl(p.avatar, p.card && p.card.s); if (p.card){ ai.style.borderColor = window.PokeProfile.frame(p.card.c); if (p.card.s === 2) ai.style.imageRendering = "auto"; } li.appendChild(ai); }
       li.appendChild(el("span","nm", p.name));
       if (p.id === st.hostId) li.appendChild(el("span","tag","hôte"));
       li.appendChild(el("span","sc", String(p.score)));
@@ -194,6 +195,11 @@
       $("guessIn").value = ""; $("sugg").textContent = "";
     }
     if (r.revealed){
+      var recTok = S.code + ":" + r.imgToken;
+      if (S.recorded !== recTok && load("whois_rec") !== recTok){
+        S.recorded = recTok; store("whois_rec", recTok);
+        if (window.PokeStats) window.PokeStats.record("whois", { won: r.winnerId === S.playerId, ms: (r.endedAt || 0) - r.startedAt });
+      }
       if (img.className !== "reveal") img.className = "reveal";
       var a = $("answerBox"); a.classList.remove("hidden"); a.textContent = "";
       a.appendChild(document.createTextNode(r.answer));

@@ -221,6 +221,7 @@
     function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
     function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
     function toast(msg, kind) { var t = el("div", "toast " + (kind || ""), msg); root.appendChild(t); setTimeout(function () { t.remove(); }, 2800); }
+    function cardOf() { return profile() ? window.PokeProfile.card() : null; }
     function sprite(id) { return "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/" + id + ".png"; }
     function show(id) { ["vHome", "vLobby", "vGame", "vEnd"].forEach(function (v) { $(v).classList.toggle("hidden", v !== id); }); }
     function api(method, body, query) {
@@ -274,7 +275,7 @@
       if (!pr) return;
       $("profName").textContent = pr.name;
       var av = $("profAv"); av.textContent = "";
-      if (pr.favId) { var im = document.createElement("img"); im.alt = ""; im.src = sprite(pr.favId); av.appendChild(im); }
+      if (pr.favId) { var im = document.createElement("img"); im.alt = ""; im.src = window.PokeProfile.sprite(pr.favId, pr.style); if (pr.style === 2) im.style.imageRendering = "auto"; av.appendChild(im); }
       else av.appendChild(el("span", "noav", "?"));
     }
     renderProfile();
@@ -290,7 +291,7 @@
     function avatarId() { var pr = profile(); return pr && pr.favId ? pr.favId : null; }
     function create(thenStart) {
       var n = pseudo(); if (!n) return;
-      api("POST", { action: "create", name: n, avatar: avatarId() }).then(function (r) {
+      api("POST", { action: "create", name: n, avatar: avatarId(), card: cardOf() }).then(function (r) {
         enter(r.code, r.playerId);
         if (thenStart) return post("start", { rounds: 3 }).then(function (s) { S.state = s; S.offset = s.now - Date.now(); render(); });
       }).catch(function (e) { $("homeErr").textContent = e.message; });
@@ -301,7 +302,7 @@
       var n = pseudo(); if (!n) return;
       var c = $("codeIn").value.trim().toUpperCase();
       if (!c) { $("homeErr").textContent = "Entre le code de la partie."; return; }
-      api("POST", { action: "join", name: n, code: c, avatar: avatarId() }).then(function (r) { enter(r.code, r.playerId); })
+      api("POST", { action: "join", name: n, code: c, avatar: avatarId(), card: cardOf() }).then(function (r) { enter(r.code, r.playerId); })
         .catch(function (e) { $("homeErr").textContent = e.message; });
     };
 
@@ -328,7 +329,7 @@
       st.players.forEach(function (p, i) {
         var li = el("li", (p.id === S.playerId ? "me " : "") + (p.solved ? "won" : ""));
         if (opts.rank) li.appendChild(el("span", "", medals[i] || (i + 1) + "."));
-        if (p.avatar) { var ai = document.createElement("img"); ai.className = "av"; ai.alt = ""; ai.loading = "lazy"; ai.src = sprite(p.avatar); li.appendChild(ai); }
+        if (p.avatar) { var ai = document.createElement("img"); ai.className = "av"; ai.alt = ""; ai.loading = "lazy"; ai.src = window.PokeProfile.sprite(p.avatar, p.card && p.card.s); if (p.card) { ai.style.borderColor = window.PokeProfile.frame(p.card.c); if (p.card.s === 2) ai.style.imageRendering = "auto"; } li.appendChild(ai); }
         li.appendChild(el("span", "nm", p.name));
         if (p.id === st.hostId && st.players.length > 1) li.appendChild(el("span", "tag", "hôte"));
         if (opts.progress) {
@@ -416,6 +417,11 @@
       // Fin de manche / état du joueur
       var note = $("note"), ans = $("answerBox");
       if (r.revealed) {
+        var recTok = S.code + ":" + key;
+        if (S.recorded !== recTok && load("wordle_rec") !== recTok) {
+          S.recorded = recTok; store("wordle_rec", recTok);
+          if (r.mine.length > 0 && window.PokeStats) window.PokeStats.record("wordle", { won: !!r.iWon, tries: r.mine.length });
+        }
         ans.classList.remove("hidden"); ans.textContent = "";
         var im = document.createElement("img"); im.alt = ""; im.src = sprite(r.answer.id); im.style.cssText = "width:96px;height:96px;image-rendering:pixelated;display:block;margin:0 auto";
         ans.appendChild(im);

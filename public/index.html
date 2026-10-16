@@ -16,25 +16,75 @@
   })();
 </script>
 <script>
-  // Profil du joueur (pseudo + Pokémon préféré), mémorisé sur cet appareil et partagé par tous les modes.
+  // Profil du joueur (pseudo, Pokémon préféré, style de carte), mémorisé sur cet appareil et partagé par tous les modes.
+  // + statistiques personnelles (window.PokeStats), alimentées par chaque mode de jeu.
   (function(){
-    var KEY = "pokeProfile_v1";
+    var KEY = "pokeProfile_v1", SKEY = "pokeStats_v1";
+    var FRAMES = ["#FFC93C","#E23B30","#3a86d6","#5ee06a","#F95587","#9b6bd6","#ff8a3c","#e8e8e8"];
+    function int(v, max){ v = Number(v); return Math.floor(v) === v && v >= 0 && v <= max ? v : 0; }
+    function clean(p){
+      return { name: String(p.name || "").trim().slice(0,16), favId: Number(p.favId) || null, favName: String(p.favName || ""),
+        style: int(p.style, 2), color: int(p.color, 7), motto: String(p.motto || "").trim().slice(0,40),
+        type: /^[a-z]{3,10}$/.test(p.type || "") ? p.type : "" };
+    }
     function read(){
       try{
         var p = JSON.parse(localStorage.getItem(KEY) || "null");
-        if(p && typeof p.name === "string" && p.name.trim()) return { name: p.name.trim().slice(0,16), favId: Number(p.favId) || null, favName: String(p.favName || "") };
+        if(p && typeof p.name === "string" && p.name.trim()) return clean(p);
       }catch(e){}
       return null;
     }
+    var BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/";
     window.PokeProfile = {
       get: read,
       set: function(p){
-        var v = { name: String(p.name || "").trim().slice(0,16), favId: Number(p.favId) || null, favName: String(p.favName || "") };
-        try{ localStorage.setItem(KEY, JSON.stringify(v)); }catch(e){}
+        try{ localStorage.setItem(KEY, JSON.stringify(clean(p))); }catch(e){}
         window.dispatchEvent(new CustomEvent("profilechange"));
       },
       clear: function(){ try{ localStorage.removeItem(KEY); }catch(e){} window.dispatchEvent(new CustomEvent("profilechange")); },
-      sprite: function(id){ return "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/" + id + ".png"; }
+      // style : 0 normal, 1 shiny, 2 artwork officiel
+      sprite: function(id, style){
+        style = Number(style) || 0;
+        if(style === 2) return BASE + "other/official-artwork/" + id + ".png";
+        return BASE + (style === 1 ? "shiny/" : "") + id + ".png";
+      },
+      frame: function(i){ return FRAMES[int(i, 7)]; },
+      frames: FRAMES,
+      // Ce qui est envoyé aux serveurs de jeu pour que les autres joueurs voient ta carte.
+      card: function(){ var p = read(); return p ? { s: p.style, c: p.color } : null; }
+    };
+
+    function blank(){ return {
+      wordle: { played:0, won:0, triesSum:0, best:0, streak:0, bestStreak:0 },
+      whois:  { played:0, correct:0, msSum:0, bestMs:0 },
+      guess:  { found:0, missed:0 }
+    }; }
+    function readStats(){
+      var d = blank();
+      try{
+        var o = JSON.parse(localStorage.getItem(SKEY) || "null");
+        if(o) Object.keys(d).forEach(function(m){ Object.keys(d[m]).forEach(function(k){ var v = o[m] && Number(o[m][k]); if(v > 0) d[m][k] = v; }); });
+      }catch(e){}
+      return d;
+    }
+    function writeStats(d){ try{ localStorage.setItem(SKEY, JSON.stringify(d)); }catch(e){} window.dispatchEvent(new CustomEvent("statschange")); }
+    window.PokeStats = {
+      get: readStats,
+      record: function(mode, ev){
+        var d = readStats(), m = d[mode]; if(!m || !ev) return;
+        if(mode === "wordle"){
+          m.played++;
+          if(ev.won){ m.won++; m.triesSum += ev.tries || 0; if(ev.tries && (!m.best || ev.tries < m.best)) m.best = ev.tries; m.streak++; if(m.streak > m.bestStreak) m.bestStreak = m.streak; }
+          else m.streak = 0;
+        }else if(mode === "whois"){
+          m.played++;
+          if(ev.won){ m.correct++; var ms = Math.max(1, Math.round(ev.ms || 0)); m.msSum += ms; if(!m.bestMs || ms < m.bestMs) m.bestMs = ms; }
+        }else if(mode === "guess"){
+          if(ev.found) m.found++; if(ev.missed) m.missed++;
+        }
+        writeStats(d);
+      },
+      reset: function(){ try{ localStorage.removeItem(SKEY); }catch(e){} window.dispatchEvent(new CustomEvent("statschange")); }
     };
   })();
 </script>
@@ -805,9 +855,10 @@
   .mp-avatar{
     width:32px; height:32px; flex-shrink:0; border-radius:50%; object-fit:contain; image-rendering:pixelated;
     background:radial-gradient(circle at 50% 40%, rgba(143,240,164,.28), transparent 70%), #0e1a12;
-    border:2px solid #070d08; box-shadow:0 0 0 1.5px var(--gold);
+    border:2px solid #070d08; box-shadow:0 0 0 1.5px var(--frame, var(--gold));
   }
-  .mp-quick-chip .mp-avatar{ width:22px; height:22px; border-width:1.5px; box-shadow:0 0 0 1px var(--gold); }
+  .mp-avatar.art{ image-rendering:auto; }
+  .mp-quick-chip .mp-avatar{ width:22px; height:22px; border-width:1.5px; box-shadow:0 0 0 1px var(--frame, var(--gold)); }
   .mp-player-score{
     font-family:'Silkscreen', monospace;
     font-size:11px;
@@ -4579,7 +4630,7 @@
       hint.style.cssText = "display:flex;align-items:center;gap:8px;";
       if(prof.favId){
         const im = document.createElement("img");
-        im.src = window.PokeProfile.sprite(prof.favId); im.alt = "";
+        im.src = window.PokeProfile.sprite(prof.favId, prof.style); im.alt = "";
         im.style.cssText = "width:36px;height:36px;image-rendering:pixelated;";
         hint.appendChild(im);
       }
@@ -4608,10 +4659,11 @@
     const pr = window.PokeProfile && window.PokeProfile.get();
     return pr && pr.favId ? pr.favId : null;
   }
+  function mpCardOf(){ return window.PokeProfile ? window.PokeProfile.card() : null; }
   function mpAvatarHtml(p){
-    if(!p || !p.avatar) return "";
-    const url = window.PokeProfile ? window.PokeProfile.sprite(p.avatar) : "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/" + p.avatar + ".png";
-    return `<img class="mp-avatar" src="${url}" alt="" loading="lazy" draggable="false">`;
+    if(!p || !p.avatar || !window.PokeProfile) return "";
+    const c = p.card || {};
+    return `<img class="mp-avatar${c.s === 2 ? " art" : ""}" style="--frame:${window.PokeProfile.frame(c.c)}" src="${window.PokeProfile.sprite(p.avatar, c.s)}" alt="" loading="lazy" draggable="false">`;
   }
 
   function mpReadName(){
@@ -4627,7 +4679,7 @@
     const btn = document.getElementById("mpCreateBtn");
     if(btn) btn.disabled = true;
     try{
-      const data = await mpApiPost("create", { name, avatar: mpAvatarId() });
+      const data = await mpApiPost("create", { name, avatar: mpAvatarId(), card: mpCardOf() });
       mpRoomCode = data.code;
       mpPlayerId = data.playerId;
       mpPlayerName = name;
@@ -4653,7 +4705,7 @@
     const btn = document.getElementById("mpJoinBtn");
     if(btn) btn.disabled = true;
     try{
-      const data = await mpApiPost("join", { code, name, avatar: mpAvatarId() });
+      const data = await mpApiPost("join", { code, name, avatar: mpAvatarId(), card: mpCardOf() });
       mpRoomCode = data.code;
       mpPlayerId = data.playerId;
       mpPlayerName = name;
@@ -5461,6 +5513,7 @@
         return;
       }
       if(result.correct){
+        if(window.PokeStats) window.PokeStats.record("guess", { found: true });
         if(feedback){
           feedback.textContent = `✅ Bravo, c'était bien ${result.name} ! +1 point.`;
           feedback.className = "mp-guess-feedback ok";
@@ -5483,6 +5536,7 @@
           if(guessedFromPanel) guessClose();
         }, 1400);
       }else{
+        if(window.PokeStats) window.PokeStats.record("guess", { missed: true });
         if(feedback){
           feedback.textContent = "❌ Raté, essaie encore !";
           feedback.className = "mp-guess-feedback ko";
@@ -5620,9 +5674,9 @@
   // Onglets : chaque onglet (sauf Devinette) est chargé à la première ouverture, dans un Shadow DOM isolé.
   var TABS = {
     guess:   { btn: "tabGuess" },
-    whois:   { btn: "tabWhois",   pane: "whoisPane",   host: "whoisHost",   src: "whois.js?v=4",   api: "WhoIsTab",   label: "whois.js" },
-    wordle:  { btn: "tabWordle",  pane: "wordlePane",  host: "wordleHost",  src: "wordle.js?v=1",  api: "WordleTab",  label: "wordle.js" },
-    profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=1", api: "ProfileTab", label: "profile.js" }
+    whois:   { btn: "tabWhois",   pane: "whoisPane",   host: "whoisHost",   src: "whois.js?v=5",   api: "WhoIsTab",   label: "whois.js" },
+    wordle:  { btn: "tabWordle",  pane: "wordlePane",  host: "wordleHost",  src: "wordle.js?v=2",  api: "WordleTab",  label: "wordle.js" },
+    profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=2", api: "ProfileTab", label: "profile.js" }
   };
   var loaded = {};
   function fail(t, msg){
