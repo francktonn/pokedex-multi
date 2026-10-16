@@ -204,7 +204,7 @@
     // Objets de crate (min > 0) ou exclusifs du Pass Premium (pass = palier) : verrouillés tant qu'ils ne sont pas obtenus.
     function isLocked(list, i) {
       var it = P[list][i]; if (!it) return false;
-      if (it.hw) return !(window.PokeHalloween && window.PokeHalloween.ownsItem(list, i)); // exclusif Halloween (bonbons)
+      if (it.hw || it.hwc) return !(window.PokeHalloween && window.PokeHalloween.ownsItem(list, i)); // exclusif Halloween (bonbons ou crate)
       if (it.pass) return !(PS && PS.ownsItem(list, i));
       return it.min > 0 && !owned(list, i);
     }
@@ -270,7 +270,7 @@
     function optBtn(label, i, key, list) {
       var locked = isLocked(LISTOF[key], i);
       var b = el("button", (i === draft[key] ? "on" : "") + (locked ? " locked" : ""), label); b.type = "button";
-      if (locked) { var pi = P[LISTOF[key]][i]; b.appendChild(el("small", "", pi && pi.hw ? "🎃 Halloween" : pi && pi.pass ? "👑 Palier " + pi.pass : "🔒 Crate")); b.title = pi && pi.hw ? "Exclusif Halloween : à acheter avec des bonbons dans l'onglet 🎃 (aperçu possible)" : pi && pi.pass ? "Exclusif du Pass Premium, palier " + pi.pass + " (aperçu possible)" : "À obtenir dans une crate (aperçu possible)"; }
+      if (locked) { var pi = P[LISTOF[key]][i]; b.appendChild(el("small", "", pi && pi.hwc ? "🎃 Crate" : pi && pi.hw ? "🎃 Halloween" : pi && pi.pass ? "👑 Palier " + pi.pass : "🔒 Crate")); b.title = pi && pi.hwc ? "Exclusif Halloween : à gagner dans la crate de l'onglet 🎃 (aperçu possible)" : pi && pi.hw ? "Exclusif Halloween : à acheter avec des bonbons dans l'onglet 🎃 (aperçu possible)" : pi && pi.pass ? "Exclusif du Pass Premium, palier " + pi.pass + " (aperçu possible)" : "À obtenir dans une crate (aperçu possible)"; }
       b.onclick = function () { draft[key] = i; say(""); renderOptions(); renderPreview(); };
       return b;
     }

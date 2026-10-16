@@ -27,8 +27,8 @@
       return { name: String(p.name || "").trim().slice(0,16), favId: Number(p.favId) || null, favName: String(p.favName || ""),
         style: int(p.style, 2), color: int(p.color, 15), motto: String(p.motto || "").trim().slice(0,40),
         type: /^[a-z]{3,10}$/.test(p.type || "") ? p.type : "",
-        bg: int(p.bg, 20), title: int(p.title, 25),
-        frameStyle: int(p.frameStyle, 9), shape: int(p.shape, 6), effect: int(p.effect, 9), nameFont: int(p.nameFont, 6), nameColor: int(p.nameColor, 11),
+        bg: int(p.bg, 21), title: int(p.title, 25),
+        frameStyle: int(p.frameStyle, 10), shape: int(p.shape, 6), effect: int(p.effect, 10), nameFont: int(p.nameFont, 6), nameColor: int(p.nameColor, 11),
         team: (Array.isArray(p.team) ? p.team : []).map(Number).filter(function(n){ return Math.floor(n) === n && n >= 1 && n <= 1025; }).slice(0,6) };
     }
     // Fonds de carte et titres (min > 0 = objet de crate ; sa valeur ne sert plus qu'à définir la rareté).
@@ -55,7 +55,9 @@
       { name:"Citrouilles",      min:0, hw:80,  css:"radial-gradient(circle at 18% 78%, rgba(255,122,26,.8) 0 14px, transparent 15px), radial-gradient(circle at 82% 30%, rgba(255,122,26,.6) 0 10px, transparent 11px), radial-gradient(circle at 55% 92%, rgba(255,122,26,.5) 0 8px, transparent 9px), linear-gradient(160deg, #1a0a2e, #3b1250 55%, #7a2a08)" },
       { name:"Cimetière",        min:0, hw:100, css:"linear-gradient(180deg, transparent 64%, rgba(0,0,0,.55) 64%), radial-gradient(40% 26% at 50% 118%, rgba(140,255,170,.38), transparent 70%), linear-gradient(180deg, #0a1020, #1d2c40 70%, #0a1020)" },
       { name:"Pleine lune",      min:0, hw:140, css:"radial-gradient(circle at 78% 26%, #fff7d6 0 14px, rgba(255,247,214,.35) 15px 24px, transparent 26px), radial-gradient(1.5px 1.5px at 20% 30%, #fff, transparent), radial-gradient(1px 1px at 45% 70%, #fff, transparent), linear-gradient(180deg, #0b0624, #241149 60%, #3a1a5e)" },
-      { name:"Toile d'araignée", min:0, hw:180, css:"repeating-conic-gradient(from 0deg at 100% 0, rgba(255,255,255,.2) 0 1deg, transparent 1deg 15deg), repeating-radial-gradient(circle at 100% 0, transparent 0 16px, rgba(255,255,255,.16) 16px 17px), linear-gradient(160deg, #16091f, #2d1240)" }
+      { name:"Toile d'araignée", min:0, hw:180, css:"repeating-conic-gradient(from 0deg at 100% 0, rgba(255,255,255,.2) 0 1deg, transparent 1deg 15deg), repeating-radial-gradient(circle at 100% 0, transparent 0 16px, rgba(255,255,255,.16) 16px 17px), linear-gradient(160deg, #16091f, #2d1240)" },
+      // Exclusif de la crate Halloween (hwc = rareté : 2 épique, 3 légendaire ; jamais dans la boutique ni dans les crates normales)
+      { name:"Banshitrouye", min:0, hwc:2, css:"radial-gradient(34px 30px at 50% 88%, #ff8a1f 0 60%, #b34a07 62% 100%), radial-gradient(60% 40% at 50% 100%, rgba(125,255,154,.45), transparent 70%), radial-gradient(2.5px 2.5px at 15% 30%, #d6ff9c, transparent), radial-gradient(2px 2px at 82% 22%, #d6ff9c, transparent), radial-gradient(2px 2px at 70% 55%, #ffd27a, transparent), linear-gradient(180deg, #120a24, #2b1346 62%, #0d0818)" }
     ];
     var TITLES = [
       { name:"Aucun titre", min:0 }, { name:"Dresseur novice", min:0 }, { name:"Apprenti dresseur", min:3 }, { name:"Chasseur de shiny", min:5 },
@@ -70,11 +72,13 @@
     ];
     // Personnalisation avancée (min > 0 = objet de crate, rareté selon min ; les éléments verrouillés restent visibles en aperçu).
     var FRAME_STYLES = [ { name:"Solide", min:0 }, { name:"Double", min:0 }, { name:"Pointillé", min:2 }, { name:"Relief", min:4 }, { name:"Néon", min:8 }, { name:"Arc-en-ciel", min:14 }, { name:"Cristal", min:0, pass:20 }, { name:"Flammes", min:0, pass:30 },
-      { name:"Hanté", min:0, hw:150 }, { name:"Toiles", min:0, hw:150 } ];
+      { name:"Hanté", min:0, hw:150 }, { name:"Toiles", min:0, hw:150 },
+      { name:"Banshitrouye", min:0, hwc:2 } ];
     var SHAPES = [ { name:"Rond", min:0 }, { name:"Carré arrondi", min:0 }, { name:"Hexagone", min:6 }, { name:"Écusson", min:11 }, { name:"Étoile", min:0, pass:30 },
       { name:"Citrouille", min:0, hw:200 }, { name:"Fantôme", min:0, hw:200 } ];
     var EFFECTS = [ { name:"Aucun", min:0 }, { name:"Brillance", min:4 }, { name:"Étoiles", min:9 }, { name:"Holographique", min:16 }, { name:"Halo", min:22 }, { name:"Aurore", min:0, pass:20 }, { name:"Éclairs", min:0, pass:30 },
-      { name:"Chauves-souris", min:0, hw:250 }, { name:"Brume", min:0, hw:200 }, { name:"Feux follets", min:0, hw:250 } ];
+      { name:"Chauves-souris", min:0, hw:250 }, { name:"Brume", min:0, hw:200 }, { name:"Feux follets", min:0, hw:250 },
+      { name:"Flammes spectrales", min:0, hwc:3 } ];
     var NAME_FONTS = [ { name:"Normal", min:0 }, { name:"Pixel", min:0 }, { name:"Élégant", min:7 }, { name:"Machine", min:13 }, { name:"Royal", min:0, pass:30 },
       { name:"Hanté", min:0, hw:100 }, { name:"Sanglant", min:0, hw:150 } ];
     var NAME_COLORS = [ { name:"Blanc", css:"#ffffff", min:0 }, { name:"Or", css:"#FFC93C", min:0 }, { name:"Menthe", css:"#8ff0a4", min:2 }, { name:"Ciel", css:"#7cc8ff", min:5 },
@@ -135,6 +139,11 @@
       "@keyframes pk-wisp{from{transform:translateY(8px); opacity:.5}to{transform:translateY(-10px); opacity:1}}",
       ".nm.nf5{font-family:Georgia,'Times New Roman',serif; font-weight:800; letter-spacing:.06em; text-shadow:0 0 6px #ff7a1a, 0 0 14px rgba(255,122,26,.6);}",
       ".nm.nf6{font-family:Georgia,'Times New Roman',serif; font-style:italic; font-weight:800; text-shadow:0 2px 0 #7a0a0a, 0 6px 8px rgba(160,0,0,.7);}",
+      /* ---- Crate Halloween (Banshitrouye) : cadre 10, effet 10 ---- */
+      ".card.fs10{border-width:4px; border-style:solid; border-color:#e8741a; box-shadow:0 0 0 2px #2a1240, 0 0 18px rgba(125,255,154,.5), inset 0 0 24px rgba(255,138,31,.32);}",
+      ".card.fs10::before{content:'\\1F383'; position:absolute; top:-3px; right:8px; font-size:17px; line-height:1; pointer-events:none; z-index:4; filter:drop-shadow(0 0 5px rgba(125,255,154,.9));}",
+      ".card.ef10::after{content:''; position:absolute; inset:0; pointer-events:none; background:radial-gradient(28% 38% at 18% 108%, rgba(160,255,150,.75), transparent 72%), radial-gradient(24% 34% at 50% 110%, rgba(255,214,90,.7), transparent 72%), radial-gradient(28% 40% at 82% 108%, rgba(160,255,150,.7), transparent 72%); transform-origin:50% 100%; animation:pk-ghostfire 2.6s ease-in-out infinite alternate;}",
+      "@keyframes pk-ghostfire{from{transform:translateY(8px) scaleY(.8); opacity:.55}to{transform:translateY(-4px) scaleY(1.12); opacity:1}}",
       "@media (prefers-reduced-motion:reduce){.card,.card::before,.card::after,.card .avatar{animation:none !important;}}"
     ].join("\n");
     function read(){
@@ -163,7 +172,7 @@
       // Applique les options avancées d'une carte {f,h,e,nf,nc} sur les éléments (carte, photo, pseudo). Utilisé par l'éditeur et par la fenêtre de profil.
       paint: function(els, c, nameText){
         c = c || {};
-        var f = int(c.f, 9), h = int(c.h, 6), e = int(c.e, 9), nf = int(c.nf, 6), nc = int(c.nc, 11);
+        var f = int(c.f, 10), h = int(c.h, 6), e = int(c.e, 10), nf = int(c.nf, 6), nc = int(c.nc, 11);
         if(els.card) els.card.className = "card" + (f ? " fs" + f : "") + (e ? " ef" + e : "");
         if(els.avatar) els.avatar.className = "avatar" + (h ? " sh" + h : "");
         if(els.name){
@@ -375,7 +384,9 @@
       // Skins exclusifs de l'événement Halloween (hw = prix en bonbons, achetables uniquement dans l'onglet 🎃 ; jamais dans le Battle Pass)
       citrouille:{ name:"Citrouille",      color:"#F2711C", tier:40, hw:350 },
       sorciere:  { name:"Potion de sorcière", color:"linear-gradient(135deg,#a35cff,#6a2bb5 55%,#3ecf7e)", tier:41, hw:500 },
-      hante:     { name:"Manoir hanté",    color:"linear-gradient(135deg,#4a3d63,#14101c 70%,#78ffa0)", tier:42, hw:700 }
+      hante:     { name:"Manoir hanté",    color:"linear-gradient(135deg,#4a3d63,#14101c 70%,#78ffa0)", tier:42, hw:700 },
+      // Exclusif de la crate Halloween (hwc : jamais dans la boutique, jamais dans le Battle Pass)
+      banshitrouye:{ name:"Banshitrouye",  color:"linear-gradient(135deg,#ff8a1f,#5b2a86 55%,#7dff9a)", tier:43, hwc:3 }
     };
     // Les thèmes tournent : saison 1 = Horizons, 2 = Forêt enchantée, 3 = Hiver éternel, 4 = Horizons, etc.
     var THEMES = [
@@ -2246,6 +2257,10 @@
   :root[data-skin="hante"] { --red:#2a2236; --red-dark:#17121f; --red-darker:#08060d; --red-mid:#201a2b; --skin-glow:rgba(120,255,160,.28);
     --skin-device: linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,0) 22%),linear-gradient(160deg,#4a3d63,#2a2236 55%,#14101c);
     --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,0) 22%),linear-gradient(160deg,#2d2540,#1b1527 55%,#07050b); }
+  /* Skin exclusif de la crate Halloween */
+  :root[data-skin="banshitrouye"] { --red:#d9671a; --red-dark:#7a3a0a; --red-darker:#2a1240; --red-mid:#b9560f; --skin-glow:rgba(125,255,154,.30);
+    --skin-device: linear-gradient(180deg,rgba(255,255,255,.2),rgba(255,255,255,0) 22%),linear-gradient(160deg,#ff9a2e 0%,#c2570f 34%,#5b2a86 72%,#2a1240 100%);
+    --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 22%),linear-gradient(160deg,#8a4a12,#4a2467 60%,#150a26); }
   :root[data-skin] .device{ background: var(--skin-device); }
   :root[data-skin] body{
     background: radial-gradient(900px 500px at 15% -10%, var(--skin-glow), transparent 60%),

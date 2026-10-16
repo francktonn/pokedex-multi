@@ -6,6 +6,7 @@
      et via la récompense de connexion quotidienne (calendrier de 15 jours, sans plafond).
    • Boutique : objets de profil (marqués `hw: prix` dans les listes de PokeProfile) et skins de Pokédex (marqués `hw: prix`
      dans PokePass.skins) achetables uniquement avec des bonbons. Ce qui est acheté reste acquis pour toujours.
+   • Crate 📦 (150 🍬) : objets exclusifs Banshitrouye (skin, fond, style de cadre, effet animé, marqués `hwc` dans les listes) ou bonbons.
    • À la fin de l'événement, les bonbons restants sont convertis en Pokédollars. */
 (function () {
   "use strict";
@@ -20,6 +21,12 @@
   var MONEY_PER_CANDY = 5;   // conversion en Pokédollars quand l'événement se termine
   var MAX = 99999;
   var KEY = "pokeHalloween_v1";
+  // Crate Halloween « Banshitrouye » : prix, chances et garantie. Les objets (marqués `hwc` dans PokeProfile / PokePass.skins)
+  // n'existent QUE dans cette crate : ni boutique, ni crates normales, ni Battle Pass.
+  var CRATE_PRICE = 150;
+  var CRATE_ITEM_RATE = 0.30;   // chance d'obtenir un objet exclusif (parmi ceux qu'on n'a pas encore) à chaque ouverture
+  var CRATE_PITY = 8;           // garantie : au plus 8 ouvertures d'affilée sans objet (la 8e en donne un)
+  var CRATE_CANDY = [{ n: 60, w: 40 }, { n: 100, w: 30 }, { n: 150, w: 18 }, { n: 250, w: 9 }, { n: 500, w: 3 }]; // lots de bonbons (poids)
 
   // Listes de PokeProfile → champ du profil → libellé (même table que les crates et le Battle Pass)
   var CATS = [["bgs", "bg", "Fond de carte"], ["titles", "title", "Titre"], ["frameStyles", "frameStyle", "Style de cadre"], ["shapes", "shape", "Forme de photo"],
@@ -41,7 +48,7 @@
 
   // ---------- État mémorisé ----------
   function read() {
-    var s = { candies: 0, earned: 0, owned: {}, claimed: {}, play: { day: "", n: 0 }, snap: null, hello: "", settled: false };
+    var s = { candies: 0, earned: 0, owned: {}, claimed: {}, play: { day: "", n: 0 }, snap: null, hello: "", settled: false, crate: { n: 0, pity: 0 } };
     try {
       var o = JSON.parse(localStorage.getItem(KEY) || "null");
       if (o && typeof o === "object") {
@@ -51,6 +58,7 @@
         if (o.play && typeof o.play === "object") s.play = { day: typeof o.play.day === "string" ? o.play.day : "", n: num(o.play.n) };
         if (o.snap != null && isFinite(Number(o.snap))) s.snap = num(o.snap);
         s.hello = typeof o.hello === "string" ? o.hello : ""; s.settled = o.settled === true;
+        if (o.crate && typeof o.crate === "object") s.crate = { n: num(o.crate.n), pity: Math.min(CRATE_PITY - 1, num(o.crate.pity)) };
       }
     } catch (e) {}
     return s;
@@ -138,7 +146,24 @@
     });
     return out;
   }
-  function find(key) { var all = catalog(); for (var i = 0; i < all.length; i++) if (all[i].key === key) return all[i]; return null; }
+  // Objets exclusifs de la crate (même forme que les articles de la boutique, price = 0). hwc = rareté (index dans RARITIES + 1).
+  function crateItems() {
+    var s = read(), P = window.PokeProfile, out = [], SK = skinsDef();
+    Object.keys(SK).forEach(function (id) {
+      if (!SK[id].hwc) return;
+      var key = "skin:" + id;
+      out.push({ key: key, kind: "skin", list: "skins", idx: 0, id: id, field: "", catName: "Skin du Pokédex", name: SK[id].name, price: 0, css: SK[id].color || "", rar: Math.min(RARITIES.length - 1, SK[id].hwc), owned: !!s.owned[key], crate: true });
+    });
+    if (P) CATS.forEach(function (c) {
+      (P[c[0]] || []).forEach(function (it, i) {
+        if (!it || !it.hwc) return;
+        var key = c[0] + ":" + i;
+        out.push({ key: key, kind: "item", list: c[0], idx: i, id: "", field: c[1], catName: c[2], name: it.name, price: 0, css: it.css || "", rar: Math.min(RARITIES.length - 1, it.hwc), owned: !!s.owned[key], crate: true });
+      });
+    });
+    return out;
+  }
+  function find(key) { var all = catalog().concat(crateItems()); for (var i = 0; i < all.length; i++) if (all[i].key === key) return all[i]; return null; }
 
   function buy(key) {
     if (!active()) return { error: "L'événement est terminé : la boutique est fermée." };
@@ -167,6 +192,47 @@
     if (it.kind === "skin") return !!window.PokePass && window.PokePass.state().skin === it.id;
     var cur = window.PokeProfile && window.PokeProfile.get();
     return !!cur && cur[it.field] === it.idx;
+  }
+
+  // ---------- Crate Halloween ----------
+  function pickWeighted(list) {
+    var t = 0, i; for (i = 0; i < list.length; i++) t += list[i].w;
+    var r = Math.random() * t;
+    for (i = 0; i < list.length; i++) { r -= list[i].w; if (r < 0) return list[i]; }
+    return list[list.length - 1];
+  }
+  function crateState() {
+    var s = read(), items = crateItems(), left = items.filter(function (i) { return !i.owned; });
+    return { price: CRATE_PRICE, opened: s.crate.n, pity: s.crate.pity, pityAt: CRATE_PITY, untilGuarantee: CRATE_PITY - s.crate.pity,
+      items: items, total: items.length, got: items.length - left.length, complete: items.length > 0 && !left.length };
+  }
+  // Achète et ouvre une crate. Renvoie { ok, kind: "item"|"candy", item?, amount?, net?, text } ou { error }.
+  function crateOpen() {
+    if (!active()) return { error: "L'événement est terminé : la crate n'est plus disponible." };
+    var s = read(), items = crateItems(), left = items.filter(function (i) { return !s.owned[i.key]; });
+    if (!items.length) return { error: "La crate n'est pas disponible pour l'instant." };
+    if (!left.length) return { error: "Tu as déjà tous les objets de la crate !" };
+    if (s.candies < CRATE_PRICE) return { error: "Il te manque " + (CRATE_PRICE - s.candies) + " 🍬." };
+    if (items.some(function (i) { return i.kind === "skin" && !s.owned[i.key]; }) && (!window.PokePass || !window.PokePass.grantSkin)) {
+      left = left.filter(function (i) { return i.kind !== "skin"; }); // skins indisponibles : on ne tire pas un skin qu'on ne peut pas donner
+    }
+    s.candies -= CRATE_PRICE; s.crate.n++;
+    var won = left.length && (s.crate.pity >= CRATE_PITY - 1 || Math.random() < CRATE_ITEM_RATE);
+    var res;
+    if (won) {
+      var it = left[Math.floor(Math.random() * left.length)];
+      s.owned[it.key] = Date.now(); s.crate.pity = 0;
+      write(s);
+      if (it.kind === "skin") window.PokePass.grantSkin(it.id);
+      it.owned = true;
+      res = { ok: true, kind: "item", item: it, text: "Nouveau : « " + it.name + " » !" };
+    } else {
+      var amount = pickWeighted(CRATE_CANDY).n;
+      s.crate.pity++; s.candies = Math.min(MAX, s.candies + amount);
+      write(s);
+      res = { ok: true, kind: "candy", amount: amount, net: amount - CRATE_PRICE, text: "+" + amount + " 🍬" };
+    }
+    return res;
   }
 
   // ---------- Fin de l'événement ----------
@@ -199,13 +265,14 @@
     login: { state: loginState, claim: loginClaim },
     rarities: RARITIES, cats: CATS,
     catalog: catalog, buy: buy, equip: equip, isEquipped: isEquipped,
+    crate: { price: CRATE_PRICE, itemRate: CRATE_ITEM_RATE, pity: CRATE_PITY, candy: CRATE_CANDY, items: crateItems, state: crateState, open: crateOpen },
     owns: function (key) { return !!read().owned[key]; },
     ownsItem: function (list, idx) { return !!read().owned[list + ":" + idx]; },
     ownsSkin: function (id) { return !!read().owned["skin:" + id]; },
     // Admin : tout débloquer.
     unlockAll: function () {
       var s = read();
-      catalog().forEach(function (it) { s.owned[it.key] = s.owned[it.key] || Date.now(); if (it.kind === "skin" && window.PokePass && window.PokePass.grantSkin) window.PokePass.grantSkin(it.id); });
+      catalog().concat(crateItems()).forEach(function (it) { s.owned[it.key] = s.owned[it.key] || Date.now(); if (it.kind === "skin" && window.PokePass && window.PokePass.grantSkin) window.PokePass.grantSkin(it.id); });
       s.candies = Math.min(MAX, s.candies + 9999); write(s);
     }
   };

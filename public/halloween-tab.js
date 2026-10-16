@@ -1,5 +1,5 @@
 /* halloween-tab.js — onglet « 🎃 Halloween » : solde de bonbons, comment en gagner, calendrier de connexion quotidienne
-   et boutique d'objets exclusifs (personnalisation de profil + skins du Pokédex).
+   boutique d'objets exclusifs (personnalisation de profil + skins du Pokédex) et crate Halloween « Banshitrouye ».
    Shadow DOM : HTML/CSS/ids isolés du reste du site. Toute la logique (bonbons, achats, possession) est dans
    window.PokeHalloween (halloween.js, chargé au démarrage du site). */
 (function () {
@@ -80,6 +80,14 @@
     "  background:radial-gradient(circle at 50% 40%, rgba(255,154,46,.28), transparent 70%), #1a0f06; border:3px solid #070d08; box-shadow:0 0 0 2px var(--frame);}",
     ".who .nm{font-family:'Baloo 2',sans-serif; font-weight:800; font-size:14px; line-height:1.1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}",
     ".who .ttl{font-weight:800; font-size:10px; margin-top:1px; color:#FFC93C; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}",
+    /* crate */
+    ".crate-pump{font-size:84px; line-height:1; filter:drop-shadow(0 8px 12px rgba(125,255,154,.35)); animation:float 3s ease-in-out infinite; user-select:none;}",
+    ".res{margin-top:14px; text-align:center; animation:pop .45s var(--ease) both;}",
+    "@keyframes pop{from{transform:scale(.8); opacity:0;}}",
+    ".res .gd{max-width:230px; margin:0 auto;} .res .rt{font-family:'Baloo 2',sans-serif; font-weight:800; font-size:17px; margin-bottom:6px; color:var(--gold-deep);}",
+    ".res .candy{font-family:'Baloo 2',sans-serif; font-weight:800; font-size:34px; color:var(--gold-deep); line-height:1.1;}",
+    ".res .net{font-weight:800; font-size:13px; color:var(--muted); margin-top:2px;}",
+    ".erow .ep{font-weight:800; font-size:12px; color:var(--muted); white-space:nowrap;}",
     /* effets visuels */
     ".fx{position:absolute; pointer-events:none; font-size:20px; z-index:5; animation:fx 1.1s ease-out forwards;}",
     "@keyframes fx{from{transform:translate(0,0) scale(.6); opacity:1;}to{transform:translate(var(--dx),var(--dy)) rotate(40deg) scale(1.1); opacity:0;}}",
@@ -89,7 +97,7 @@
   var HTML = [
     '<div class="device">',
     '  <div class="top"><span class="lens"></span><span class="brand">HALLOWEEN</span><span class="wallet" id="wallet" title="Tes bonbons"></span><button type="button" class="themebtn" id="themeBtn" aria-label="Mode sombre">🌙</button></div>',
-    '  <div class="seg" role="tablist"><button type="button" class="on" id="segHome">🍬 Bonbons</button><button type="button" id="segShop">🛍️ Boutique</button></div>',
+    '  <div class="seg" role="tablist"><button type="button" class="on" id="segHome">🍬 Bonbons</button><button type="button" id="segShop">🛍️ Boutique</button><button type="button" id="segCrate">📦 Crate</button></div>',
     '  <div id="secHome">',
     '  <section class="panel hero">',
     '    <div class="pump" aria-hidden="true">🎃</div>',
@@ -121,6 +129,27 @@
     '    <div class="msg" id="shopMsg" role="status"></div>',
     '  </section>',
     '  <div id="shopBody"></div>',
+    '  </div>',
+    '  <div id="secCrate" class="hidden">',
+    '  <section class="panel hero">',
+    '    <div class="crate-pump" aria-hidden="true">📦</div>',
+    '    <h2>Crate Banshitrouye</h2>',
+    '    <p class="sub" id="crSub"></p>',
+    '    <div class="bigc" id="crWallet"></div>',
+    '    <button type="button" class="btn" id="crOpen"></button>',
+    '    <div class="msg" id="crMsg" role="status"></div>',
+    '    <div id="crResult"></div>',
+    '  </section>',
+    '  <section class="panel">',
+    '    <div class="head"><h2>👻 Objets exclusifs</h2><span class="count" id="crCount"></span></div>',
+    '    <p class="sub" id="crOdds"></p>',
+    '    <div class="goods" id="crGoods"></div>',
+    '  </section>',
+    '  <section class="panel">',
+    '    <h2>🍬 Lots de bonbons</h2>',
+    '    <p class="sub">Quand la crate ne contient pas d\'objet, elle te rend des bonbons :</p>',
+    '    <div class="earn" id="crLots"></div>',
+    '  </section>',
     '  </div>',
     '</div>'
   ].join("\n");
@@ -175,13 +204,15 @@
 
     // ---- Onglets internes ----
     function seg(which) {
-      var shop = which === "shop";
-      $("secHome").classList.toggle("hidden", shop); $("secShop").classList.toggle("hidden", !shop);
-      $("segHome").classList.toggle("on", !shop); $("segShop").classList.toggle("on", shop);
+      var shop = which === "shop", crate = which === "crate";
+      $("secHome").classList.toggle("hidden", shop || crate); $("secShop").classList.toggle("hidden", !shop); $("secCrate").classList.toggle("hidden", !crate);
+      $("segHome").classList.toggle("on", !shop && !crate); $("segShop").classList.toggle("on", shop); $("segCrate").classList.toggle("on", crate);
       if (shop) renderShop();
+      if (crate) renderCrate();
     }
     $("segHome").addEventListener("click", function () { seg("home"); });
     $("segShop").addEventListener("click", function () { seg("shop"); });
+    $("segCrate").addEventListener("click", function () { seg("crate"); });
 
     // ---- Pluie de bonbons ----
     function burst(from) {
@@ -265,7 +296,8 @@
         chips.appendChild(b);
       });
     }
-    function goodCard(it) {
+    function goodCard(it, msgId) {
+      msgId = msgId || "shopMsg";
       var R = H.rarities[it.rar], cur = H.candies(), on = H.active();
       var g = el("div", "gd" + (it.owned ? " own" : "")); g.style.setProperty("--rc", R.color);
       g.appendChild(preview(it));
@@ -274,8 +306,9 @@
       var b = el("button", "gb"); b.type = "button"; g.appendChild(b);
       if (it.owned) {
         if (H.isEquipped(it)) { b.textContent = "✅ Équipé"; b.disabled = true; }
-        else { b.textContent = "✨ Équiper"; b.className = "gb alt"; b.onclick = function () { var r = H.equip(it.key); if (r.ok) { say("shopMsg", "« " + it.name + " » équipé !", "ok"); } else say("shopMsg", r.error, "ko"); }; }
-      } else if (!on) { b.textContent = "Boutique fermée"; b.disabled = true; }
+        else { b.textContent = "✨ Équiper"; b.className = "gb alt"; b.onclick = function () { var r = H.equip(it.key); if (r.ok) { say(msgId, "« " + it.name + " » équipé !", "ok"); } else say(msgId, r.error, "ko"); }; }
+      } else if (it.crate) { b.textContent = "📦 Dans la crate"; b.disabled = true; b.title = "À gagner uniquement dans la crate Banshitrouye"; }
+      else if (!on) { b.textContent = "Boutique fermée"; b.disabled = true; }
       else {
         b.textContent = "🍬 " + it.price;
         if (cur < it.price) { b.disabled = true; b.title = "Il te manque " + (it.price - cur) + " 🍬"; }
@@ -308,11 +341,66 @@
       try { window.scrollTo(0, scroll); } catch (e2) {}
     }
 
+    // ---- Crate ----
+    var lastRes = null;
+    function pct(p) { return (Math.round(p * 10) / 10).toString().replace(".", ",") + " %"; }
+    function resultCard(r) {
+      var box = el("div", "res");
+      if (r.kind === "item") {
+        box.appendChild(el("div", "rt", "🎉 Objet exclusif !"));
+        var R = H.rarities[r.item.rar], g = el("div", "gd own"); g.style.setProperty("--rc", R.color);
+        g.appendChild(preview(r.item));
+        g.appendChild(el("div", "gname", r.item.name));
+        g.appendChild(el("small", "", R.name + " · " + r.item.catName));
+        box.appendChild(g);
+      } else {
+        box.appendChild(el("div", "candy", "+" + r.amount + " 🍬"));
+        box.appendChild(el("div", "net", r.net >= 0 ? "Gain net : +" + r.net + " 🍬" : "Coût net : " + r.net + " 🍬"));
+      }
+      return box;
+    }
+    function renderCrate() {
+      var st = H.crate.state(), on = H.active(), cur = H.candies();
+      renderWallet();
+      $("crWallet").textContent = H.format();
+      $("crSub").textContent = on ? "Ouvre une crate pour " + st.price + " 🍬 : un objet exclusif Banshitrouye (skin du Pokédex, fond de carte, style de carte, effet animé) ou des bonbons."
+        : "L'événement est terminé : la crate n'est plus disponible. Tes objets restent à toi pour toujours.";
+      var b = $("crOpen");
+      if (!on) { b.disabled = true; b.textContent = "Événement terminé"; }
+      else if (st.complete) { b.disabled = true; b.textContent = "✅ Collection complète"; }
+      else if (cur < st.price) { b.disabled = true; b.textContent = "🍬 " + st.price + " · il te manque " + (st.price - cur); }
+      else { b.disabled = false; b.textContent = "📦 Ouvrir · " + st.price + " 🍬"; }
+      var res = $("crResult"); res.textContent = "";
+      if (lastRes) res.appendChild(resultCard(lastRes));
+      $("crCount").textContent = st.got + " / " + st.total;
+      $("crOdds").textContent = st.complete ? "Tu as tout débloqué, bravo ! Équipe tes objets ci-dessous."
+        : "Chance d'objet : " + Math.round(H.crate.itemRate * 100) + " % par crate (tu ne retombes jamais sur un objet déjà gagné). Garanti au plus tard à la " + st.pityAt + "ᵉ crate sans objet"
+          + (st.pity > 0 ? " — encore " + st.untilGuarantee + " au maximum." : ".");
+      var goods = $("crGoods"); goods.textContent = "";
+      st.items.slice().sort(function (a, c) { return c.rar - a.rar; }).forEach(function (it) { goods.appendChild(goodCard(it, "crMsg")); });
+      var tot = 0, lots = $("crLots"); lots.textContent = "";
+      H.crate.candy.forEach(function (l) { tot += l.w; });
+      H.crate.candy.forEach(function (l) {
+        var row = el("div", "erow"); row.appendChild(el("span", "ei", "🍬")); row.appendChild(el("span", "et", "+" + l.n + " 🍬"));
+        row.appendChild(el("span", "ep", pct((st.complete ? 0 : 1 - H.crate.itemRate) * 100 * l.w / tot))); lots.appendChild(row);
+      });
+    }
+    $("crOpen").addEventListener("click", function () {
+      var r = H.crate.open();
+      if (r.error) { say("crMsg", r.error, "ko"); return; }
+      lastRes = r;
+      say("crMsg", r.kind === "item" ? r.text + " Tu peux l'équiper juste en dessous." : r.text, "ok");
+      renderCrate();
+      burst($("crOpen"));
+      if (r.kind === "item") ping(r.text, "win", "🎃");
+    });
+
     // ---- Rafraîchissements ----
-    function refresh() { renderHome(); if (!$("secShop").classList.contains("hidden")) renderShop(); }
+    function crateOpenNow() { return !$("secCrate").classList.contains("hidden"); }
+    function refresh() { renderHome(); if (!$("secShop").classList.contains("hidden")) renderShop(); if (crateOpenNow()) renderCrate(); }
     window.addEventListener("halloweenchange", refresh);
-    window.addEventListener("profilechange", function () { if (!$("secShop").classList.contains("hidden")) renderShop(); });
-    window.addEventListener("passchange", function () { if (!$("secShop").classList.contains("hidden")) renderShop(); });
+    window.addEventListener("profilechange", function () { if (!$("secShop").classList.contains("hidden")) renderShop(); if (crateOpenNow()) renderCrate(); });
+    window.addEventListener("passchange", function () { if (!$("secShop").classList.contains("hidden")) renderShop(); if (crateOpenNow()) renderCrate(); });
     // Compte à rebours chaque seconde (s'arrête de lui-même si l'onglet disparaît) ; nouveau jour → calendrier mis à jour.
     function tickClock() {
       if (!host.isConnected) return;
