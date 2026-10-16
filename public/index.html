@@ -1782,12 +1782,14 @@
   <button type="button" role="tab" id="tabGuess" class="modetab active" aria-selected="true" data-tab="guess"><span class="ic">🔴</span><span class="lb">Devinette</span></button>
   <button type="button" role="tab" id="tabWhois" class="modetab" aria-selected="false" data-tab="whois"><span class="ic">❔</span><span class="lb">Qui est-ce ?</span></button>
   <button type="button" role="tab" id="tabWordle" class="modetab" aria-selected="false" data-tab="wordle"><span class="ic">🟩</span><span class="lb">Wordle</span></button>
+  <button type="button" role="tab" id="tabRule" class="modetab" aria-selected="false" data-tab="rule"><span class="ic">🧩</span><span class="lb">La règle</span></button>
   <button type="button" role="tab" id="tabProfile" class="modetab" aria-selected="false" data-tab="profile"><span class="ic">👤</span><span class="lb">Profil</span></button>
 </nav>
 <div id="grpBar" class="grpbar" style="display:none;"></div>
 <div id="groupPane" style="display:none;"><div id="groupHost"></div></div>
 <div id="whoisPane" style="display:none;"><div id="whoisHost"></div></div>
 <div id="wordlePane" style="display:none;"><div id="wordleHost"></div></div>
+<div id="rulePane" style="display:none;"><div id="ruleHost"></div></div>
 <div id="profilePane" style="display:none;"><div id="profileHost"></div></div>
 
 
@@ -5791,6 +5793,7 @@
     guess:   { btn: "tabGuess" },
     whois:   { btn: "tabWhois",   pane: "whoisPane",   host: "whoisHost",   src: "whois.js?v=5",   api: "WhoIsTab",   label: "whois.js" },
     wordle:  { btn: "tabWordle",  pane: "wordlePane",  host: "wordleHost",  src: "wordle.js?v=2",  api: "WordleTab",  label: "wordle.js" },
+    rule:    { btn: "tabRule",    pane: "rulePane",    host: "ruleHost",    src: "rule.js?v=1",    api: "RuleTab",    label: "rule.js" },
     group:   { btn: "tabGroup",   pane: "groupPane",   host: "groupHost",   src: "group.js?v=1",   api: "GroupTab",   label: "group.js" },
     profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=3", api: "ProfileTab", label: "profile.js" }
   };
@@ -5834,6 +5837,7 @@
     if (q.get("group")) start = "group";
     else if (q.get("whois")) start = "whois";
     else if (q.get("wordle")) start = "wordle";
+    else if (q.get("rule")) start = "rule";
     else if (!q.get("code")) { var saved = localStorage.getItem("modeTab"); if (TABS[saved]) start = saved; }
   }catch(e){}
   if (start !== "guess") setTab(start);

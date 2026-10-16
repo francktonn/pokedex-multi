@@ -11,7 +11,8 @@
   var MODES = {
     guess:  { label: "Devinette",       icon: "🔴", desc: "Chacun devine le Pokémon des autres.", bridge: "__guessBridge" },
     whois:  { label: "Qui est-ce ?",    icon: "❔", desc: "Une silhouette, le plus rapide gagne.", bridge: "__whoisBridge" },
-    wordle: { label: "Pokédex Wordle",  icon: "🟩", desc: "Course au Pokémon secret commun.", bridge: "__wordleBridge" }
+    wordle: { label: "Pokédex Wordle",  icon: "🟩", desc: "Course au Pokémon secret commun.", bridge: "__wordleBridge" },
+    rule:   { label: "Devine la règle", icon: "🧩", desc: "Une règle secrète, devine celle des autres.", bridge: "__ruleBridge" }
   };
 
   var G = { code: null, pid: null, state: null, handled: -1, subMode: null, epoch: 0, timer: null, busy: false, inflight: false, ui: null, inviteCode: "" };
