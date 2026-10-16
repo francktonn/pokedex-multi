@@ -87,6 +87,13 @@ function defaultConfig() {
 // Nombre maximum d'équipes ouvrables par l'hôte (garde-fou, pas une vraie limite de jeu).
 const MAX_TEAM_SLOTS = 8;
 
+// Photo de profil : simple numéro de Pokédex (le sprite est affiché côté client).
+// Jamais autre chose qu'un entier valide, sinon null.
+function cleanAvatar(v) {
+  const n = Number(v);
+  return Number.isInteger(n) && n >= 1 && n <= MAX_DEX_ID ? n : null;
+}
+
 // S'assure qu'une room "ancienne" (créée avant l'ajout des équipes personnalisées)
 // porte bien les champs nécessaires, sans jamais planter dessus.
 function ensureTeamFields(room) {
@@ -494,6 +501,7 @@ function sanitizeRoom(room, playerId) {
     return {
       id: pid,
       name: p.name,
+      avatar: p.avatar || null,
       score: p.score || 0,
       hasPokemon: !!p.pokemonId,
       // Équipe réellement en jeu cette manche (celle utilisée pour les devinettes/victoires).
@@ -628,7 +636,7 @@ module.exports = async (req, res) => {
           createdAt: Date.now(),
           status: 'lobby', // 'lobby' = en attente que l'hôte lance la 1ère manche, 'playing' = manche en cours
           hostId: playerId,
-          players: { [playerId]: { name, score: 0, pokemonId: null, pokemonName: null } },
+          players: { [playerId]: { name, score: 0, avatar: cleanAvatar(body.avatar), pokemonId: null, pokemonName: null } },
           config: defaultConfig(), // le créateur pourra l'ajuster ensuite depuis le lobby ; lui seul pourra la modifier
           teamSlots: [],
           teamAssignments: {},
@@ -653,7 +661,7 @@ module.exports = async (req, res) => {
           return;
         }
         const playerId = 'p_' + Math.random().toString(36).slice(2, 9);
-        room.players[playerId] = { name, score: 0, pokemonId: null, pokemonName: null };
+        room.players[playerId] = { name, score: 0, avatar: cleanAvatar(body.avatar), pokemonId: null, pokemonName: null };
         // Rejoindre en cours de manche : le nouveau joueur attend simplement la
         // manche suivante (il n'a pas de secret tant que l'hôte n'en relance pas une).
         await saveRoom(code, room);
