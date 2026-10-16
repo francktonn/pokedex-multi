@@ -195,8 +195,9 @@ module.exports = async (req, res) => {
       // L'hôte envoie le groupe : la salle (déjà configurée) devient visible, tout le monde la rejoint.
       if (action === 'live') {
         const sub = cleanCode(body.sub);
-        if (!/^[A-Z0-9]{5}$/.test(sub) || !MODES.includes(g.mode)) return { status: 400, body: { error: 'Salle invalide' } };
-        g.phase = 'live'; g.sub = sub; g.seq++;
+        const mode = (body.mode || g.mode || '').toString();
+        if (!/^[A-Z0-9]{5}$/.test(sub) || !MODES.includes(mode)) return { status: 400, body: { error: 'Salle invalide' } };
+        g.phase = 'live'; g.mode = mode; g.sub = sub; g.seq++;
         await saveGroup(code, g);
         return { status: 200, body: { ok: true, seq: g.seq } };
       }
