@@ -113,6 +113,25 @@
     "@media (prefers-reduced-motion:reduce){*{animation-duration:.001ms !important; animation-iteration-count:1 !important; transition-duration:.001ms !important;}}"
   ].join("\n");
 
+  // Crate bleue et blanche (SVG en ligne : pas de dépendance, s'anime comme l'ancien emoji). Ids de dégradé uniques par copie.
+  function crateSvg(k) {
+    return '<svg viewBox="0 0 100 100" width="92" height="92" style="display:block" xmlns="http://www.w3.org/2000/svg">' +
+      '<defs>' +
+      '<linearGradient id="cb' + k + '" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5bb2ff"/><stop offset=".55" stop-color="#2f7fd8"/><stop offset="1" stop-color="#1747a0"/></linearGradient>' +
+      '<linearGradient id="cl' + k + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#cfe3fb"/></linearGradient>' +
+      '</defs>' +
+      '<rect x="14" y="44" width="72" height="44" rx="6" fill="url(#cb' + k + ')" stroke="#123a80" stroke-width="2"/>' +
+      '<rect x="44" y="44" width="12" height="44" fill="#fff"/>' +
+      '<rect x="19" y="50" width="6" height="32" rx="3" fill="#fff" opacity=".28"/>' +
+      '<rect x="9" y="31" width="82" height="17" rx="5" fill="url(#cl' + k + ')" stroke="#123a80" stroke-width="2"/>' +
+      '<rect x="44" y="31" width="12" height="17" fill="#2f7fd8"/>' +
+      '<ellipse cx="37" cy="23" rx="14" ry="8" transform="rotate(-22 37 23)" fill="#fff" stroke="#123a80" stroke-width="2"/>' +
+      '<ellipse cx="63" cy="23" rx="14" ry="8" transform="rotate(22 63 23)" fill="#fff" stroke="#123a80" stroke-width="2"/>' +
+      '<circle cx="50" cy="28" r="6.5" fill="#2f7fd8" stroke="#fff" stroke-width="2"/>' +
+      '<path d="M71 58l1.6 4.2 4.2 1.6-4.2 1.6L71 69.6l-1.6-4.2-4.2-1.6 4.2-1.6z" fill="#fff" opacity=".9"/>' +
+      '</svg>';
+  }
+
   var HTML = [
     '<div class="device">',
     '  <div class="top"><span class="lens"></span><span class="brand">BONUS</span><span class="wallet" id="wallet" title="Tes Pokédollars"></span><button type="button" class="themebtn" id="themeBtn" aria-label="Mode sombre">🌙</button></div>',
@@ -144,7 +163,7 @@
     '  <section class="panel">',
     '    <h2>🛒 Shop</h2>',
     '    <p class="sub">Achète des crates avec tes Pokédollars. Gagne-en en finissant des manches en multijoueur ou en ouvrant des crates.</p>',
-    '    <div class="stage"><div class="crate idle" aria-hidden="true">🎁</div></div>',
+    '    <div class="stage"><div class="crate idle" aria-hidden="true">' + crateSvg("s") + '</div></div>',
     '    <div class="shopbig" id="shopPrice"></div>',
     '    <button type="button" class="btn" id="buyBtn"></button>',
     '    <div class="msg" id="shopMsg" role="status"></div>',
@@ -161,7 +180,7 @@
     '  <section class="panel">',
     '    <h2>🎁 Crate du jour</h2>',
     '    <p class="sub">Une crate gratuite chaque jour. Elle contient au hasard un objet pour personnaliser ta carte (fond, titre, cadre, effet…) ou des Pokédollars.</p>',
-    '    <div class="stage"><div class="crate idle" id="crate" aria-hidden="true">🎁</div></div>',
+    '    <div class="stage"><div class="crate idle" id="crate" aria-hidden="true">' + crateSvg("c") + '</div></div>',
     '    <button type="button" class="btn" id="openBtn"></button>',
     '    <div class="msg" id="msg" role="status"></div>',
     '    <div class="reveal hidden" id="reveal"></div>',
