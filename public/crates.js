@@ -1,5 +1,5 @@
 /* crates.js — onglet « Crates » : une crate gratuite par jour, contenant un objet de personnalisation de profil au hasard
-   (fond de carte, titre, style de cadre, forme de photo, effet, badge, police ou couleur du pseudo).
+   (fond de carte, titre, style de cadre, forme de photo, effet, police ou couleur du pseudo).
    Shadow DOM : HTML/CSS/ids isolés du reste du site. La logique (stock, tirage, objets obtenus) est dans window.PokeCrates
    (index.html), pour que l'onglet Profil puisse lire les objets gagnés. */
 (function () {
@@ -86,7 +86,7 @@
     '  <div class="top"><span class="lens"></span><span class="brand">CRATES</span><button type="button" class="themebtn" id="themeBtn" aria-label="Mode sombre">🌙</button></div>',
     '  <section class="panel">',
     '    <h2>🎁 Crate du jour</h2>',
-    '    <p class="sub">Une crate gratuite chaque jour. Elle contient au hasard un objet pour personnaliser ta carte : fond, titre, cadre, badge…</p>',
+    '    <p class="sub">Une crate gratuite chaque jour. Elle contient au hasard un objet pour personnaliser ta carte : fond, titre, cadre, effet…</p>',
     '    <div class="stage"><div class="crate idle" id="crate" aria-hidden="true">🎁</div></div>',
     '    <button type="button" class="btn" id="openBtn"></button>',
     '    <div class="msg" id="msg" role="status"></div>',
@@ -128,7 +128,7 @@
     function say(text, kind) { var m = $("msg"); m.textContent = text || ""; m.className = "msg" + (kind ? " " + kind : ""); }
     function pad(n) { return n < 10 ? "0" + n : String(n); }
     function clock(ms) { var s = Math.max(0, Math.ceil(ms / 1000)); return pad(Math.floor(s / 3600)) + ":" + pad(Math.floor(s / 60) % 60) + ":" + pad(s % 60); }
-    function label(it) { return (it.e ? it.e + " " : "") + it.name; }
+    function label(it) { return it.name; }
 
     // ---- Thème : suit celui du site ----
     var docEl = document.documentElement;
@@ -149,7 +149,7 @@
     function buildPreview(item) {
       var base = P.get() || {};
       var d = { favId: base.favId || 0, style: base.style || 0, color: base.color || 0, type: base.type || "", bg: base.bg || 0, title: base.title || 0,
-        frameStyle: base.frameStyle || 0, shape: base.shape || 0, effect: base.effect || 0, badge: base.badge || 0, nameFont: base.nameFont || 0, nameColor: base.nameColor || 0 };
+        frameStyle: base.frameStyle || 0, shape: base.shape || 0, effect: base.effect || 0, nameFont: base.nameFont || 0, nameColor: base.nameColor || 0 };
       d[item.field] = item.idx;
       var card = el("div", "card");
       card.style.setProperty("--frame", P.frame(d.color));
@@ -163,7 +163,7 @@
       var nm = el("div", "nm"); who.appendChild(nm);
       if (d.title) who.appendChild(el("div", "ttl", P.titles[d.title].name));
       who.appendChild(el("div", "fv", base.favName ? "Préféré : " + base.favName : "Pokémon préféré : à choisir"));
-      P.paint({ card: card, avatar: av, name: nm }, { f: d.frameStyle, h: d.shape, e: d.effect, j: d.badge, nf: d.nameFont, nc: d.nameColor }, base.name || "Dresseur");
+      P.paint({ card: card, avatar: av, name: nm }, { f: d.frameStyle, h: d.shape, e: d.effect, nf: d.nameFont, nc: d.nameColor }, base.name || "Dresseur");
       return card;
     }
 
@@ -230,8 +230,7 @@
           var R = C.rarities[it.rar], has = !!s.owned[it.key], t;
           if (has) {
             t = el("button", "it"); t.type = "button"; t.onclick = function () { if (!busy) showReveal(it, false); };
-            if (it.e) t.appendChild(el("span", "big", it.e));
-            else if (c[0] === "nameColors") { var sw = el("span", "sw"); sw.style.background = it.css; t.appendChild(sw); }
+            if (c[0] === "nameColors") { var sw = el("span", "sw"); sw.style.background = it.css; t.appendChild(sw); }
             t.appendChild(document.createTextNode(it.name));
           } else { t = el("div", "it no"); t.appendChild(el("span", "big", "❓")); }
           t.style.setProperty("--rc", R.color); t.appendChild(el("small", "", R.name)); g.appendChild(t);

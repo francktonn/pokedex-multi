@@ -28,7 +28,7 @@
         style: int(p.style, 2), color: int(p.color, 15), motto: String(p.motto || "").trim().slice(0,40),
         type: /^[a-z]{3,10}$/.test(p.type || "") ? p.type : "",
         bg: int(p.bg, 13), title: int(p.title, 15),
-        frameStyle: int(p.frameStyle, 5), shape: int(p.shape, 3), effect: int(p.effect, 4), badge: int(p.badge, 16), nameFont: int(p.nameFont, 3), nameColor: int(p.nameColor, 7),
+        frameStyle: int(p.frameStyle, 5), shape: int(p.shape, 3), effect: int(p.effect, 4), nameFont: int(p.nameFont, 3), nameColor: int(p.nameColor, 7),
         team: (Array.isArray(p.team) ? p.team : []).map(Number).filter(function(n){ return Math.floor(n) === n && n >= 1 && n <= 1025; }).slice(0,6) };
     }
     // Fonds de carte et titres (min > 0 = objet de crate ; sa valeur ne sert plus qu'à définir la rareté).
@@ -59,9 +59,6 @@
     var FRAME_STYLES = [ { name:"Solide", min:0 }, { name:"Double", min:0 }, { name:"Pointillé", min:2 }, { name:"Relief", min:4 }, { name:"Néon", min:8 }, { name:"Arc-en-ciel", min:14 } ];
     var SHAPES = [ { name:"Rond", min:0 }, { name:"Carré arrondi", min:0 }, { name:"Hexagone", min:6 }, { name:"Écusson", min:11 } ];
     var EFFECTS = [ { name:"Aucun", min:0 }, { name:"Brillance", min:4 }, { name:"Étoiles", min:9 }, { name:"Holographique", min:16 }, { name:"Halo", min:22 } ];
-    var BADGES = [ { e:"", name:"Aucun", min:0 }, { e:"⭐", name:"Étoile", min:0 }, { e:"🔥", name:"Feu", min:0 }, { e:"💧", name:"Goutte", min:0 }, { e:"🌿", name:"Feuille", min:0 }, { e:"⚡", name:"Éclair", min:0 },
-      { e:"❄️", name:"Flocon", min:3 }, { e:"🍀", name:"Trèfle", min:3 }, { e:"🎵", name:"Musique", min:5 }, { e:"🌙", name:"Lune", min:7 }, { e:"☀️", name:"Soleil", min:7 }, { e:"👻", name:"Fantôme", min:10 },
-      { e:"🎯", name:"Cible", min:12 }, { e:"❤️", name:"Cœur", min:15 }, { e:"💎", name:"Diamant", min:20 }, { e:"🐉", name:"Dragon", min:30 }, { e:"👑", name:"Couronne", min:40 } ];
     var NAME_FONTS = [ { name:"Normal", min:0 }, { name:"Pixel", min:0 }, { name:"Élégant", min:7 }, { name:"Machine", min:13 } ];
     var NAME_COLORS = [ { name:"Blanc", css:"#ffffff", min:0 }, { name:"Or", css:"#FFC93C", min:0 }, { name:"Menthe", css:"#8ff0a4", min:2 }, { name:"Ciel", css:"#7cc8ff", min:5 },
       { name:"Rose", css:"#ff9cc4", min:8 }, { name:"Lavande", css:"#c9a8ff", min:12 }, { name:"Orange", css:"#ffa24a", min:17 },
@@ -116,11 +113,11 @@
         return BASE + (style === 1 ? "shiny/" : "") + id + ".png";
       },
       frame: function(i){ return FRAMES[int(i, 15)]; },
-      frames: FRAMES, bgs: BGS, titles: TITLES, frameStyles: FRAME_STYLES, shapes: SHAPES, effects: EFFECTS, badges: BADGES, nameFonts: NAME_FONTS, nameColors: NAME_COLORS, cardCss: CARD_CSS,
-      // Applique les options avancées d'une carte {f,h,e,j,nf,nc} sur les éléments (carte, photo, pseudo). Utilisé par l'éditeur et par la fenêtre de profil.
+      frames: FRAMES, bgs: BGS, titles: TITLES, frameStyles: FRAME_STYLES, shapes: SHAPES, effects: EFFECTS, nameFonts: NAME_FONTS, nameColors: NAME_COLORS, cardCss: CARD_CSS,
+      // Applique les options avancées d'une carte {f,h,e,nf,nc} sur les éléments (carte, photo, pseudo). Utilisé par l'éditeur et par la fenêtre de profil.
       paint: function(els, c, nameText){
         c = c || {};
-        var f = int(c.f, 5), h = int(c.h, 3), e = int(c.e, 4), j = int(c.j, 16), nf = int(c.nf, 3), nc = int(c.nc, 7);
+        var f = int(c.f, 5), h = int(c.h, 3), e = int(c.e, 4), nf = int(c.nf, 3), nc = int(c.nc, 7);
         if(els.card) els.card.className = "card" + (f ? " fs" + f : "") + (e ? " ef" + e : "");
         if(els.avatar) els.avatar.className = "avatar" + (h ? " sh" + h : "");
         if(els.name){
@@ -128,7 +125,7 @@
           els.name.className = "nm" + (nf ? " nf" + nf : "") + (col.grad ? " ncg" : "");
           els.name.style.color = col.grad ? "" : (nc ? col.css : "");
           els.name.style.backgroundImage = col.grad ? col.css : "";
-          els.name.textContent = (BADGES[j].e ? BADGES[j].e + " " : "") + (nameText || "");
+          els.name.textContent = nameText || "";
         }
       },
       // Ce qui est envoyé aux serveurs de jeu pour que les autres joueurs voient ta carte.
@@ -137,7 +134,7 @@
         var S = window.PokeStats ? window.PokeStats.get() : null, x = null;
         if(S) x = { wp:S.wordle.played, ww:S.wordle.won, wb:S.wordle.best, qp:S.whois.played, qc:S.whois.correct, qb:S.whois.bestMs, gf:S.guess.found, gm:S.guess.missed };
         var t = p.type ? TYPE_KEYS.indexOf(p.type) + 1 : 0;
-        return { s: p.style, c: p.color, t: t > 0 ? t : 0, m: p.motto, x: x, b: p.bg, ti: p.title, tm: p.team, f: p.frameStyle, h: p.shape, e: p.effect, j: p.badge, nf: p.nameFont, nc: p.nameColor };
+        return { s: p.style, c: p.color, t: t > 0 ? t : 0, m: p.motto, x: x, b: p.bg, ti: p.title, tm: p.team, f: p.frameStyle, h: p.shape, e: p.effect, nf: p.nameFont, nc: p.nameColor };
       }
     };
 
@@ -198,7 +195,7 @@
     var KEY = "pokeCrates_v1";
     // [liste dans PokeProfile, champ du profil, libellé]
     var CATS = [ ["bgs","bg","Fond de carte"], ["titles","title","Titre"], ["frameStyles","frameStyle","Style de cadre"], ["shapes","shape","Forme de photo"],
-      ["effects","effect","Effet animé"], ["badges","badge","Badge"], ["nameFonts","nameFont","Police du pseudo"], ["nameColors","nameColor","Couleur du pseudo"] ];
+      ["effects","effect","Effet animé"], ["nameFonts","nameFont","Police du pseudo"], ["nameColors","nameColor","Couleur du pseudo"] ];
     // La rareté dépend de la valeur min de l'objet (voir listes de PokeProfile) ; w = poids du tirage.
     var RARITIES = [ { name:"Commun", color:"#8e9aa8", max:5, w:55 }, { name:"Rare", color:"#3a86d6", max:12, w:30 },
       { name:"Épique", color:"#9b6bd6", max:25, w:12 }, { name:"Légendaire", color:"#E6A700", max:9999, w:3 } ];
@@ -235,7 +232,12 @@
       owns: function(list, idx){ return !!read().owned[list + ":" + idx]; },
       // Crédite la crate du jour si elle n'a pas encore été récupérée aujourd'hui.
       sync: function(){ var s = read(); if(grantDaily(s)) write(s); return s; },
-      state: function(){ var s = read(), n = Object.keys(s.owned).length; return { stock:s.stock, opened:s.opened, ownedCount:n, last:s.last, owned:s.owned }; },
+      state: function(){
+        var s = read(), valid = {}, owned = {}, n = 0;
+        items().forEach(function(it){ valid[it.key] = 1; });
+        Object.keys(s.owned).forEach(function(k){ if(valid[k]){ owned[k] = s.owned[k]; n++; } }); // ignore les objets qui n'existent plus
+        return { stock:s.stock, opened:s.opened, ownedCount:n, last:s.last, owned:owned };
+      },
       available: function(){ var s = read(); return s.stock > 0 || s.last !== today(); },
       msUntilNext: function(){ var d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime() - d.getTime(); },
       // Ouvre une crate : renvoie { item }, { done:true } (tout est déjà possédé) ou null (aucune crate disponible).
@@ -5905,8 +5907,8 @@
     wordle:  { btn: "tabWordle",  pane: "wordlePane",  host: "wordleHost",  src: "wordle.js?v=2",  api: "WordleTab",  label: "wordle.js" },
     rule:    { btn: "tabRule",    pane: "rulePane",    host: "ruleHost",    src: "rule.js?v=1",    api: "RuleTab",    label: "rule.js" },
     group:   { btn: "tabGroup",   pane: "groupPane",   host: "groupHost",   src: "group.js?v=1",   api: "GroupTab",   label: "group.js" },
-    profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=6", api: "ProfileTab", label: "profile.js" },
-    crates:  { btn: "tabCrates",  pane: "cratesPane",  host: "cratesHost",  src: "crates.js?v=2",  api: "CratesTab",  label: "crates.js" }
+    profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=7", api: "ProfileTab", label: "profile.js" },
+    crates:  { btn: "tabCrates",  pane: "cratesPane",  host: "cratesHost",  src: "crates.js?v=3",  api: "CratesTab",  label: "crates.js" }
   };
   var loaded = {};
   function fail(t, msg){

@@ -87,10 +87,6 @@
     /* éléments verrouillés (aperçu possible) + nouvelles options */
     ".locked{opacity:.62; border-style:dashed !important;}",
     ".bgs button small, .titles button small{display:block; font-weight:700; font-size:10.5px; color:var(--muted); margin-top:1px;}",
-    ".badges{display:grid; grid-template-columns:repeat(6,1fr); gap:6px;}",
-    ".badges button{min-height:44px; border-radius:12px; cursor:pointer; font:inherit; font-size:20px; color:var(--ink); background:var(--card); border:2px solid var(--line); padding:0; position:relative;}",
-    ".badges button.on{border-color:var(--gold-deep); background:rgba(255,201,60,.22);}",
-    ".badges button small{position:absolute; right:2px; bottom:0; font-size:9px; font-weight:800; color:var(--muted);}",
     ".swatches button{position:relative;}",
     ".swatches button.locked::after{content:'🔒'; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:15px;}",
     ".pvnote{margin-top:10px; padding:9px 12px; border-radius:12px; font-weight:700; font-size:13px; line-height:1.35; color:var(--ink); background:rgba(255,201,60,.2); border:1px dashed var(--gold-deep);}",
@@ -134,7 +130,6 @@
     '    <label>Style du cadre</label><div class="bgs" id="frameStyles"></div>',
     '    <label>Forme de la photo</label><div class="bgs" id="shapes"></div>',
     '    <label>Effet animé</label><div class="bgs" id="effects"></div>',
-    '    <label>Badge à côté du pseudo</label><div class="badges" id="badges"></div>',
     '    <label>Police du pseudo</label><div class="bgs" id="nameFonts"></div>',
     '    <label>Couleur du pseudo</label><div class="swatches" id="nameColors"></div>',
     '    <label for="pTeam">Mon équipe (6 Pokémon max)</label><div class="teamEdit" id="teamEdit"></div>',
@@ -171,8 +166,8 @@
   var FRAME_NAMES = ["Or", "Rouge", "Bleu", "Vert", "Rose", "Violet", "Orange", "Argent", "Turquoise", "Citron vert", "Corail", "Ciel", "Lilas", "Bronze", "Ardoise", "Champagne"];
   // [clé du brouillon, liste dans PokeProfile, libellé, nom pour l'indice de déblocage]
   var LOCKS = [["bg", "bgs", "Fond", "fond"], ["title", "titles", "Titre", "titre"], ["frameStyle", "frameStyles", "Style de cadre", "style de cadre"], ["shape", "shapes", "Forme", "forme de photo"],
-    ["effect", "effects", "Effet", "effet"], ["badge", "badges", "Badge", "badge"], ["nameFont", "nameFonts", "Police du pseudo", "police de pseudo"], ["nameColor", "nameColors", "Couleur du pseudo", "couleur de pseudo"]];
-  function newDraft() { return { favId: null, favName: "", style: 0, color: 0, type: "", bg: 0, title: 0, team: [], frameStyle: 0, shape: 0, effect: 0, badge: 0, nameFont: 0, nameColor: 0 }; }
+    ["effect", "effects", "Effet", "effet"], ["nameFont", "nameFonts", "Police du pseudo", "police de pseudo"], ["nameColor", "nameColors", "Couleur du pseudo", "couleur de pseudo"]];
+  function newDraft() { return { favId: null, favName: "", style: 0, color: 0, type: "", bg: 0, title: 0, team: [], frameStyle: 0, shape: 0, effect: 0, nameFont: 0, nameColor: 0 }; }
 
   var mounted = false;
   window.ProfileTab = {
@@ -232,7 +227,7 @@
       var chip = $("avType"); chip.classList.toggle("hidden", !ti); if (ti) chip.textContent = "Type " + ti[1];
       var nm = $("pName").value.trim();
       P.paint({ card: $("card"), avatar: $("avatar"), name: $("avName") },
-        { f: draft.frameStyle, h: draft.shape, e: draft.effect, j: draft.badge, nf: draft.nameFont, nc: draft.nameColor }, nm || "Sans pseudo");
+        { f: draft.frameStyle, h: draft.shape, e: draft.effect, nf: draft.nameFont, nc: draft.nameColor }, nm || "Sans pseudo");
       $("avFav").textContent = draft.favId ? "Préféré : " + nameOf(draft.favId) + " · n°" + draft.favId : "Pokémon préféré : à choisir";
       var bgd = P.bgs[draft.bg] || P.bgs[0];
       host.style.setProperty("--bg", bgd.css);
@@ -285,14 +280,6 @@
       fill("shapes", "shape", P.shapes, function (it) { return it.name; });
       fill("effects", "effect", P.effects, function (it) { return it.name; });
       fill("nameFonts", "nameFont", P.nameFonts, function (it) { return it.name; });
-      var bd = $("badges"); bd.textContent = "";
-      P.badges.forEach(function (it, i) {
-        var locked = isLocked("badges", i), b = el("button", (i === draft.badge ? "on" : "") + (locked ? " locked" : ""), it.e || "∅"); b.type = "button";
-        b.title = it.name + (locked ? " — à obtenir dans une crate (aperçu)" : ""); b.setAttribute("aria-label", "Badge " + it.name);
-        if (locked) b.appendChild(el("small", "", "🔒"));
-        b.onclick = function () { draft.badge = i; say(""); renderOptions(); renderPreview(); };
-        bd.appendChild(b);
-      });
       var nc = $("nameColors"); nc.textContent = "";
       P.nameColors.forEach(function (c, i) {
         var locked = isLocked("nameColors", i), b = el("button", (i === draft.nameColor ? "on" : "") + (locked ? " locked" : "")); b.type = "button"; b.style.background = c.css;
@@ -370,7 +357,7 @@
         }
       });
       P.set({ name: name, favId: draft.favId, favName: nameOf(draft.favId), style: draft.style, color: draft.color, type: draft.type, motto: $("pMotto").value, bg: draft.bg, title: draft.title, team: draft.team,
-        frameStyle: draft.frameStyle, shape: draft.shape, effect: draft.effect, badge: draft.badge, nameFont: draft.nameFont, nameColor: draft.nameColor });
+        frameStyle: draft.frameStyle, shape: draft.shape, effect: draft.effect, nameFont: draft.nameFont, nameColor: draft.nameColor });
       if (reverted.length && window.toast) window.toast("Profil enregistré. Encore verrouillé, donc non appliqué : " + reverted.join(", ") + ".", { kind: "warn", icon: "🔒", ttl: 6000 });
       $("clear").classList.remove("hidden");
       renderPreview();
@@ -456,7 +443,7 @@
       if (cur) {
         $("pName").value = cur.name; draft.favId = cur.favId || null; draft.favName = cur.favName || "";
         draft.style = cur.style; draft.color = cur.color; draft.type = cur.type; draft.bg = cur.bg; draft.title = cur.title; draft.team = cur.team.slice(); $("pMotto").value = cur.motto;
-        draft.frameStyle = cur.frameStyle || 0; draft.shape = cur.shape || 0; draft.effect = cur.effect || 0; draft.badge = cur.badge || 0; draft.nameFont = cur.nameFont || 0; draft.nameColor = cur.nameColor || 0;
+        draft.frameStyle = cur.frameStyle || 0; draft.shape = cur.shape || 0; draft.effect = cur.effect || 0; draft.nameFont = cur.nameFont || 0; draft.nameColor = cur.nameColor || 0;
         if (cur.favName) $("pFav").value = cur.favName;
       }
       $("clear").classList.toggle("hidden", !cur);
