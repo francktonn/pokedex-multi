@@ -328,8 +328,9 @@ body::before{
 .modetab:focus-visible{ outline:3px solid var(--gold); outline-offset:2px; }
 body.tab-off .stage, body.tab-off .fab-stack{ display:none !important; }
 #whoisPane, #wordlePane, #profilePane{ max-width:520px; margin:0 auto; }
+#partyBar{ max-width:520px; margin:0 auto 10px; position:relative; z-index:5; }
 
 /* Le body d'origine est un flex en ligne : on l'empile pour que les onglets passent au-dessus. */
 body{ flex-direction:column; align-items:center; justify-content:flex-start; }
-.modetabs, #whoisPane, #wordlePane, #profilePane{ width:100%; }
+.modetabs, #partyBar, #whoisPane, #wordlePane, #profilePane{ width:100%; }
 @media (max-width:400px){ .modetab{ font-size:12.5px; padding:0 2px; } .modetabs{ gap:2px; padding:4px; } }

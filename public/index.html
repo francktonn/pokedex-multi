@@ -1717,6 +1717,7 @@
 </head>
 <body>
 
+<div id="partyBar"></div>
 <nav class="modetabs" id="modeTabs" role="tablist" aria-label="Mode de jeu">
   <button type="button" role="tab" id="tabGuess" class="modetab active" aria-selected="true" data-tab="guess">🔴 Devinette</button>
   <button type="button" role="tab" id="tabWhois" class="modetab" aria-selected="false" data-tab="whois">❔ Qui est-ce ?</button>
@@ -5698,14 +5699,15 @@
 })();
 </script>
 <script src="profilecard.js?v=1"></script>
+<script src="party.js?v=1"></script>
 <script src="enhance.js"></script>
 <script>
 (function(){
   // Onglets : chaque onglet (sauf Devinette) est chargé à la première ouverture, dans un Shadow DOM isolé.
   var TABS = {
     guess:   { btn: "tabGuess" },
-    whois:   { btn: "tabWhois",   pane: "whoisPane",   host: "whoisHost",   src: "whois.js?v=5",   api: "WhoIsTab",   label: "whois.js" },
-    wordle:  { btn: "tabWordle",  pane: "wordlePane",  host: "wordleHost",  src: "wordle.js?v=2",  api: "WordleTab",  label: "wordle.js" },
+    whois:   { btn: "tabWhois",   pane: "whoisPane",   host: "whoisHost",   src: "whois.js?v=6",   api: "WhoIsTab",   label: "whois.js" },
+    wordle:  { btn: "tabWordle",  pane: "wordlePane",  host: "wordleHost",  src: "wordle.js?v=3",  api: "WordleTab",  label: "wordle.js" },
     profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=2", api: "ProfileTab", label: "profile.js" }
   };
   var loaded = {};

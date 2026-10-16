@@ -343,6 +343,13 @@
     });
   });
 
+    // Pilotage par le groupe (party.js) : entrer dans / quitter une salle sans passer par l'écran d'accueil.
+    window.WhoIsCtl = {
+      code: function () { return S.code; },
+      enter: function (c, p) { S.state = null; S.lastToken = null; S.gridKey = null; enter(c, p); },
+      leave: function () { if (S.code) leave(); }
+    };
+
   // ---------- Démarrage ----------
   var savedCode = load("whois_code"), savedPid = load("whois_pid");
   if (savedCode && savedPid && !inviteCode){

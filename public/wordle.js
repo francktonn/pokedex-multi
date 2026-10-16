@@ -538,6 +538,13 @@
       });
     });
 
+    // Pilotage par le groupe (party.js) : entrer dans / quitter une salle sans passer par l'écran d'accueil.
+    window.WordleCtl = {
+      code: function () { return S.code; },
+      enter: function (c, p) { S.state = null; S.lastToken = null; S.gridKey = null; enter(c, p); },
+      leave: function () { if (S.code) leave(); }
+    };
+
     // ---------- Démarrage ----------
     show("vHome");
     var savedCode = load("wordle_code"), savedPid = load("wordle_pid");
