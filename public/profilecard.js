@@ -66,7 +66,7 @@
   function statsFor(p, card) {
     if (p.me && window.PokeStats) {
       var S = window.PokeStats.get();
-      return { wp: S.wordle.played, ww: S.wordle.won, wb: S.wordle.best, qp: S.whois.played, qc: S.whois.correct, qb: S.whois.bestMs, gf: S.guess.found, gm: S.guess.missed };
+      return { qp: S.whois.played, qc: S.whois.correct, qb: S.whois.bestMs, gf: S.guess.found, gm: S.guess.missed };
     }
     return card && card.x ? card.x : null;
   }
@@ -113,11 +113,10 @@
     var s = statsFor(p, card);
     if (!s) { box.appendChild(el("p", "none", "Ce joueur n'a pas encore de statistiques à partager.")); }
     else {
-      var total = s.wp + s.qp + s.gf + s.gm;
+      var total = s.qp + s.gf + s.gm;
       if (!total) box.appendChild(el("p", "none", "Pas encore de statistiques."));
       else {
         function sec(title, tiles) { box.appendChild(el("h3", "", title)); var g = el("div", "tiles"); tiles.forEach(function (t) { g.appendChild(t); }); box.appendChild(g); }
-        if (s.wp) sec("🟩 Pokédex Wordle", [tile(s.wp, "Manches"), tile(s.ww, "Victoires"), tile(s.wb || "–", "Meilleur (essais)")]);
         if (s.qp) sec("❔ Qui est-ce ?", [tile(s.qp, "Manches"), tile(pct(s.qc, s.qp), "Réussite"), tile(secs(s.qb), "Meilleur temps")]);
         if (s.gf + s.gm) sec("🔴 Devinette", [tile(s.gf, "Devinés"), tile(s.gm, "Ratés"), tile(pct(s.gf, s.gf + s.gm), "Précision")]);
       }

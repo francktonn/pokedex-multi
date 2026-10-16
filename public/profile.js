@@ -383,13 +383,9 @@
     function renderStats() {
       var S = window.PokeStats ? window.PokeStats.get() : null, body = $("statsBody"); body.textContent = "";
       if (!S) { body.appendChild(el("p", "sub", "Statistiques indisponibles.")); return; }
-      var w = S.wordle, q = S.whois, g = S.guess;
-      var total = w.played + q.played + g.found + g.missed;
+      var q = S.whois, g = S.guess;
+      var total = q.played + g.found + g.missed;
       $("statsSub").textContent = total ? "Sur cet appareil, tous modes confondus." : "Elles se remplissent au fil de tes parties, sur cet appareil.";
-      body.appendChild(section("🟩 Pokédex Wordle", [
-        tile(w.played, "Manches jouées"), tile(w.won, "Victoires"), tile(pct(w.won, w.played), "Taux de victoire"),
-        tile(w.won ? (Math.round(10 * w.triesSum / w.won) / 10).toString().replace(".", ",") : "–", "Essais en moyenne"), tile(w.best || "–", "Meilleur (essais)"), tile(w.streak + " / " + w.bestStreak, "Série / record")
-      ]));
       body.appendChild(section("❔ Qui est-ce ?", [
         tile(q.played, "Manches jouées"), tile(q.correct, "Bonnes réponses"), tile(pct(q.correct, q.played), "Réussite"),
         tile(secs(q.bestMs), "Meilleur temps"), tile(secs(q.correct ? q.msSum / q.correct : 0), "Temps moyen")
@@ -402,7 +398,7 @@
       if (window.confirm("Réinitialiser toutes tes statistiques ? Ton historique est conservé.") && window.PokeStats) window.PokeStats.reset();
     });
     // ---- Historique des dernières parties ----
-    var MODES = { wordle: ["🟩", "Wordle"], whois: ["❔", "Qui est-ce ?"], guess: ["🔴", "Devinette"] };
+    var MODES = { whois: ["❔", "Qui est-ce ?"], guess: ["🔴", "Devinette"] };
     function ago(t) {
       var s = Math.max(0, Math.round((Date.now() - t) / 1000));
       if (s < 60) return "à l'instant"; if (s < 3600) return "il y a " + Math.floor(s / 60) + " min";
@@ -419,7 +415,6 @@
         else row.appendChild(el("div", "hi", m[0]));
         var t = el("div", "ht"); t.appendChild(el("b", "", (e.w ? "✅ " : "❌ ") + (e.n || "Pokémon mystère")));
         var detail = m[1];
-        if (e.m === "wordle" && e.k) detail += " · " + e.k + (e.k > 1 ? " essais" : " essai");
         if (e.m === "whois" && e.w && e.k) detail += " · " + secs(e.k);
         t.appendChild(el("small", "", detail + " · " + ago(e.t))); row.appendChild(t);
         body.appendChild(row);

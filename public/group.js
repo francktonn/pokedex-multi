@@ -2,7 +2,7 @@
    L'hôte choisit le mode, configure sa salle (dans l'onglet du jeu), puis « envoie le groupe » :
    tous les membres rejoignent alors automatiquement la salle. Les scores repartent de zéro à chaque jeu
    car chaque jeu crée une nouvelle salle. Ce fichier pilote les modes via window.__guessBridge /
-   __whoisBridge / __wordleBridge (créer / rejoindre / quitter une salle). */
+   __whoisBridge / __ruleBridge (créer / rejoindre / quitter une salle). */
 (function () {
   "use strict";
   var API = "/api/group";
@@ -11,7 +11,6 @@
   var MODES = {
     guess:  { label: "Devinette",       icon: "🔴", desc: "Chacun devine le Pokémon des autres.", bridge: "__guessBridge" },
     whois:  { label: "Qui est-ce ?",    icon: "❔", desc: "Une silhouette, le plus rapide gagne.", bridge: "__whoisBridge" },
-    wordle: { label: "Pokédex Wordle",  icon: "🟩", desc: "Course au Pokémon secret commun.", bridge: "__wordleBridge" },
     rule:   { label: "Devine la règle", icon: "🧩", desc: "Une règle secrète, devine celle des autres.", bridge: "__ruleBridge" }
   };
 

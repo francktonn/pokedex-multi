@@ -50,7 +50,7 @@
     ];
     var TITLES = [
       { name:"Aucun titre", min:0 }, { name:"Dresseur novice", min:0 }, { name:"Apprenti dresseur", min:3 }, { name:"Chasseur de shiny", min:5 },
-      { name:"Pro du Wordle", min:8 }, { name:"Œil de lynx", min:12 }, { name:"Maître Pokédex", min:15 }, { name:"Champion d'arène", min:20 },
+      { name:"As du quiz", min:8 }, { name:"Œil de lynx", min:12 }, { name:"Maître Pokédex", min:15 }, { name:"Champion d'arène", min:20 },
       { name:"Membre du Conseil 4", min:30 }, { name:"Maître Pokémon", min:40 },
       { name:"Explorateur", min:6 }, { name:"Collectionneur", min:10 }, { name:"Stratège", min:18 }, { name:"Légende vivante", min:25 },
       { name:"Gardien du Pokédex", min:35 }, { name:"Dresseur étoilé", min:50 }, { name:"Entité mythique", min:70 }
@@ -132,14 +132,13 @@
       card: function(){
         var p = read(); if(!p) return null;
         var S = window.PokeStats ? window.PokeStats.get() : null, x = null;
-        if(S) x = { wp:S.wordle.played, ww:S.wordle.won, wb:S.wordle.best, qp:S.whois.played, qc:S.whois.correct, qb:S.whois.bestMs, gf:S.guess.found, gm:S.guess.missed };
+        if(S) x = { qp:S.whois.played, qc:S.whois.correct, qb:S.whois.bestMs, gf:S.guess.found, gm:S.guess.missed };
         var t = p.type ? TYPE_KEYS.indexOf(p.type) + 1 : 0;
         return { s: p.style, c: p.color, t: t > 0 ? t : 0, m: p.motto, x: x, b: p.bg, ti: p.title, tm: p.team, f: p.frameStyle, h: p.shape, e: p.effect, nf: p.nameFont, nc: p.nameColor };
       }
     };
 
     function blank(){ return {
-      wordle: { played:0, won:0, triesSum:0, best:0, streak:0, bestStreak:0 },
       whois:  { played:0, correct:0, msSum:0, bestMs:0 },
       guess:  { found:0, missed:0 }
     }; }
@@ -153,8 +152,9 @@
     }
     try{ localStorage.removeItem("pokeXp_v1"); }catch(e){} // ancien système d'XP supprimé
     var HKEY = "pokeHistory_v1", HMAX = 20;
+    // Les anciennes manches de Wordle (mode supprimé) sont ignorées.
     function readHist(){
-      try{ var h = JSON.parse(localStorage.getItem(HKEY) || "[]"); return Array.isArray(h) ? h.slice(0, HMAX) : []; }catch(e){ return []; }
+      try{ var h = JSON.parse(localStorage.getItem(HKEY) || "[]"); return Array.isArray(h) ? h.filter(function(e){ return e && e.m !== "wordle"; }).slice(0, HMAX) : []; }catch(e){ return []; }
     }
     function pushHist(entry){
       var h = readHist(); h.unshift(entry);
@@ -167,15 +167,11 @@
       clearHistory: function(){ try{ localStorage.removeItem(HKEY); }catch(e){} window.dispatchEvent(new CustomEvent("statschange")); },
       record: function(mode, ev){
         var d = readStats(), m = d[mode]; if(!m || !ev) return;
-        if(mode === "wordle" || mode === "whois" || (mode === "guess" && ev.found)){
+        if(mode === "whois" || (mode === "guess" && ev.found)){
           pushHist({ t: Date.now(), m: mode, w: (mode === "guess" || ev.won) ? 1 : 0, n: String(ev.name || "").slice(0, 30), id: Number(ev.id) || 0,
-            k: mode === "wordle" ? (ev.tries || 0) : (mode === "whois" ? Math.round(ev.ms || 0) : 0) });
+            k: mode === "whois" ? Math.round(ev.ms || 0) : 0 });
         }
-        if(mode === "wordle"){
-          m.played++;
-          if(ev.won){ m.won++; m.triesSum += ev.tries || 0; if(ev.tries && (!m.best || ev.tries < m.best)) m.best = ev.tries; m.streak++; if(m.streak > m.bestStreak) m.bestStreak = m.streak; }
-          else m.streak = 0;
-        }else if(mode === "whois"){
+        if(mode === "whois"){
           m.played++;
           if(ev.won){ m.correct++; var ms = Math.max(1, Math.round(ev.ms || 0)); m.msSum += ms; if(!m.bestMs || ms < m.bestMs) m.bestMs = ms; }
         }else if(mode === "guess"){
@@ -1917,7 +1913,6 @@
   <button type="button" role="tab" id="tabGroup" class="modetab" aria-selected="false" data-tab="group"><span class="ic">👥</span><span class="lb">Groupe</span></button>
   <button type="button" role="tab" id="tabGuess" class="modetab active" aria-selected="true" data-tab="guess"><span class="ic">🔴</span><span class="lb">Devinette</span></button>
   <button type="button" role="tab" id="tabWhois" class="modetab" aria-selected="false" data-tab="whois"><span class="ic">❔</span><span class="lb">Qui est-ce ?</span></button>
-  <button type="button" role="tab" id="tabWordle" class="modetab" aria-selected="false" data-tab="wordle"><span class="ic">🟩</span><span class="lb">Wordle</span></button>
   <button type="button" role="tab" id="tabRule" class="modetab" aria-selected="false" data-tab="rule"><span class="ic">🧩</span><span class="lb">La règle</span></button>
   <button type="button" role="tab" id="tabProfile" class="modetab" aria-selected="false" data-tab="profile"><span class="ic">👤</span><span class="lb">Profil</span></button>
   <button type="button" role="tab" id="tabCrates" class="modetab" aria-selected="false" data-tab="crates"><span class="ic">🎁</span><span class="lb">Crates</span></button>
@@ -1925,7 +1920,6 @@
 <div id="grpBar" class="grpbar" style="display:none;"></div>
 <div id="groupPane" style="display:none;"><div id="groupHost"></div></div>
 <div id="whoisPane" style="display:none;"><div id="whoisHost"></div></div>
-<div id="wordlePane" style="display:none;"><div id="wordleHost"></div></div>
 <div id="rulePane" style="display:none;"><div id="ruleHost"></div></div>
 <div id="profilePane" style="display:none;"><div id="profileHost"></div></div>
 <div id="cratesPane" style="display:none;"><div id="cratesHost"></div></div>
@@ -5922,7 +5916,7 @@
   mpClearSession(); // on ne recolle plus automatiquement à l'ancienne partie après un rechargement
 })();
 </script>
-<script src="profilecard.js?v=3"></script>
+<script src="profilecard.js?v=4"></script>
 <script src="enhance.js"></script>
 <script>
 (function(){
@@ -5930,10 +5924,9 @@
   var TABS = {
     guess:   { btn: "tabGuess" },
     whois:   { btn: "tabWhois",   pane: "whoisPane",   host: "whoisHost",   src: "whois.js?v=5",   api: "WhoIsTab",   label: "whois.js" },
-    wordle:  { btn: "tabWordle",  pane: "wordlePane",  host: "wordleHost",  src: "wordle.js?v=2",  api: "WordleTab",  label: "wordle.js" },
     rule:    { btn: "tabRule",    pane: "rulePane",    host: "ruleHost",    src: "rule.js?v=1",    api: "RuleTab",    label: "rule.js" },
     group:   { btn: "tabGroup",   pane: "groupPane",   host: "groupHost",   src: "group.js?v=1",   api: "GroupTab",   label: "group.js" },
-    profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=8", api: "ProfileTab", label: "profile.js" },
+    profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=9", api: "ProfileTab", label: "profile.js" },
     crates:  { btn: "tabCrates",  pane: "cratesPane",  host: "cratesHost",  src: "crates.js?v=4",  api: "CratesTab",  label: "crates.js" }
   };
   var loaded = {};
@@ -5980,7 +5973,6 @@
     var q = new URLSearchParams(location.search);
     if (q.get("group")) start = "group";
     else if (q.get("whois")) start = "whois";
-    else if (q.get("wordle")) start = "wordle";
     else if (q.get("rule")) start = "rule";
     else if (!q.get("code")) { var saved = localStorage.getItem("modeTab"); if (TABS[saved]) start = saved; }
   }catch(e){}
