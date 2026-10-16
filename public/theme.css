@@ -327,11 +327,11 @@ body::before{
 .modetab.active{ background:linear-gradient(180deg,#ffd96b,var(--gold) 60%,#f0b21f); color:var(--ink); box-shadow:0 3px 0 var(--gold-deep); }
 .modetab:focus-visible{ outline:3px solid var(--gold); outline-offset:2px; }
 body.tab-off .stage, body.tab-off .fab-stack{ display:none !important; }
-#whoisPane, #wordlePane, #profilePane{ max-width:520px; margin:0 auto; }
+#whoisPane, #wordlePane, #profilePane, #cratesPane{ max-width:520px; margin:0 auto; }
 
 /* Le body d'origine est un flex en ligne : on l'empile pour que les onglets passent au-dessus. */
 body{ flex-direction:column; align-items:center; justify-content:flex-start; }
-.modetabs, #whoisPane, #wordlePane, #rulePane, #profilePane{ width:100%; }
+.modetabs, #whoisPane, #wordlePane, #rulePane, #profilePane, #cratesPane{ width:100%; }
 @media (max-width:400px){ .modetab{ font-size:12.5px; padding:0 2px; } .modetabs{ gap:2px; padding:4px; } }
 
 /* ---- Onglet « Groupe » : 5 onglets (icône au-dessus du libellé) + barre de groupe ---- */
@@ -349,3 +349,15 @@ html[data-theme="dark"] .grpbar{ background:#3a3320; color:#ffe9a6; border-color
 .grpbar .gtxt{ flex:1 1 160px; }
 .grpbar .gbtn{ border:0; border-radius:10px; padding:7px 10px; font:900 12.5px Nunito,sans-serif; cursor:pointer; background:#e23b30; color:#fff; }
 .grpbar .gbtn.alt{ background:rgba(0,0,0,.12); color:inherit; }
+
+
+/* ---- 7 onglets : la barre défile horizontalement plutôt que d'écraser les libellés ; pastille « crate à ouvrir » ---- */
+.modetabs{ overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+.modetabs::-webkit-scrollbar{ display:none; }
+.modetab{ flex:1 0 auto; padding:0 9px; position:relative; }
+.modetab.has-dot::after{
+  content:''; position:absolute; top:5px; right:7px; width:9px; height:9px; border-radius:50%;
+  background:#ff3b30; box-shadow:0 0 0 2px rgba(0,0,0,.35);
+}
+@media (prefers-reduced-motion:no-preference){ .modetab.has-dot::after{ animation:crateDot 1.6s ease-in-out infinite; } }
+@keyframes crateDot{ 50%{ transform:scale(1.35); } }

@@ -126,7 +126,7 @@
     '    <div class="xp"><div class="xprow"><b id="xpLvl">Niveau 1</b><small id="xpTxt"></small></div><div class="bar"><i id="xpFill"></i></div><div class="xphint" id="xpHint"></div></div>',
     '    <div id="editor" class="hidden">',
     '    <p class="sub" style="margin-top:12px">Ton pseudo, ta photo et ton style seront utilisés automatiquement dans tous les modes de jeu.</p>',
-    '    <p class="hint2">👁️ Les éléments marqués 🔒 sont déjà prévisualisables sur ta carte : ils seront enregistrés dès que tu auras le niveau requis.</p>',
+    '    <p class="hint2">👁️ Les éléments marqués 🔒 sont déjà prévisualisables sur ta carte : ils seront enregistrés dès que tu auras le niveau requis (ou que tu l\'auras obtenu dans une crate).</p>',
     '    <label for="pName">Ton pseudo</label>',
     '    <input type="text" id="pName" maxlength="16" autocomplete="off" placeholder="Sacha">',
     '    <label for="pFav">Ton Pokémon préféré</label>',
@@ -199,6 +199,11 @@
     var P = window.PokeProfile;
     var names = [], folded = [];
     var draft = newDraft();
+    // Objets obtenus dans les crates : ils comptent comme débloqués, quel que soit le niveau.
+    var C = window.PokeCrates, LISTOF = {};
+    LOCKS.forEach(function (k) { LISTOF[k[0]] = k[1]; });
+    function owned(list, i) { return !!(C && C.owns(list, i)); }
+    function isLocked(list, i, lv) { var it = P[list][i]; return !!it && it.min > lv && !owned(list, i); }
 
     function fold(s) { return String(s || "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[’']/g, "'").replace(/[\s\-.]+/g, " ").trim(); }
     function nameOf(id) { return names[id - 1] || ("Pokémon n°" + id); }
@@ -231,7 +236,7 @@
       $("xpTxt").textContent = L.max ? "Niveau max" : L.into + " / " + L.need + " XP";
       $("xpFill").style.width = (L.max ? 100 : Math.round(100 * L.into / L.need)) + "%";
       var next = null;
-      LOCKS.forEach(function (k) { P[k[1]].forEach(function (it) { if (it.min > L.level && (!next || it.min < next.min)) next = { min: it.min, what: k[3] + " « " + it.name + " »" }; }); });
+      LOCKS.forEach(function (k) { P[k[1]].forEach(function (it, i) { if (it.min > L.level && !owned(k[1], i) && (!next || it.min < next.min)) next = { min: it.min, what: k[3] + " « " + it.name + " »" }; }); });
       $("xpHint").textContent = next ? "Prochain déblocage au niveau " + next.min + " : " + next.what + "." : "Tout est débloqué !";
     }
 
@@ -264,7 +269,7 @@
     // ---- Éléments verrouillés : aperçu autorisé, enregistrement refusé ----
     function lockedPicks() {
       var lv = curLevel().level, out = [];
-      LOCKS.forEach(function (k) { var it = P[k[1]][draft[k[0]]]; if (it && it.min > lv) out.push({ key: k[0], list: k[1], label: k[2], name: it.name, min: it.min }); });
+      LOCKS.forEach(function (k) { var it = P[k[1]][draft[k[0]]]; if (it && isLocked(k[1], draft[k[0]], lv)) out.push({ key: k[0], list: k[1], label: k[2], name: it.name, min: it.min }); });
       return out;
     }
     function renderLockNote() {
@@ -273,9 +278,9 @@
       if (lk.length) n.textContent = "👁️ Aperçu uniquement : " + lk.map(function (x) { return "« " + x.name + " » (niv. " + x.min + ")"; }).join(", ") + ". Ces éléments ne seront pas enregistrés tant que tu ne les auras pas débloqués.";
     }
     function optBtn(label, i, key, list, lv) {
-      var it = list[i], locked = it.min > lv;
+      var locked = isLocked(LISTOF[key], i, lv);
       var b = el("button", (i === draft[key] ? "on" : "") + (locked ? " locked" : ""), label); b.type = "button";
-      if (locked) { b.appendChild(el("small", "", "🔒 niv. " + it.min)); b.title = "Se débloque au niveau " + it.min + " (aperçu possible)"; }
+      if (locked) { b.appendChild(el("small", "", "🔒 niv. " + list[i].min)); b.title = "Se débloque au niveau " + list[i].min + " ou dans une crate (aperçu possible)"; }
       b.onclick = function () { draft[key] = i; say(""); renderOptions(); renderPreview(); };
       return b;
     }
@@ -304,7 +309,7 @@
       fill("nameFonts", "nameFont", P.nameFonts, function (it) { return it.name; });
       var bd = $("badges"); bd.textContent = "";
       P.badges.forEach(function (it, i) {
-        var locked = it.min > L, b = el("button", (i === draft.badge ? "on" : "") + (locked ? " locked" : ""), it.e || "∅"); b.type = "button";
+        var locked = isLocked("badges", i, L), b = el("button", (i === draft.badge ? "on" : "") + (locked ? " locked" : ""), it.e || "∅"); b.type = "button";
         b.title = it.name + (locked ? " — niv. " + it.min + " (aperçu)" : ""); b.setAttribute("aria-label", "Badge " + it.name);
         if (locked) b.appendChild(el("small", "", "🔒" + it.min));
         b.onclick = function () { draft.badge = i; say(""); renderOptions(); renderPreview(); };
@@ -312,7 +317,7 @@
       });
       var nc = $("nameColors"); nc.textContent = "";
       P.nameColors.forEach(function (c, i) {
-        var locked = c.min > L, b = el("button", (i === draft.nameColor ? "on" : "") + (locked ? " locked" : "")); b.type = "button"; b.style.background = c.css;
+        var locked = isLocked("nameColors", i, L), b = el("button", (i === draft.nameColor ? "on" : "") + (locked ? " locked" : "")); b.type = "button"; b.style.background = c.css;
         b.title = c.name + (locked ? " — niv. " + c.min + " (aperçu)" : ""); b.setAttribute("aria-label", "Couleur du pseudo " + c.name);
         b.onclick = function () { draft.nameColor = i; say(""); renderOptions(); renderPreview(); };
         nc.appendChild(b);
@@ -380,7 +385,7 @@
       var lv = curLevel().level, saved = P.get(), reverted = [];
       LOCKS.forEach(function (k) {
         var list = P[k[1]];
-        if (list[draft[k[0]]].min > lv) {
+        if (isLocked(k[1], draft[k[0]], lv)) {
           var old = saved ? saved[k[0]] : 0;
           draft[k[0]] = list[old] && list[old].min <= lv ? old : 0;
           reverted.push(k[2]);
@@ -459,6 +464,10 @@
     });
     window.addEventListener("statschange", function () { renderStats(); renderHistory(); renderLevel(); renderOptions(); });
     renderStats(); renderHistory();
+    // Un objet vient d'être gagné dans une crate : il se déverrouille tout de suite dans l'éditeur.
+    window.addEventListener("cratechange", function () { renderOptions(); renderPreview(); });
+    // Profil modifié ailleurs (ex. « Équiper » depuis l'onglet Crates) : on recharge la carte si l'éditeur est fermé.
+    window.addEventListener("profilechange", function () { if ($("editor").classList.contains("hidden")) fillFromSaved(); });
 
     // ---- Chargement : profil existant + liste des noms ----
     // Remplit le brouillon et les champs depuis le profil enregistré (utilisé au chargement et à l'annulation).

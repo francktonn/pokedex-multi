@@ -219,6 +219,81 @@
     };
   })();
 </script>
+<script>
+  // Crates quotidiennes (window.PokeCrates) : une crate gratuite par jour, contenant un objet de personnalisation de profil au hasard.
+  // Les objets obtenus sont mémorisés sur cet appareil et comptent comme « débloqués » dans l'éditeur de profil, quel que soit le niveau.
+  // `stock` permet d'ajouter plus tard d'autres sources de crates (niveaux, événements…) sans changer le reste.
+  (function(){
+    var KEY = "pokeCrates_v1";
+    // [liste dans PokeProfile, champ du profil, libellé]
+    var CATS = [ ["bgs","bg","Fond de carte"], ["titles","title","Titre"], ["frameStyles","frameStyle","Style de cadre"], ["shapes","shape","Forme de photo"],
+      ["effects","effect","Effet animé"], ["badges","badge","Badge"], ["nameFonts","nameFont","Police du pseudo"], ["nameColors","nameColor","Couleur du pseudo"] ];
+    // La rareté dépend du niveau normalement requis (min) ; w = poids du tirage.
+    var RARITIES = [ { name:"Commun", color:"#8e9aa8", max:5, w:55 }, { name:"Rare", color:"#3a86d6", max:12, w:30 },
+      { name:"Épique", color:"#9b6bd6", max:25, w:12 }, { name:"Légendaire", color:"#E6A700", max:9999, w:3 } ];
+    function rarityOf(min){ for(var i = 0; i < RARITIES.length; i++) if(min <= RARITIES[i].max) return i; return RARITIES.length - 1; }
+    function pad(n){ return n < 10 ? "0" + n : String(n); }
+    function today(){ var d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+    function read(){
+      var s = { last:"", stock:0, opened:0, owned:{} };
+      try{
+        var o = JSON.parse(localStorage.getItem(KEY) || "null");
+        if(o && typeof o === "object"){
+          if(/^\d{4}-\d{2}-\d{2}$/.test(o.last)) s.last = o.last;
+          s.stock = Math.min(99, Math.max(0, Math.floor(Number(o.stock)) || 0));
+          s.opened = Math.max(0, Math.floor(Number(o.opened)) || 0);
+          if(o.owned && typeof o.owned === "object") Object.keys(o.owned).forEach(function(k){ if(/^[a-zA-Z]+:\d{1,2}$/.test(k)) s.owned[k] = Number(o.owned[k]) || 1; });
+        }
+      }catch(e){}
+      return s;
+    }
+    function write(s){ try{ localStorage.setItem(KEY, JSON.stringify(s)); }catch(e){} window.dispatchEvent(new CustomEvent("cratechange")); }
+    function level(){ return window.PokeStats ? window.PokeStats.level().level : 1; }
+    // Tous les objets qu'une crate peut contenir : ceux qui demandent un niveau (min > 0).
+    function items(){
+      var P = window.PokeProfile, out = [];
+      CATS.forEach(function(c){
+        (P[c[0]] || []).forEach(function(it, i){
+          if(it.min > 0) out.push({ list:c[0], field:c[1], catName:c[2], idx:i, key:c[0] + ":" + i, name:it.name, e:it.e || "", css:it.css || "", min:it.min, rar:rarityOf(it.min) });
+        });
+      });
+      return out;
+    }
+    function grantDaily(s){ var t = today(); if(s.last !== t){ s.last = t; s.stock = Math.min(99, s.stock + 1); return true; } return false; }
+    window.PokeCrates = {
+      cats: CATS, rarities: RARITIES, items: items, rarityOf: rarityOf,
+      owns: function(list, idx){ return !!read().owned[list + ":" + idx]; },
+      // Crédite la crate du jour si elle n'a pas encore été récupérée aujourd'hui.
+      sync: function(){ var s = read(); if(grantDaily(s)) write(s); return s; },
+      state: function(){ var s = read(), n = Object.keys(s.owned).length; return { stock:s.stock, opened:s.opened, ownedCount:n, last:s.last, owned:s.owned }; },
+      available: function(){ var s = read(); return s.stock > 0 || s.last !== today(); },
+      msUntilNext: function(){ var d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime() - d.getTime(); },
+      // Ouvre une crate : renvoie { item }, { done:true } (tout est déjà possédé) ou null (aucune crate disponible).
+      open: function(){
+        var s = read(); grantDaily(s);
+        if(s.stock <= 0){ write(s); return null; }
+        var all = items().filter(function(it){ return !s.owned[it.key]; });
+        if(!all.length){ write(s); return { done:true }; }
+        var lv = level(), pool = all.filter(function(it){ return it.min > lv; }); // on évite les objets que le niveau débloque déjà
+        if(!pool.length) pool = all;
+        var byRar = RARITIES.map(function(r, i){ return pool.filter(function(it){ return it.rar === i; }); });
+        var total = 0; byRar.forEach(function(l, i){ if(l.length) total += RARITIES[i].w; });
+        var roll = Math.random() * total, ri = 0;
+        for(var i = 0; i < byRar.length; i++){ if(!byRar[i].length) continue; ri = i; if(roll < RARITIES[i].w) break; roll -= RARITIES[i].w; }
+        var list = byRar[ri], item = list[Math.floor(Math.random() * list.length)];
+        s.stock--; s.opened++; s.owned[item.key] = Date.now();
+        write(s);
+        return { item:item };
+      },
+      // Équipe directement l'objet sur le profil enregistré. false s'il n'y a pas encore de profil.
+      equip: function(item){
+        var P = window.PokeProfile, cur = P && P.get();
+        if(!cur || !item || !read().owned[item.key]) return false;
+        cur[item.field] = item.idx; P.set(cur); return true;
+      }
+    };
+  })();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:ital,wght@0,400;0,600;0,700;1,600&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
 <style>
@@ -1848,6 +1923,7 @@
   <button type="button" role="tab" id="tabWordle" class="modetab" aria-selected="false" data-tab="wordle"><span class="ic">🟩</span><span class="lb">Wordle</span></button>
   <button type="button" role="tab" id="tabRule" class="modetab" aria-selected="false" data-tab="rule"><span class="ic">🧩</span><span class="lb">La règle</span></button>
   <button type="button" role="tab" id="tabProfile" class="modetab" aria-selected="false" data-tab="profile"><span class="ic">👤</span><span class="lb">Profil</span></button>
+  <button type="button" role="tab" id="tabCrates" class="modetab" aria-selected="false" data-tab="crates"><span class="ic">🎁</span><span class="lb">Crates</span></button>
 </nav>
 <div id="grpBar" class="grpbar" style="display:none;"></div>
 <div id="groupPane" style="display:none;"><div id="groupHost"></div></div>
@@ -1855,6 +1931,7 @@
 <div id="wordlePane" style="display:none;"><div id="wordleHost"></div></div>
 <div id="rulePane" style="display:none;"><div id="ruleHost"></div></div>
 <div id="profilePane" style="display:none;"><div id="profileHost"></div></div>
+<div id="cratesPane" style="display:none;"><div id="cratesHost"></div></div>
 
 
 <div class="stage">
@@ -5859,7 +5936,8 @@
     wordle:  { btn: "tabWordle",  pane: "wordlePane",  host: "wordleHost",  src: "wordle.js?v=2",  api: "WordleTab",  label: "wordle.js" },
     rule:    { btn: "tabRule",    pane: "rulePane",    host: "ruleHost",    src: "rule.js?v=1",    api: "RuleTab",    label: "rule.js" },
     group:   { btn: "tabGroup",   pane: "groupPane",   host: "groupHost",   src: "group.js?v=1",   api: "GroupTab",   label: "group.js" },
-    profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=4", api: "ProfileTab", label: "profile.js" }
+    profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=5", api: "ProfileTab", label: "profile.js" },
+    crates:  { btn: "tabCrates",  pane: "cratesPane",  host: "cratesHost",  src: "crates.js?v=1",  api: "CratesTab",  label: "crates.js" }
   };
   var loaded = {};
   function fail(t, msg){
@@ -5895,6 +5973,11 @@
   }
   Object.keys(TABS).forEach(function(k){ document.getElementById(TABS[k].btn).onclick = function(){ setTab(k); }; });
   window.PokeTabs = { set: setTab, load: load, current: function(){ var a = "guess"; Object.keys(TABS).forEach(function(k){ if (document.getElementById(TABS[k].btn).classList.contains("active")) a = k; }); return a; } };
+  // Pastille rouge sur l'onglet Crates tant qu'une crate attend d'être ouverte.
+  function crateDot(){ try{ document.getElementById("tabCrates").classList.toggle("has-dot", !!(window.PokeCrates && window.PokeCrates.available())); }catch(e){} }
+  window.addEventListener("cratechange", crateDot);
+  document.addEventListener("visibilitychange", function(){ if (!document.hidden) crateDot(); });
+  setInterval(crateDot, 60000); crateDot();
   var start = "guess";
   try{
     var q = new URLSearchParams(location.search);
