@@ -630,6 +630,19 @@ module.exports = async (req, res) => {
       const body = req.body && typeof req.body === 'object' ? req.body : {};
       const action = body.action;
 
+      // ---- Compte admin : vérifie le code secret (variable d'environnement ADMIN_CODE, jamais écrite dans le code) ----
+      if (action === 'admin') {
+        const expected = (process.env.ADMIN_CODE || '').toString();
+        const given = (body.code || '').toString();
+        let ok = false;
+        if (expected && given.length === expected.length) {
+          ok = require('crypto').timingSafeEqual(Buffer.from(given), Buffer.from(expected));
+        }
+        if (!ok) await new Promise(resolve => setTimeout(resolve, 800)); // freine les essais en rafale
+        res.status(ok ? 200 : 403).json({ ok });
+        return;
+      }
+
       // ---- Créer une partie ----
       // Le créateur devient automatiquement l'hôte (seul lui peut lancer une manche).
       if (action === 'create') {
