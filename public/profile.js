@@ -17,6 +17,7 @@
     ".top{display:flex; align-items:center; gap:10px; margin-bottom:12px;}",
     ".lens{width:22px;height:22px;border-radius:50%;flex-shrink:0;background:radial-gradient(circle at 35% 30%,#bfe9ff,#3b8fd6 55%,#1b5a9c);box-shadow:0 0 0 3px rgba(255,255,255,.55),0 0 14px rgba(120,200,255,.8);}",
     ".brand{font-family:'Silkscreen',monospace; font-size:12px; letter-spacing:.12em; flex:1;}",
+    ".wallet{font-family:'Silkscreen',monospace; font-size:12px; color:#FFC93C; background:rgba(0,0,0,.3); padding:6px 11px; border-radius:999px; white-space:nowrap;}",
     ".themebtn{border:0; width:34px; height:34px; border-radius:50%; cursor:pointer; font-size:15px; background:rgba(0,0,0,.25); color:#fff;}",
     ".panel{background:var(--paper); color:var(--ink); border-radius:20px; padding:16px; margin-bottom:12px; box-shadow:0 8px 20px -8px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.6);}",
     ".panel:last-child{margin-bottom:0;}",
@@ -104,7 +105,7 @@
 
   var HTML = [
     '<div class="device">',
-    '  <div class="top"><span class="lens"></span><span class="brand">MON PROFIL</span><button type="button" class="themebtn" id="themeBtn" aria-label="Mode sombre">🌙</button></div>',
+    '  <div class="top"><span class="lens"></span><span class="brand">MON PROFIL</span><span class="wallet" id="wallet" title="Tes Pokédollars"></span><button type="button" class="themebtn" id="themeBtn" aria-label="Mode sombre">🌙</button></div>',
     '  <section class="panel" id="cardPanel">',
     '    <div class="head"><h2>Ma carte</h2><button type="button" class="gear" id="gear" aria-label="Modifier ma carte" aria-expanded="false" title="Modifier ma carte">⚙️</button></div>',
     '    <div class="card" id="card">',
@@ -429,6 +430,8 @@
     });
     window.addEventListener("statschange", function () { renderStats(); renderHistory(); renderOptions(); });
     renderStats(); renderHistory();
+    function renderWallet() { $("wallet").textContent = window.PokeMoney ? window.PokeMoney.format() : ""; }
+    renderWallet(); window.addEventListener("moneychange", renderWallet);
     // Un objet vient d'être gagné dans une crate : il se déverrouille tout de suite dans l'éditeur.
     window.addEventListener("cratechange", function () { renderOptions(); renderPreview(); });
     // Profil modifié ailleurs (ex. « Équiper » depuis l'onglet Crates) : on recharge la carte si l'éditeur est fermé.

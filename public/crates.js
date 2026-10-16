@@ -20,6 +20,7 @@
     ".top{display:flex; align-items:center; gap:10px; margin-bottom:12px;}",
     ".lens{width:22px;height:22px;border-radius:50%;flex-shrink:0;background:radial-gradient(circle at 35% 30%,#bfe9ff,#3b8fd6 55%,#1b5a9c);box-shadow:0 0 0 3px rgba(255,255,255,.55),0 0 14px rgba(120,200,255,.8);}",
     ".brand{font-family:'Silkscreen',monospace; font-size:12px; letter-spacing:.12em; flex:1;}",
+    ".wallet{font-family:'Silkscreen',monospace; font-size:12px; color:#FFC93C; background:rgba(0,0,0,.3); padding:6px 11px; border-radius:999px; white-space:nowrap;}",
     ".themebtn{border:0; width:34px; height:34px; border-radius:50%; cursor:pointer; font-size:15px; background:rgba(0,0,0,.25); color:#fff;}",
     ".panel{background:var(--paper); color:var(--ink); border-radius:20px; padding:16px; margin-bottom:12px; box-shadow:0 8px 20px -8px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.6);}",
     ".panel:last-child{margin-bottom:0;}",
@@ -53,6 +54,8 @@
     ".reveal.r3 .rpill{color:#221d17; text-shadow:none;}",
     ".reveal.r3 .card{box-shadow:0 0 0 2px #FFC93C, 0 0 30px 4px rgba(255,201,60,.55);} .reveal.r2 .card{box-shadow:0 0 22px 2px rgba(155,107,214,.55);}",
     ".rname{font-family:'Baloo 2',sans-serif; font-weight:800; font-size:22px; margin-top:12px; line-height:1.15;}",
+    ".coin{font-size:64px; line-height:1; animation:coin .8s var(--ease) both;} @keyframes coin{from{transform:translateY(14px) scale(.6) rotate(-20deg); opacity:0;}to{transform:none; opacity:1;}}",
+    ".rname.money{font-size:34px; color:var(--gold-deep); margin-top:6px;}",
     ".rcat{color:var(--muted); font-weight:700; font-size:13px; margin-top:2px;}",
     /* aperçu de carte (même rendu que l'onglet Profil) */
     ".card{border-radius:20px; padding:14px; margin:0; color:#fff; text-align:left; position:relative; overflow:hidden;",
@@ -83,10 +86,10 @@
 
   var HTML = [
     '<div class="device">',
-    '  <div class="top"><span class="lens"></span><span class="brand">CRATES</span><button type="button" class="themebtn" id="themeBtn" aria-label="Mode sombre">🌙</button></div>',
+    '  <div class="top"><span class="lens"></span><span class="brand">CRATES</span><span class="wallet" id="wallet" title="Tes Pokédollars"></span><button type="button" class="themebtn" id="themeBtn" aria-label="Mode sombre">🌙</button></div>',
     '  <section class="panel">',
     '    <h2>🎁 Crate du jour</h2>',
-    '    <p class="sub">Une crate gratuite chaque jour. Elle contient au hasard un objet pour personnaliser ta carte : fond, titre, cadre, effet…</p>',
+    '    <p class="sub">Une crate gratuite chaque jour. Elle contient au hasard un objet pour personnaliser ta carte (fond, titre, cadre, effet…) ou des Pokédollars.</p>',
     '    <div class="stage"><div class="crate idle" id="crate" aria-hidden="true">🎁</div></div>',
     '    <button type="button" class="btn" id="openBtn"></button>',
     '    <div class="msg" id="msg" role="status"></div>',
@@ -99,9 +102,9 @@
     '  </section>',
     '  <section class="panel">',
     '    <h2>🎲 Chances de drop</h2>',
-    '    <p class="sub">Chaque objet a une rareté fixe : plus elle est haute, plus il est difficile à obtenir.</p>',
+    '    <p class="sub">Chaque objet et chaque gain a une rareté : plus elle est haute, plus c\'est rare.</p>',
     '    <div class="odds" id="odds"></div>',
-    '    <p class="hint2">Tu ne tires jamais deux fois le même objet. Si une rareté est épuisée, ses chances sont redistribuées.</p>',
+    '    <p class="hint2">Tu ne tires jamais deux fois le même objet. Si une rareté est épuisée, ses chances sont redistribuées. Une fois tous les objets obtenus, chaque crate donne des Pokédollars.</p>',
     '  </section>',
     '</div>'
   ].join("\n");
@@ -129,6 +132,7 @@
     function pad(n) { return n < 10 ? "0" + n : String(n); }
     function clock(ms) { var s = Math.max(0, Math.ceil(ms / 1000)); return pad(Math.floor(s / 3600)) + ":" + pad(Math.floor(s / 60) % 60) + ":" + pad(s % 60); }
     function label(it) { return it.name; }
+    function renderWallet() { $("wallet").textContent = window.PokeMoney ? window.PokeMoney.format() : ""; }
 
     // ---- Thème : suit celui du site ----
     var docEl = document.documentElement;
@@ -185,12 +189,21 @@
       rv.scrollIntoView({ block: "nearest", behavior: reduced ? "auto" : "smooth" });
     }
 
+    function showMoney(m) {
+      var rv = $("reveal"), R = C.rarities[m.rar];
+      rv.textContent = ""; rv.className = "reveal r" + m.rar;
+      var pill = el("div", "rpill", "Pokédollars · " + R.name); pill.style.background = R.color; rv.appendChild(pill);
+      rv.appendChild(el("div", "coin", "💰"));
+      rv.appendChild(el("div", "rname money", "+" + window.PokeMoney.format(m.amount)));
+      rv.appendChild(el("div", "rcat", "Ton solde : " + window.PokeMoney.format()));
+      var close = el("button", "btn alt", "Fermer"); close.type = "button"; close.onclick = function () { rv.className = "reveal hidden"; rv.textContent = ""; }; rv.appendChild(close);
+      rv.scrollIntoView({ block: "nearest", behavior: reduced ? "auto" : "smooth" });
+    }
+
     // ---- Bouton principal : ouvrir / compte à rebours ----
     function refreshMain() {
       var s = C.state(), all = C.items(), btn = $("openBtn"), crate = $("crate");
-      var complete = all.length > 0 && s.ownedCount >= all.length;
       if (busy) return;
-      if (complete) { btn.disabled = true; btn.textContent = "🏆 Collection complète !"; crate.classList.add("off"); return; }
       if (s.stock > 0) {
         btn.disabled = false; btn.textContent = s.stock > 1 ? "🎁 Ouvrir une crate (" + s.stock + ")" : "🎁 Ouvrir ma crate du jour";
         crate.classList.remove("off");
@@ -210,7 +223,7 @@
         setTimeout(function () { crate.classList.remove("burst"); crate.classList.add("idle"); }, 450);
         busy = false;
         if (!res) say("Plus de crate disponible pour aujourd'hui.", "ko");
-        else if (res.done) say("Tu possèdes déjà tous les objets de crate !", "ok");
+        else if (res.money) showMoney(res.money);
         else showReveal(res.item, true);
         renderCollection(); refreshMain();
       }, reduced ? 0 : 950);
@@ -219,7 +232,7 @@
     // ---- Collection ----
     function renderCollection() {
       var s = C.state(), all = C.items(), body = $("collBody"); body.textContent = "";
-      $("collCount").textContent = s.ownedCount + " / " + all.length;
+      $("collCount").textContent = (all.length && s.ownedCount >= all.length ? "🏆 " : "") + s.ownedCount + " / " + all.length;
       C.cats.forEach(function (c) {
         var list = all.filter(function (it) { return it.list === c[0]; });
         if (!list.length) return;
@@ -242,14 +255,20 @@
     function renderOdds() {
       var box = $("odds"), total = 0; box.textContent = "";
       C.rarities.forEach(function (r) { total += r.w; });
-      C.rarities.forEach(function (r) {
-        var row = el("div", "orow"), dot = el("i"); dot.style.background = r.color; row.appendChild(dot);
-        row.appendChild(document.createTextNode(r.name)); row.appendChild(el("span", "", Math.round(100 * r.w / total) + " %")); box.appendChild(row);
-      });
+      function row(color, text, right) { var d = el("div", "orow"), dot = el("i"); dot.style.background = color; d.appendChild(dot); d.appendChild(document.createTextNode(text)); d.appendChild(el("span", "", right)); box.appendChild(d); }
+      var mp = Math.round(100 * C.moneyRate);
+      box.appendChild(el("h3", "", "Contenu d'une crate"));
+      row("#3a86d6", "🎨 Objet de style", (100 - mp) + " %");
+      row("#E6A700", "💰 Pokédollars", mp + " %");
+      box.appendChild(el("h3", "", "Rareté"));
+      C.rarities.forEach(function (r) { row(r.color, r.name, Math.round(100 * r.w / total) + " %"); });
+      box.appendChild(el("h3", "", "Gains en Pokédollars"));
+      C.rarities.forEach(function (r, i) { row(r.color, r.name, window.PokeMoney.format(C.moneyRanges[i][0]).replace(" ₽", "") + " – " + window.PokeMoney.format(C.moneyRanges[i][1])); });
     }
 
     // ---- Démarrage : crédite la crate du jour, puis tic-tac jusqu'à minuit ----
     C.sync();
+    renderWallet(); window.addEventListener("moneychange", renderWallet);
     renderOdds(); renderCollection(); refreshMain();
     var timer = setInterval(function () {
       if (!host.isConnected) { clearInterval(timer); return; }

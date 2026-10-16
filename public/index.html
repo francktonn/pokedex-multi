@@ -188,9 +188,23 @@
   })();
 </script>
 <script>
-  // Crates quotidiennes (window.PokeCrates) : une crate gratuite par jour, contenant un objet de personnalisation de profil au hasard.
+  // Crates quotidiennes (window.PokeCrates) : une crate gratuite par jour, contenant un objet de personnalisation de profil ou des Pokédollars.
   // Les objets obtenus sont mémorisés sur cet appareil et sont les seuls à débloquer les objets « verrouillés » (min > 0) de l'éditeur de profil.
   // `stock` permet d'ajouter plus tard d'autres sources de crates (niveaux, événements…) sans changer le reste.
+  // Pokédollars (window.PokeMoney) : la monnaie du jeu, mémorisée sur cet appareil. Gagnée pour l'instant dans les crates ;
+  // add() / spend() sont prêts pour d'autres sources de gains et pour de futures dépenses.
+  (function(){
+    var KEY = "pokeMoney_v1", MAX = 99999999;
+    function read(){ try{ var v = Math.floor(Number(localStorage.getItem(KEY))); return v > 0 ? Math.min(v, MAX) : 0; }catch(e){ return 0; } }
+    function write(v){ try{ localStorage.setItem(KEY, String(v)); }catch(e){} window.dispatchEvent(new CustomEvent("moneychange")); }
+    window.PokeMoney = {
+      symbol: "₽",
+      get: read,
+      add: function(n){ n = Math.floor(Number(n)); if(!(n > 0)) return read(); var v = Math.min(MAX, read() + n); write(v); return v; },
+      spend: function(n){ n = Math.floor(Number(n)); var cur = read(); if(!(n > 0) || cur < n) return false; write(cur - n); return true; },
+      format: function(v){ return (v == null ? read() : v).toLocaleString("fr-FR") + " ₽"; }
+    };
+  })();
   (function(){
     var KEY = "pokeCrates_v1";
     // [liste dans PokeProfile, champ du profil, libellé]
@@ -199,6 +213,15 @@
     // La rareté dépend de la valeur min de l'objet (voir listes de PokeProfile) ; w = poids du tirage.
     var RARITIES = [ { name:"Commun", color:"#8e9aa8", max:5, w:55 }, { name:"Rare", color:"#3a86d6", max:12, w:30 },
       { name:"Épique", color:"#9b6bd6", max:25, w:12 }, { name:"Légendaire", color:"#E6A700", max:9999, w:3 } ];
+    // Une crate donne des Pokédollars (au lieu d'un objet) avec la probabilité MONEY_RATE ; le montant dépend de la rareté tirée. Toujours des Pokédollars une fois tous les objets obtenus.
+    var MONEY_RATE = 0.4, MONEY_RANGES = [ [50, 150], [200, 400], [500, 900], [1000, 2000] ];
+    function rollRarity(weights){
+      var total = 0; weights.forEach(function(w){ total += w; });
+      var roll = Math.random() * total;
+      for(var i = 0; i < weights.length; i++){ if(weights[i] <= 0) continue; if(roll < weights[i]) return i; roll -= weights[i]; }
+      for(var k = weights.length - 1; k >= 0; k--) if(weights[k] > 0) return k;
+      return 0;
+    }
     function rarityOf(min){ for(var i = 0; i < RARITIES.length; i++) if(min <= RARITIES[i].max) return i; return RARITIES.length - 1; }
     function pad(n){ return n < 10 ? "0" + n : String(n); }
     function today(){ var d = new Date(); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
@@ -228,7 +251,7 @@
     }
     function grantDaily(s){ var t = today(); if(s.last !== t){ s.last = t; s.stock = Math.min(99, s.stock + 1); return true; } return false; }
     window.PokeCrates = {
-      cats: CATS, rarities: RARITIES, items: items, rarityOf: rarityOf,
+      cats: CATS, rarities: RARITIES, items: items, rarityOf: rarityOf, moneyRate: MONEY_RATE, moneyRanges: MONEY_RANGES,
       owns: function(list, idx){ return !!read().owned[list + ":" + idx]; },
       // Crédite la crate du jour si elle n'a pas encore été récupérée aujourd'hui.
       sync: function(){ var s = read(); if(grantDaily(s)) write(s); return s; },
@@ -240,17 +263,20 @@
       },
       available: function(){ var s = read(); return s.stock > 0 || s.last !== today(); },
       msUntilNext: function(){ var d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1).getTime() - d.getTime(); },
-      // Ouvre une crate : renvoie { item }, { done:true } (tout est déjà possédé) ou null (aucune crate disponible).
+      // Ouvre une crate : renvoie { item }, { money:{ amount, rar } } ou null (aucune crate disponible).
       open: function(){
         var s = read(); grantDaily(s);
         if(s.stock <= 0){ write(s); return null; }
         var all = items().filter(function(it){ return !s.owned[it.key]; });
-        if(!all.length){ write(s); return { done:true }; }
-        var pool = all;
-        var byRar = RARITIES.map(function(r, i){ return pool.filter(function(it){ return it.rar === i; }); });
-        var total = 0; byRar.forEach(function(l, i){ if(l.length) total += RARITIES[i].w; });
-        var roll = Math.random() * total, ri = 0;
-        for(var i = 0; i < byRar.length; i++){ if(!byRar[i].length) continue; ri = i; if(roll < RARITIES[i].w) break; roll -= RARITIES[i].w; }
+        if(!all.length || Math.random() < MONEY_RATE){
+          var rar = rollRarity(RARITIES.map(function(r){ return r.w; })), rg = MONEY_RANGES[rar];
+          var amount = Math.round((rg[0] + Math.random() * (rg[1] - rg[0])) / 10) * 10;
+          s.stock--; s.opened++; write(s);
+          window.PokeMoney.add(amount);
+          return { money:{ amount:amount, rar:rar } };
+        }
+        var byRar = RARITIES.map(function(r, i){ return all.filter(function(it){ return it.rar === i; }); });
+        var ri = rollRarity(byRar.map(function(l, i){ return l.length ? RARITIES[i].w : 0; }));
         var list = byRar[ri], item = list[Math.floor(Math.random() * list.length)];
         s.stock--; s.opened++; s.owned[item.key] = Date.now();
         write(s);
@@ -5907,8 +5933,8 @@
     wordle:  { btn: "tabWordle",  pane: "wordlePane",  host: "wordleHost",  src: "wordle.js?v=2",  api: "WordleTab",  label: "wordle.js" },
     rule:    { btn: "tabRule",    pane: "rulePane",    host: "ruleHost",    src: "rule.js?v=1",    api: "RuleTab",    label: "rule.js" },
     group:   { btn: "tabGroup",   pane: "groupPane",   host: "groupHost",   src: "group.js?v=1",   api: "GroupTab",   label: "group.js" },
-    profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=7", api: "ProfileTab", label: "profile.js" },
-    crates:  { btn: "tabCrates",  pane: "cratesPane",  host: "cratesHost",  src: "crates.js?v=3",  api: "CratesTab",  label: "crates.js" }
+    profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=8", api: "ProfileTab", label: "profile.js" },
+    crates:  { btn: "tabCrates",  pane: "cratesPane",  host: "cratesHost",  src: "crates.js?v=4",  api: "CratesTab",  label: "crates.js" }
   };
   var loaded = {};
   function fail(t, msg){
