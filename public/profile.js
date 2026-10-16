@@ -204,6 +204,7 @@
     // Objets de crate (min > 0) ou exclusifs du Pass Premium (pass = palier) : verrouillés tant qu'ils ne sont pas obtenus.
     function isLocked(list, i) {
       var it = P[list][i]; if (!it) return false;
+      if (it.hw) return !(window.PokeHalloween && window.PokeHalloween.ownsItem(list, i)); // exclusif Halloween (bonbons)
       if (it.pass) return !(PS && PS.ownsItem(list, i));
       return it.min > 0 && !owned(list, i);
     }
@@ -269,7 +270,7 @@
     function optBtn(label, i, key, list) {
       var locked = isLocked(LISTOF[key], i);
       var b = el("button", (i === draft[key] ? "on" : "") + (locked ? " locked" : ""), label); b.type = "button";
-      if (locked) { var pi = P[LISTOF[key]][i]; b.appendChild(el("small", "", pi && pi.pass ? "👑 Palier " + pi.pass : "🔒 Crate")); b.title = pi && pi.pass ? "Exclusif du Pass Premium, palier " + pi.pass + " (aperçu possible)" : "À obtenir dans une crate (aperçu possible)"; }
+      if (locked) { var pi = P[LISTOF[key]][i]; b.appendChild(el("small", "", pi && pi.hw ? "🎃 Halloween" : pi && pi.pass ? "👑 Palier " + pi.pass : "🔒 Crate")); b.title = pi && pi.hw ? "Exclusif Halloween : à acheter avec des bonbons dans l'onglet 🎃 (aperçu possible)" : pi && pi.pass ? "Exclusif du Pass Premium, palier " + pi.pass + " (aperçu possible)" : "À obtenir dans une crate (aperçu possible)"; }
       b.onclick = function () { draft[key] = i; say(""); renderOptions(); renderPreview(); };
       return b;
     }
@@ -298,7 +299,7 @@
       var nc = $("nameColors"); nc.textContent = "";
       P.nameColors.forEach(function (c, i) {
         var locked = isLocked("nameColors", i), b = el("button", (i === draft.nameColor ? "on" : "") + (locked ? " locked" : "")); b.type = "button"; b.style.background = c.css;
-        b.title = c.name + (locked ? (c.pass ? " — exclusif du Pass Premium, palier " + c.pass + " (aperçu)" : " — à obtenir dans une crate (aperçu)") : ""); b.setAttribute("aria-label", "Couleur du pseudo " + c.name);
+        b.title = c.name + (locked ? (c.hw ? " — exclusif Halloween, à acheter avec des bonbons (aperçu)" : c.pass ? " — exclusif du Pass Premium, palier " + c.pass + " (aperçu)" : " — à obtenir dans une crate (aperçu)") : ""); b.setAttribute("aria-label", "Couleur du pseudo " + c.name);
         b.onclick = function () { draft.nameColor = i; say(""); renderOptions(); renderPreview(); };
         nc.appendChild(b);
       });
@@ -460,6 +461,8 @@
     // Un objet vient d'être gagné dans une crate : il se déverrouille tout de suite dans l'éditeur.
     window.addEventListener("cratechange", function () { renderOptions(); renderPreview(); });
     window.addEventListener("passchange", function () { renderOptions(); renderPreview(); renderSkins(); });
+    // Un objet Halloween vient d'être acheté (onglet 🎃) : il se déverrouille tout de suite dans l'éditeur.
+    window.addEventListener("halloweenchange", function () { renderOptions(); renderPreview(); });
     // Profil modifié ailleurs (ex. « Équiper » depuis l'onglet Crates) : on recharge la carte si l'éditeur est fermé.
     window.addEventListener("profilechange", function () { if ($("editor").classList.contains("hidden")) fillFromSaved(); });
 
