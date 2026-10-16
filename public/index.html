@@ -802,6 +802,12 @@
   }
   .mp-player-row.is-me{ box-shadow: inset 0 0 0 1.5px var(--gold); }
   .mp-player-name{ font-weight:700; font-size:13.5px; color:var(--ink); }
+  .mp-avatar{
+    width:32px; height:32px; flex-shrink:0; border-radius:50%; object-fit:contain; image-rendering:pixelated;
+    background:radial-gradient(circle at 50% 40%, rgba(143,240,164,.28), transparent 70%), #0e1a12;
+    border:2px solid #070d08; box-shadow:0 0 0 1.5px var(--gold);
+  }
+  .mp-quick-chip .mp-avatar{ width:22px; height:22px; border-width:1.5px; box-shadow:0 0 0 1px var(--gold); }
   .mp-player-score{
     font-family:'Silkscreen', monospace;
     font-size:11px;
@@ -4597,6 +4603,17 @@
     });
   }
 
+  // Photo de profil : numéro du Pokémon préféré (onglet Profil), envoyé au serveur à la création / l'entrée.
+  function mpAvatarId(){
+    const pr = window.PokeProfile && window.PokeProfile.get();
+    return pr && pr.favId ? pr.favId : null;
+  }
+  function mpAvatarHtml(p){
+    if(!p || !p.avatar) return "";
+    const url = window.PokeProfile ? window.PokeProfile.sprite(p.avatar) : "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/" + p.avatar + ".png";
+    return `<img class="mp-avatar" src="${url}" alt="" loading="lazy" draggable="false">`;
+  }
+
   function mpReadName(){
     const input = document.getElementById("mpNameInput");
     return (input ? input.value : "").trim().slice(0, 16);
@@ -4610,7 +4627,7 @@
     const btn = document.getElementById("mpCreateBtn");
     if(btn) btn.disabled = true;
     try{
-      const data = await mpApiPost("create", { name });
+      const data = await mpApiPost("create", { name, avatar: mpAvatarId() });
       mpRoomCode = data.code;
       mpPlayerId = data.playerId;
       mpPlayerName = name;
@@ -4636,7 +4653,7 @@
     const btn = document.getElementById("mpJoinBtn");
     if(btn) btn.disabled = true;
     try{
-      const data = await mpApiPost("join", { code, name });
+      const data = await mpApiPost("join", { code, name, avatar: mpAvatarId() });
       mpRoomCode = data.code;
       mpPlayerId = data.playerId;
       mpPlayerName = name;
@@ -4800,6 +4817,7 @@
         : "";
       return `
         <div class="mp-player-row${isMe ? " is-me" : ""}">
+          ${mpAvatarHtml(p)}
           <span class="mp-player-name">${mpEscapeHtml(p.name)}${isMe ? " (toi)" : ""}${p.id === state.hostId ? " 👑" : ""}${teamBadge}</span>
           <span class="mp-player-score">${p.score} pt${p.score > 1 ? "s" : ""}</span>
           ${rightPart}
@@ -5160,6 +5178,7 @@
       const teamBadge = mpTeamBadgeHtml(p);
       return `
         <div class="mp-player-row${isMe ? " is-me" : ""}">
+          ${mpAvatarHtml(p)}
           <span class="mp-player-name">${mpEscapeHtml(p.name)}${isMe ? " (toi)" : ""}${p.id === state.hostId ? " 👑" : ""}${teamBadge}</span>
           <span class="mp-player-score">${p.score} pt${p.score > 1 ? "s" : ""}</span>
           ${rightPart}
@@ -5227,6 +5246,7 @@
       const teamBadge = mpTeamBadgeHtml(p, true);
       return `
         <div class="mp-quick-chip${isMe ? " is-me" : ""}">
+          ${mpAvatarHtml(p)}
           <span class="mp-quick-name">${mpEscapeHtml(p.name)}${isMe ? " (toi)" : ""}${p.id === state.hostId ? " 👑" : ""}${teamBadge}</span>
           <span class="mp-quick-score">${p.score} pt${p.score > 1 ? "s" : ""}</span>
           ${action}
