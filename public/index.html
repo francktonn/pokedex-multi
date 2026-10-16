@@ -259,6 +259,8 @@
       },
       available: function(){ var s = read(); return s.stock > 0 || s.last !== today(); },
       // Boutique : achète une crate avec des Pokédollars. Renvoie true si l'achat a réussi (stock plein ou solde insuffisant : false).
+      // Ajoute n crates au stock (récompenses du Battle Pass). Renvoie le nombre réellement ajouté (stock plafonné à 99).
+      grant: function(n){ var s = read(); grantDaily(s); var add = Math.max(0, Math.min(Math.floor(Number(n)) || 0, 99 - s.stock)); s.stock += add; write(s); return add; },
       price: 1000,
       buy: function(){
         var s = read(); grantDaily(s);
@@ -277,6 +279,7 @@
           var amount = Math.round((rg[0] + Math.random() * (rg[1] - rg[0])) / 10) * 10;
           s.stock--; s.opened++; write(s);
           window.PokeMoney.add(amount);
+          if(window.PokePass) window.PokePass.addXp(window.PokePass.xpCrate);
           return { money:{ amount:amount, rar:rar } };
         }
         var byRar = RARITIES.map(function(r, i){ return all.filter(function(it){ return it.rar === i; }); });
@@ -284,6 +287,7 @@
         var list = byRar[ri], item = list[Math.floor(Math.random() * list.length)];
         s.stock--; s.opened++; s.owned[item.key] = Date.now();
         write(s);
+        if(window.PokePass) window.PokePass.addXp(window.PokePass.xpCrate);
         return { item:item };
       },
       // Équipe directement l'objet sur le profil enregistré. false s'il n'y a pas encore de profil.
@@ -293,6 +297,82 @@
         cur[item.field] = item.idx; P.set(cur); return true;
       }
     };
+  })();
+  // Battle Pass (window.PokePass) : 30 paliers, de l'XP gagnée en finissant des manches multijoueur et en ouvrant des crates.
+  // Chaque palier a une récompense à récupérer (Pokédollars, crates) ; les paliers 10, 20 et 30 donnent un skin exclusif du Pokédex
+  // (couleur de la coque), appliqué via l'attribut data-skin sur <html> (voir les règles CSS :root[data-skin=...]).
+  (function(){
+    var KEY = "pokePass_v1", XP_TIER = 100, MAX_TIER = 30;
+    var SKINS = {
+      "default": { name:"Rouge classique", color:"#E23B30", tier:0 },
+      ocean:     { name:"Océan",           color:"#2F7FD8", tier:10 },
+      spectre:   { name:"Spectre",         color:"#7D4FD6", tier:20 },
+      gold:      { name:"Légendaire",      color:"#D9A21B", tier:30 }
+    };
+    // m = Pokédollars, c = crates, s = skin
+    var R = [ {m:100},{c:1},{m:150},{c:1},{m:250},{c:1},{m:300},{c:1},{m:400},{s:"ocean"},
+              {c:1},{m:400},{c:1},{m:500},{c:2},{m:600},{c:1},{m:700},{c:2},{s:"spectre"},
+              {c:1},{m:800},{c:2},{m:900},{c:2},{m:1000},{c:2},{m:1500},{c:3},{s:"gold"} ];
+    function read(){
+      var s = { xp:0, claimed:{}, skin:"default" };
+      try{
+        var o = JSON.parse(localStorage.getItem(KEY) || "null");
+        if(o && typeof o === "object"){
+          s.xp = Math.min(XP_TIER * MAX_TIER, Math.max(0, Math.floor(Number(o.xp)) || 0));
+          if(o.claimed && typeof o.claimed === "object") Object.keys(o.claimed).forEach(function(k){ var t = Number(k); if(t >= 1 && t <= MAX_TIER && o.claimed[k]) s.claimed[t] = true; });
+          if(typeof o.skin === "string" && SKINS[o.skin]) s.skin = o.skin;
+        }
+      }catch(e){}
+      if(s.skin !== "default" && !s.claimed[SKINS[s.skin].tier]) s.skin = "default";
+      return s;
+    }
+    function write(s){ try{ localStorage.setItem(KEY, JSON.stringify(s)); }catch(e){} window.dispatchEvent(new CustomEvent("passchange")); }
+    function level(xp){ return Math.min(MAX_TIER, Math.floor(xp / XP_TIER)); }
+    function applySkin(id){
+      var el = document.documentElement;
+      if(id && id !== "default" && SKINS[id]) el.setAttribute("data-skin", id); else el.removeAttribute("data-skin");
+    }
+    function tiers(){ return R.map(function(r, i){ return { tier:i + 1, money:r.m || 0, crates:r.c || 0, skin:r.s || null }; }); }
+    var API = window.PokePass = {
+      xpTier: XP_TIER, maxTier: MAX_TIER, xpRound: 50, xpCrate: 25, skins: SKINS, tiers: tiers,
+      state: function(){
+        var s = read(), lv = level(s.xp);
+        return { xp:s.xp, level:lv, into: lv >= MAX_TIER ? XP_TIER : s.xp - lv * XP_TIER, claimed:s.claimed, skin:s.skin };
+      },
+      addXp: function(n){
+        n = Math.floor(Number(n)); if(!(n > 0)) return;
+        var s = read(), before = level(s.xp);
+        s.xp = Math.min(XP_TIER * MAX_TIER, s.xp + n); write(s);
+        var after = level(s.xp);
+        if(after > before && window.toast) window.toast("Battle Pass : palier " + after + " atteint !", { kind:"win", icon:"🏆" });
+      },
+      canClaim: function(t){ var s = read(); return t >= 1 && t <= MAX_TIER && level(s.xp) >= t && !s.claimed[t]; },
+      claimable: function(){ var s = read(), lv = level(s.xp), n = 0; for(var t = 1; t <= lv; t++) if(!s.claimed[t]) n++; return n; },
+      // Récupère la récompense d'un palier. Renvoie { money, crates, skin } ou null.
+      claim: function(t){
+        if(!this.canClaim(t)) return null;
+        var r = R[t - 1], s = read(), out = { money:0, crates:0, skin:null };
+        if(r.c){
+          if(!window.PokeCrates || window.PokeCrates.state().stock + r.c > 99) return null; // stock plein : on ne perd pas la récompense
+          out.crates = window.PokeCrates.grant(r.c);
+        }
+        s.claimed[t] = true; write(s);
+        if(r.m){ window.PokeMoney.add(r.m); out.money = r.m; }
+        if(r.s){ out.skin = r.s; }
+        return out;
+      },
+      claimAll: function(){
+        var tot = { money:0, crates:0, skins:0 };
+        for(var t = 1; t <= MAX_TIER; t++){ var o = this.canClaim(t) ? this.claim(t) : null; if(o){ tot.money += o.money; tot.crates += o.crates; if(o.skin) tot.skins++; } }
+        return tot;
+      },
+      ownsSkin: function(id){ var s = read(); return id === "default" || (!!SKINS[id] && !!s.claimed[SKINS[id].tier]); },
+      setSkin: function(id){
+        if(!SKINS[id] || !this.ownsSkin(id)) return false;
+        var s = read(); s.skin = id; write(s); applySkin(id); return true;
+      }
+    };
+    applySkin(read().skin);
   })();
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -1910,6 +1990,24 @@
     display:flex;
     justify-content:center;
     margin-bottom:6px;
+  }
+  /* ============ SKINS DU POKÉDEX (Battle Pass) ============ */
+  :root[data-skin="ocean"]  { --red:#2F7FD8; --red-dark:#1B4F94; --red-darker:#0d2a52; --red-mid:#2670c4; --skin-glow:rgba(47,127,216,.30); }
+  :root[data-skin="spectre"]{ --red:#7D4FD6; --red-dark:#4B2A96; --red-darker:#22104d; --red-mid:#6A40BC; --skin-glow:rgba(125,79,214,.32); }
+  :root[data-skin="gold"]   { --red:#C98A10; --red-dark:#8A5A06; --red-darker:#3d2602; --red-mid:#E0A82A; --skin-glow:rgba(255,201,60,.30); }
+  :root[data-skin] .device{
+    background: linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,0) 22%),
+                linear-gradient(160deg, var(--red) 0%, var(--red-mid) 55%, var(--red-dark) 100%);
+  }
+  :root[data-skin="gold"] .device{
+    background: linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,0) 22%),
+                linear-gradient(160deg, #F6D56A 0%, #D9A21B 30%, #8A5A06 62%, #E0A82A 100%);
+  }
+  :root[data-skin] body{
+    background: radial-gradient(900px 500px at 15% -10%, var(--skin-glow), transparent 60%),
+                radial-gradient(800px 500px at 100% 0%, rgba(255,201,60,.12), transparent 55%),
+                linear-gradient(180deg, #1b1612 0%, #0f0c09 100%);
+    background-attachment: fixed;
   }
 </style>
 <link rel="stylesheet" href="theme.css">
@@ -4720,11 +4818,14 @@
     if(typeof n !== "number") return;
     if(mpRoundsFinishedSeen === null){ mpRoundsFinishedSeen = n; return; }
     if(n > mpRoundsFinishedSeen){
+      const prevSeen = mpRoundsFinishedSeen;
       let total = 0;
       for(let i = mpRoundsFinishedSeen; i < n; i++) total += MP_ROUND_REWARD_MIN + Math.floor(Math.random() * (MP_ROUND_REWARD_MAX - MP_ROUND_REWARD_MIN + 1));
       mpRoundsFinishedSeen = n;
       if(window.PokeMoney) window.PokeMoney.add(total);
-      if(window.toast) window.toast("Manche terminée ! +" + total + " ₽", { kind:"ok", icon:"💰" });
+      const xp = (window.PokePass ? window.PokePass.xpRound : 0) * (n - prevSeen);
+      if(window.PokePass) window.PokePass.addXp(xp);
+      if(window.toast) window.toast("Manche terminée ! +" + total + " ₽" + (xp ? " · +" + xp + " XP" : ""), { kind:"ok", icon:"💰" });
     }
   }
   let mpTeamsPickedPlayerId = null; // (hôte, mode équipes) joueur actuellement "sélectionné" en attente d'un tap sur une équipe/zone "non assignés"
@@ -5952,7 +6053,7 @@
     rule:    { btn: "tabRule",    pane: "rulePane",    host: "ruleHost",    src: "rule.js?v=1",    api: "RuleTab",    label: "rule.js" },
     group:   { btn: "tabGroup",   pane: "groupPane",   host: "groupHost",   src: "group.js?v=1",   api: "GroupTab",   label: "group.js" },
     profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=9", api: "ProfileTab", label: "profile.js" },
-    crates:  { btn: "tabCrates",  pane: "cratesPane",  host: "cratesHost",  src: "crates.js?v=5",  api: "CratesTab",  label: "crates.js" }
+    crates:  { btn: "tabCrates",  pane: "cratesPane",  host: "cratesHost",  src: "crates.js?v=6",  api: "CratesTab",  label: "crates.js" }
   };
   var loaded = {};
   function fail(t, msg){
@@ -5989,8 +6090,8 @@
   Object.keys(TABS).forEach(function(k){ document.getElementById(TABS[k].btn).onclick = function(){ setTab(k); }; });
   window.PokeTabs = { set: setTab, load: load, current: function(){ var a = "guess"; Object.keys(TABS).forEach(function(k){ if (document.getElementById(TABS[k].btn).classList.contains("active")) a = k; }); return a; } };
   // Pastille rouge sur l'onglet Bonus tant qu'une crate attend d'être ouverte.
-  function crateDot(){ try{ document.getElementById("tabCrates").classList.toggle("has-dot", !!(window.PokeCrates && window.PokeCrates.available())); }catch(e){} }
-  window.addEventListener("cratechange", crateDot);
+  function crateDot(){ try{ document.getElementById("tabCrates").classList.toggle("has-dot", !!((window.PokeCrates && window.PokeCrates.available()) || (window.PokePass && window.PokePass.claimable() > 0))); }catch(e){} }
+  window.addEventListener("cratechange", crateDot); window.addEventListener("passchange", crateDot);
   document.addEventListener("visibilitychange", function(){ if (!document.hidden) crateDot(); });
   setInterval(crateDot, 60000); crateDot();
   var start = "guess";

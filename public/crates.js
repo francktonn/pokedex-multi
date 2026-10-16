@@ -1,4 +1,4 @@
-/* crates.js — onglet « Bonus » (sections Crates et Shop) : une crate gratuite par jour, contenant un objet de personnalisation de profil au hasard
+/* crates.js — onglet « Bonus » (sections Crates, Battle Pass et Shop) : une crate gratuite par jour, contenant un objet de personnalisation de profil au hasard
    (fond de carte, titre, style de cadre, forme de photo, effet, police ou couleur du pseudo).
    Shadow DOM : HTML/CSS/ids isolés du reste du site. La logique (stock, tirage, objets obtenus) est dans window.PokeCrates
    (index.html), pour que l'onglet Profil puisse lire les objets gagnés. */
@@ -34,6 +34,16 @@
     ".seg{display:flex; gap:6px; margin-bottom:12px; background:rgba(0,0,0,.25); padding:5px; border-radius:16px;}",
     ".seg button{flex:1; min-height:42px; border:0; border-radius:12px; cursor:pointer; font-family:'Baloo 2',sans-serif; font-weight:800; font-size:15px; color:#fff; background:transparent;}",
     ".seg button.on{background:var(--gold); color:#221d17; box-shadow:0 3px 0 var(--gold-deep);}",
+    ".bar{height:16px; border-radius:99px; background:rgba(0,0,0,.15); overflow:hidden; margin:8px 0 4px;} .bar i{display:block; height:100%; background:linear-gradient(90deg,#ffd96b,var(--gold-deep)); transition:width .4s var(--ease);}",
+    ".lvl{font-family:'Baloo 2',sans-serif; font-weight:800; font-size:26px;} .xpt{color:var(--muted); font-weight:800; font-size:13px;}",
+    ".skins{display:grid; grid-template-columns:repeat(2,1fr); gap:8px;}",
+    ".sk{border:2px solid var(--line); background:var(--card); color:var(--ink); border-radius:14px; padding:10px 8px; cursor:pointer; font:inherit; font-weight:800; font-size:13px; display:flex; flex-direction:column; align-items:center; gap:6px;}",
+    ".sk .sw{width:44px; height:44px; border-radius:50%; box-shadow:inset 0 0 0 3px rgba(0,0,0,.2);} .sk.on{border-color:var(--ok); box-shadow:0 0 0 2px var(--ok);} .sk.no{opacity:.5; cursor:default; border-style:dashed;} .sk small{color:var(--muted); font-size:11px;}",
+    ".trow{display:flex; align-items:center; gap:10px; background:var(--card); border:2px solid var(--line); border-radius:12px; padding:8px 10px; margin-bottom:6px; font-weight:800; font-size:14px;}",
+    ".trow .tn{width:34px; height:34px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-family:'Baloo 2',sans-serif; background:rgba(0,0,0,.1);}",
+    ".trow .tl{flex:1; min-width:0;} .trow.lock{opacity:.55;} .trow.can{border-color:var(--gold); box-shadow:0 0 0 2px rgba(255,201,60,.4);} .trow.skin{border-color:#9b6bd6;} .trow.done .tl{text-decoration:line-through; opacity:.7;}",
+    ".trow .go{border:0; border-radius:10px; min-height:34px; padding:0 12px; cursor:pointer; font-family:'Baloo 2',sans-serif; font-weight:800; font-size:13px; color:#221d17; background:var(--gold); box-shadow:0 3px 0 var(--gold-deep);}",
+    ".trow .st{font-size:18px;}",
     ".shopbig{text-align:center; font-family:'Baloo 2',sans-serif; font-weight:800; font-size:22px; color:var(--gold-deep); margin-top:6px;}",
     /* bouton */
     ".btn{width:100%; min-height:50px; border:0; border-radius:16px; cursor:pointer; margin-top:12px; font-family:'Baloo 2',sans-serif; font-weight:800; font-size:17px; color:#221d17;",
@@ -91,7 +101,26 @@
   var HTML = [
     '<div class="device">',
     '  <div class="top"><span class="lens"></span><span class="brand">BONUS</span><span class="wallet" id="wallet" title="Tes Pokédollars"></span><button type="button" class="themebtn" id="themeBtn" aria-label="Mode sombre">🌙</button></div>',
-    '  <div class="seg" role="tablist"><button type="button" class="on" id="segCrates">🎁 Crates</button><button type="button" id="segShop">🛒 Shop</button></div>',
+    '  <div class="seg" role="tablist"><button type="button" class="on" id="segCrates">🎁 Crates</button><button type="button" id="segPass">🏆 Pass</button><button type="button" id="segShop">🛒 Shop</button></div>',
+    '  <div id="secPass" class="hidden">',
+    '  <section class="panel">',
+    '    <h2>🏆 Battle Pass</h2>',
+    '    <div class="head"><span class="lvl" id="passLvl"></span><span class="xpt" id="passXp"></span></div>',
+    '    <div class="bar"><i id="passBar"></i></div>',
+    '    <p class="hint2" id="passHint"></p>',
+    '    <button type="button" class="btn" id="claimAll"></button>',
+    '    <div class="msg" id="passMsg" role="status"></div>',
+    '  </section>',
+    '  <section class="panel">',
+    '    <h2>🎨 Skins du Pokédex</h2>',
+    '    <p class="sub">Les skins exclusifs se débloquent aux paliers 10, 20 et 30.</p>',
+    '    <div class="skins" id="skins"></div>',
+    '  </section>',
+    '  <section class="panel">',
+    '    <h2>🎁 Les 30 paliers</h2>',
+    '    <div id="tiers"></div>',
+    '  </section>',
+    '  </div>',
     '  <div id="secShop" class="hidden">',
     '  <section class="panel">',
     '    <h2>🛒 Shop</h2>',
@@ -299,20 +328,68 @@
       else { m.textContent = "Achat impossible."; m.className = "msg ko"; }
       renderShop(); refreshMain();
     });
-    function showSec(shop) {
-      $("secShop").classList.toggle("hidden", !shop); $("secCrates").classList.toggle("hidden", shop);
-      $("segShop").classList.toggle("on", shop); $("segCrates").classList.toggle("on", !shop);
-      if (shop) { $("shopMsg").textContent = ""; renderShop(); }
+    // ---- Battle Pass ----
+    var PP = window.PokePass;
+    function rewardText(t) {
+      if (t.skin) return "🎨 Skin Pokédex « " + PP.skins[t.skin].name + " »";
+      if (t.money) return "💰 " + window.PokeMoney.format(t.money);
+      return "🎁 " + t.crates + " crate" + (t.crates > 1 ? "s" : "");
     }
-    $("segCrates").addEventListener("click", function () { showSec(false); });
-    $("segShop").addEventListener("click", function () { showSec(true); });
+    function renderPass() {
+      var st = PP.state(), n = PP.claimable();
+      $("passLvl").textContent = "Palier " + st.level + " / " + PP.maxTier;
+      $("passXp").textContent = st.level >= PP.maxTier ? "MAX" : st.into + " / " + PP.xpTier + " XP";
+      $("passBar").style.width = Math.round(100 * st.into / PP.xpTier) + "%";
+      $("passHint").textContent = "+" + PP.xpRound + " XP par manche multijoueur terminée, +" + PP.xpCrate + " XP par crate ouverte.";
+      var ca = $("claimAll"); ca.disabled = n === 0; ca.textContent = n ? "🎁 Tout récupérer (" + n + ")" : "Rien à récupérer";
+      var sk = $("skins"); sk.textContent = "";
+      Object.keys(PP.skins).forEach(function (id) {
+        var s = PP.skins[id], owned = PP.ownsSkin(id), b = el("button", "sk" + (st.skin === id ? " on" : "") + (owned ? "" : " no")); b.type = "button";
+        var sw = el("span", "sw"); sw.style.background = s.color; b.appendChild(sw); b.appendChild(document.createTextNode(s.name));
+        b.appendChild(el("small", "", st.skin === id ? "✅ Équipé" : owned ? "Équiper" : "🔒 Palier " + s.tier));
+        if (owned) b.onclick = function () { PP.setSkin(id); };
+        sk.appendChild(b);
+      });
+      var list = $("tiers"); list.textContent = "";
+      PP.tiers().forEach(function (t) {
+        var done = !!st.claimed[t.tier], can = PP.canClaim(t.tier);
+        var r = el("div", "trow" + (t.skin ? " skin" : "") + (done ? " done" : can ? " can" : " lock"));
+        r.appendChild(el("span", "tn", String(t.tier))); r.appendChild(el("span", "tl", rewardText(t)));
+        if (can) { var g = el("button", "go", "Récupérer"); g.type = "button"; g.onclick = function () { claimOne(t.tier); }; r.appendChild(g); }
+        else r.appendChild(el("span", "st", done ? "✅" : "🔒"));
+        list.appendChild(r);
+      });
+    }
+    function claimOne(t) {
+      var o = PP.claim(t), m = $("passMsg");
+      if (o) { m.textContent = "Récompense récupérée !"; m.className = "msg ok"; }
+      else { m.textContent = "Impossible : ton stock de crates est plein (99). Ouvre-en quelques-unes."; m.className = "msg ko"; }
+    }
+    $("claimAll").addEventListener("click", function () {
+      var before = PP.claimable(), o = PP.claimAll(), m = $("passMsg");
+      var left = PP.claimable();
+      if (left > 0) { m.textContent = "Récupéré, sauf " + left + " palier(s) : stock de crates plein (99)."; m.className = "msg ko"; }
+      else if (before) { m.textContent = "Tout est récupéré : +" + window.PokeMoney.format(o.money) + ", " + o.crates + " crate(s)" + (o.skins ? ", " + o.skins + " skin(s)" : "") + "."; m.className = "msg ok"; }
+    });
+    window.addEventListener("passchange", function () { renderPass(); renderShop(); refreshMain(); });
+
+    function showSec(which) {
+      var shop = which === "shop", pass = which === "pass";
+      $("secShop").classList.toggle("hidden", !shop); $("secPass").classList.toggle("hidden", !pass); $("secCrates").classList.toggle("hidden", shop || pass);
+      $("segShop").classList.toggle("on", shop); $("segPass").classList.toggle("on", pass); $("segCrates").classList.toggle("on", !shop && !pass);
+      if (shop) { $("shopMsg").textContent = ""; renderShop(); }
+      if (pass) { $("passMsg").textContent = ""; renderPass(); }
+    }
+    $("segCrates").addEventListener("click", function () { showSec("crates"); });
+    $("segPass").addEventListener("click", function () { showSec("pass"); });
+    $("segShop").addEventListener("click", function () { showSec("shop"); });
     window.addEventListener("moneychange", renderShop);
     window.addEventListener("cratechange", renderShop);
 
     // ---- Démarrage : crédite la crate du jour, puis tic-tac jusqu'à minuit ----
     C.sync();
     renderWallet(); window.addEventListener("moneychange", renderWallet);
-    renderOdds(); renderCollection(); refreshMain(); renderShop();
+    renderOdds(); renderCollection(); refreshMain(); renderShop(); renderPass();
     var timer = setInterval(function () {
       if (!host.isConnected) { clearInterval(timer); return; }
       if (document.hidden || busy) return;
