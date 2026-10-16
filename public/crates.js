@@ -32,7 +32,7 @@
     ".count{font-family:'Baloo 2',sans-serif; font-weight:800; font-size:15px; color:var(--muted);}",
     ".hidden{display:none !important;}",
     ".seg{display:flex; gap:6px; margin-bottom:12px; background:rgba(0,0,0,.25); padding:5px; border-radius:16px;}",
-    ".seg button{flex:1; min-height:42px; border:0; border-radius:12px; cursor:pointer; font-family:'Baloo 2',sans-serif; font-weight:800; font-size:15px; color:#fff; background:transparent;}",
+    ".seg button{flex:1; min-height:42px; border:0; border-radius:12px; cursor:pointer; font-family:'Baloo 2',sans-serif; font-weight:800; font-size:13px; padding:0 4px; color:#fff; background:transparent;}",
     ".seg button.on{background:var(--gold); color:#221d17; box-shadow:0 3px 0 var(--gold-deep);}",
     ".bar{height:16px; border-radius:99px; background:rgba(0,0,0,.15); overflow:hidden; margin:8px 0 4px;} .bar i{display:block; height:100%; background:linear-gradient(90deg,#ffd96b,var(--gold-deep)); transition:width .4s var(--ease);}",
     ".lvl{font-family:'Baloo 2',sans-serif; font-weight:800; font-size:26px;} .xpt{color:var(--muted); font-weight:800; font-size:13px;}",
@@ -101,7 +101,16 @@
   var HTML = [
     '<div class="device">',
     '  <div class="top"><span class="lens"></span><span class="brand">BONUS</span><span class="wallet" id="wallet" title="Tes Pokédollars"></span><button type="button" class="themebtn" id="themeBtn" aria-label="Mode sombre">🌙</button></div>',
-    '  <div class="seg" role="tablist"><button type="button" class="on" id="segCrates">🎁 Crates</button><button type="button" id="segPass">🏆 Pass</button><button type="button" id="segShop">🛒 Shop</button></div>',
+    '  <div class="seg" role="tablist"><button type="button" class="on" id="segCrates">🎁 Crates</button><button type="button" id="segPass">🏆 Pass</button><button type="button" id="segShop">🛒 Shop</button><button type="button" id="segAdmin">🔑 Admin</button></div>',
+    '  <div id="secAdmin" class="hidden">',
+    '  <section class="panel">',
+    '    <h2>🔑 Accès admin</h2>',
+    '    <p class="sub">Entre le code admin pour tout débloquer sur cet appareil (objets, paliers, skins, Pokédollars).</p>',
+    '    <input id="adminCode" type="password" autocomplete="off" placeholder="Code admin" style="width:100%; min-height:46px; border-radius:12px; border:1px solid var(--line); padding:0 12px; font:inherit; background:var(--card); color:var(--ink);">',
+    '    <button type="button" class="btn" id="adminBtn">Déverrouiller</button>',
+    '    <div class="msg" id="adminMsg" role="status"></div>',
+    '  </section>',
+    '  </div>',
     '  <div id="secPass" class="hidden">',
     '  <section class="panel">',
     '    <h2>🏆 Battle Pass</h2>',
@@ -153,12 +162,6 @@
     '    <p class="hint2">Tu ne tires jamais deux fois le même objet. Si une rareté est épuisée, ses chances sont redistribuées. Une fois tous les objets obtenus, chaque crate donne des Pokédollars.</p>',
     '  </section>',
     '  </div>',
-    '  <details class="panel" id="adminBox"><summary style="cursor:pointer; font-weight:800; font-size:13px; color:var(--muted);">🔑 Accès admin</summary>',
-    '    <p class="sub" style="margin-top:10px;">Débloque tout (objets, paliers, skins, Pokédollars) sur cet appareil.</p>',
-    '    <input id="adminCode" type="password" autocomplete="off" placeholder="Code admin" style="width:100%; min-height:44px; border-radius:12px; border:1px solid var(--line); padding:0 12px; font:inherit; background:var(--card); color:var(--ink);">',
-    '    <button type="button" class="btn" id="adminBtn">Déverrouiller</button>',
-    '    <div class="msg" id="adminMsg" role="status"></div>',
-    '  </details>',
     '</div>'
   ].join("\n");
 
@@ -380,15 +383,17 @@
     window.addEventListener("passchange", function () { renderPass(); renderShop(); refreshMain(); });
 
     function showSec(which) {
-      var shop = which === "shop", pass = which === "pass";
-      $("secShop").classList.toggle("hidden", !shop); $("secPass").classList.toggle("hidden", !pass); $("secCrates").classList.toggle("hidden", shop || pass);
-      $("segShop").classList.toggle("on", shop); $("segPass").classList.toggle("on", pass); $("segCrates").classList.toggle("on", !shop && !pass);
+      var shop = which === "shop", pass = which === "pass", adm = which === "admin";
+      $("secAdmin").classList.toggle("hidden", !adm); $("segAdmin").classList.toggle("on", adm);
+      $("secShop").classList.toggle("hidden", !shop); $("secPass").classList.toggle("hidden", !pass); $("secCrates").classList.toggle("hidden", shop || pass || adm);
+      $("segShop").classList.toggle("on", shop); $("segPass").classList.toggle("on", pass); $("segCrates").classList.toggle("on", !shop && !pass && !adm);
       if (shop) { $("shopMsg").textContent = ""; renderShop(); }
       if (pass) { $("passMsg").textContent = ""; renderPass(); }
     }
     $("segCrates").addEventListener("click", function () { showSec("crates"); });
     $("segPass").addEventListener("click", function () { showSec("pass"); });
     $("segShop").addEventListener("click", function () { showSec("shop"); });
+    $("segAdmin").addEventListener("click", function () { showSec("admin"); });
     window.addEventListener("moneychange", renderShop);
     window.addEventListener("cratechange", renderShop);
 
