@@ -94,14 +94,14 @@
     '  </section>',
     '  <section class="panel">',
     '    <div class="head"><h2>📚 Ma collection</h2><span class="count" id="collCount"></span></div>',
-    '    <p class="sub">Les objets de crate sont à toi pour de bon, même si ton niveau est trop bas pour les débloquer. Touche-en un pour le revoir ou l\'équiper.</p>',
+    '    <p class="sub">Les objets verrouillés (🔒) de ton profil ne s\'obtiennent qu\'ici. Touche un objet débloqué pour le revoir ou l\'équiper.</p>',
     '    <div id="collBody"></div>',
     '  </section>',
     '  <section class="panel">',
     '    <h2>🎲 Chances de drop</h2>',
-    '    <p class="sub">La rareté dépend du niveau qu\'il faudrait normalement pour débloquer l\'objet.</p>',
+    '    <p class="sub">Chaque objet a une rareté fixe : plus elle est haute, plus il est difficile à obtenir.</p>',
     '    <div class="odds" id="odds"></div>',
-    '    <p class="hint2">Les objets que tu possèdes déjà ou que ton niveau débloque déjà ne sont plus tirés tant qu\'il en reste d\'autres. Si une rareté est épuisée, ses chances sont redistribuées.</p>',
+    '    <p class="hint2">Tu ne tires jamais deux fois le même objet. Si une rareté est épuisée, ses chances sont redistribuées.</p>',
     '  </section>',
     '</div>'
   ].join("\n");
@@ -174,7 +174,7 @@
       var pill = el("div", "rpill", (fresh ? "Nouvel objet · " : "") + R.name); pill.style.background = R.color; rv.appendChild(pill);
       rv.appendChild(buildPreview(item));
       rv.appendChild(el("div", "rname", label(item)));
-      rv.appendChild(el("div", "rcat", item.catName + " · se débloque normalement au niveau " + item.min));
+      rv.appendChild(el("div", "rcat", item.catName));
       var eq = el("button", "btn", "✨ Équiper sur ma carte"); eq.type = "button"; rv.appendChild(eq);
       var rmsg = el("div", "msg"); rv.appendChild(rmsg);
       eq.onclick = function () {

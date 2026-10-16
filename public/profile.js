@@ -71,15 +71,9 @@
     ".gear{border:0; width:40px; height:40px; border-radius:50%; cursor:pointer; font-size:18px; background:var(--card); border:1px solid var(--line); transition:transform .25s var(--ease), background .2s;}",
     ".gear:hover{transform:rotate(45deg);} .gear.on{background:rgba(255,201,60,.3); border-color:var(--gold-deep); transform:rotate(90deg);}",
     ".ttl{font-weight:800; font-size:12px; letter-spacing:.03em; opacity:.9; margin-top:2px; color:var(--gold);}",
-    ".lvbadge{display:inline-block; margin:6px 6px 0 0; padding:2px 10px; border-radius:999px; font-size:12px; font-weight:800; color:#221d17; background:var(--gold);}",
     ".team{display:flex; gap:4px; margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,.18);}",
     ".team span{flex:1; min-width:0; aspect-ratio:1; border-radius:12px; background:rgba(0,0,0,.28); display:flex; align-items:center; justify-content:center;}",
     ".team img{width:92%; height:92%; object-fit:contain; image-rendering:pixelated;}",
-    /* niveau / xp */
-    ".xp{margin-top:10px;} .xprow{display:flex; justify-content:space-between; align-items:baseline; gap:8px;}",
-    ".xprow b{font-family:'Baloo 2',sans-serif; font-size:17px;} .xprow small, .xphint{color:var(--muted); font-weight:700; font-size:12px;}",
-    ".bar{height:12px; border-radius:999px; background:var(--card); border:1px solid var(--line); overflow:hidden; margin:4px 0;}",
-    ".bar i{display:block; height:100%; width:0; border-radius:999px; background:linear-gradient(90deg,#ffd96b,var(--gold-deep)); transition:width .5s var(--ease);}",
     /* options supplémentaires */
     ".bgs{display:grid; grid-template-columns:repeat(3,1fr); gap:6px;}",
     ".bgs button, .titles button{min-height:44px; border-radius:12px; cursor:pointer; font:inherit; font-weight:800; font-size:12.5px; color:var(--ink); background:var(--card); border:2px solid var(--line); padding:4px 6px;}",
@@ -118,15 +112,14 @@
     '  <section class="panel" id="cardPanel">',
     '    <div class="head"><h2>Ma carte</h2><button type="button" class="gear" id="gear" aria-label="Modifier ma carte" aria-expanded="false" title="Modifier ma carte">⚙️</button></div>',
     '    <div class="card" id="card">',
-    '      <div class="avatarbox"><div class="avatar" id="avatar"><span>?</span></div><div class="who"><div class="nm" id="avName">Sans pseudo</div><div class="ttl hidden" id="avTitle"></div><div class="fv" id="avFav">Pokémon préféré : à choisir</div><span class="lvbadge" id="avLvl">Niv. 1</span><span class="tchip hidden" id="avType"></span></div></div>',
+    '      <div class="avatarbox"><div class="avatar" id="avatar"><span>?</span></div><div class="who"><div class="nm" id="avName">Sans pseudo</div><div class="ttl hidden" id="avTitle"></div><div class="fv" id="avFav">Pokémon préféré : à choisir</div><span class="tchip hidden" id="avType"></span></div></div>',
     '      <div class="motto" id="avMotto"></div>',
     '      <div class="team hidden" id="avTeam"></div>',
     '    </div>',
     '    <div class="pvnote hidden" id="pvNote"></div>',
-    '    <div class="xp"><div class="xprow"><b id="xpLvl">Niveau 1</b><small id="xpTxt"></small></div><div class="bar"><i id="xpFill"></i></div><div class="xphint" id="xpHint"></div></div>',
     '    <div id="editor" class="hidden">',
     '    <p class="sub" style="margin-top:12px">Ton pseudo, ta photo et ton style seront utilisés automatiquement dans tous les modes de jeu.</p>',
-    '    <p class="hint2">👁️ Les éléments marqués 🔒 sont déjà prévisualisables sur ta carte : ils seront enregistrés dès que tu auras le niveau requis (ou que tu l\'auras obtenu dans une crate).</p>',
+    '    <p class="hint2">👁️ Les éléments marqués 🔒 sont déjà prévisualisables sur ta carte : ils seront enregistrés dès que tu les auras obtenus dans une crate (onglet 🎁 Crates).</p>',
     '    <label for="pName">Ton pseudo</label>',
     '    <input type="text" id="pName" maxlength="16" autocomplete="off" placeholder="Sacha">',
     '    <label for="pFav">Ton Pokémon préféré</label>',
@@ -199,11 +192,11 @@
     var P = window.PokeProfile;
     var names = [], folded = [];
     var draft = newDraft();
-    // Objets obtenus dans les crates : ils comptent comme débloqués, quel que soit le niveau.
+    // Objets de crate : les éléments avec min > 0 ne sont débloqués que si tu les as obtenus dans une crate.
     var C = window.PokeCrates, LISTOF = {};
     LOCKS.forEach(function (k) { LISTOF[k[0]] = k[1]; });
     function owned(list, i) { return !!(C && C.owns(list, i)); }
-    function isLocked(list, i, lv) { var it = P[list][i]; return !!it && it.min > lv && !owned(list, i); }
+    function isLocked(list, i) { var it = P[list][i]; return !!it && it.min > 0 && !owned(list, i); }
 
     function fold(s) { return String(s || "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[’']/g, "'").replace(/[\s\-.]+/g, " ").trim(); }
     function nameOf(id) { return names[id - 1] || ("Pokémon n°" + id); }
@@ -225,20 +218,6 @@
       else { var d = docEl.getAttribute("data-theme") === "dark"; if (d) docEl.removeAttribute("data-theme"); else docEl.setAttribute("data-theme", "dark"); try { localStorage.setItem("pokedexTheme", d ? "light" : "dark"); } catch (e) {} }
     });
     syncTheme();
-
-    function curLevel() { return window.PokeStats ? window.PokeStats.level() : { level: 1, into: 0, need: 50, xp: 0 }; }
-
-    // ---- Niveau / XP ----
-    function renderLevel() {
-      var L = curLevel();
-      $("avLvl").textContent = "Niv. " + L.level;
-      $("xpLvl").textContent = "Niveau " + L.level;
-      $("xpTxt").textContent = L.max ? "Niveau max" : L.into + " / " + L.need + " XP";
-      $("xpFill").style.width = (L.max ? 100 : Math.round(100 * L.into / L.need)) + "%";
-      var next = null;
-      LOCKS.forEach(function (k) { P[k[1]].forEach(function (it, i) { if (it.min > L.level && !owned(k[1], i) && (!next || it.min < next.min)) next = { min: it.min, what: k[3] + " « " + it.name + " »" }; }); });
-      $("xpHint").textContent = next ? "Prochain déblocage au niveau " + next.min + " : " + next.what + "." : "Tout est débloqué !";
-    }
 
     // ---- Aperçu de la carte ----
     function renderPreview() {
@@ -262,25 +241,25 @@
       draft.team.forEach(function (id) {
         var sp = el("span"), im = document.createElement("img"); im.alt = nameOf(id); im.loading = "lazy"; im.src = P.sprite(id, 0); sp.appendChild(im); tm.appendChild(sp);
       });
-      renderLevel(); renderLockNote();
+      renderLockNote();
       $("avMotto").textContent = $("pMotto").value.trim() ? "« " + $("pMotto").value.trim() + " »" : "";
     }
 
     // ---- Éléments verrouillés : aperçu autorisé, enregistrement refusé ----
     function lockedPicks() {
-      var lv = curLevel().level, out = [];
-      LOCKS.forEach(function (k) { var it = P[k[1]][draft[k[0]]]; if (it && isLocked(k[1], draft[k[0]], lv)) out.push({ key: k[0], list: k[1], label: k[2], name: it.name, min: it.min }); });
+      var out = [];
+      LOCKS.forEach(function (k) { var it = P[k[1]][draft[k[0]]]; if (it && isLocked(k[1], draft[k[0]])) out.push({ key: k[0], list: k[1], label: k[2], name: it.name, min: it.min }); });
       return out;
     }
     function renderLockNote() {
       var n = $("pvNote"), lk = lockedPicks();
       n.classList.toggle("hidden", !lk.length);
-      if (lk.length) n.textContent = "👁️ Aperçu uniquement : " + lk.map(function (x) { return "« " + x.name + " » (niv. " + x.min + ")"; }).join(", ") + ". Ces éléments ne seront pas enregistrés tant que tu ne les auras pas débloqués.";
+      if (lk.length) n.textContent = "👁️ Aperçu uniquement : " + lk.map(function (x) { return "« " + x.name + " »"; }).join(", ") + ". Ces éléments ne seront pas enregistrés tant que tu ne les auras pas débloqués.";
     }
-    function optBtn(label, i, key, list, lv) {
-      var locked = isLocked(LISTOF[key], i, lv);
+    function optBtn(label, i, key, list) {
+      var locked = isLocked(LISTOF[key], i);
       var b = el("button", (i === draft[key] ? "on" : "") + (locked ? " locked" : ""), label); b.type = "button";
-      if (locked) { b.appendChild(el("small", "", "🔒 niv. " + list[i].min)); b.title = "Se débloque au niveau " + list[i].min + " ou dans une crate (aperçu possible)"; }
+      if (locked) { b.appendChild(el("small", "", "🔒 Crate")); b.title = "À obtenir dans une crate (aperçu possible)"; }
       b.onclick = function () { draft[key] = i; say(""); renderOptions(); renderPreview(); };
       return b;
     }
@@ -299,8 +278,7 @@
         b.onclick = function () { draft.color = i; say(""); renderOptions(); renderPreview(); };
         sw.appendChild(b);
       });
-      var L = curLevel().level;
-      function fill(id, key, list, labelOf) { var box = $(id); box.textContent = ""; list.forEach(function (it, i) { box.appendChild(optBtn(labelOf(it), i, key, list, L)); }); }
+      function fill(id, key, list, labelOf) { var box = $(id); box.textContent = ""; list.forEach(function (it, i) { box.appendChild(optBtn(labelOf(it), i, key, list)); }); }
       fill("bgs", "bg", P.bgs, function (it) { return it.name; });
       fill("titles", "title", P.titles, function (it) { return it.name; });
       fill("frameStyles", "frameStyle", P.frameStyles, function (it) { return it.name; });
@@ -309,16 +287,16 @@
       fill("nameFonts", "nameFont", P.nameFonts, function (it) { return it.name; });
       var bd = $("badges"); bd.textContent = "";
       P.badges.forEach(function (it, i) {
-        var locked = isLocked("badges", i, L), b = el("button", (i === draft.badge ? "on" : "") + (locked ? " locked" : ""), it.e || "∅"); b.type = "button";
-        b.title = it.name + (locked ? " — niv. " + it.min + " (aperçu)" : ""); b.setAttribute("aria-label", "Badge " + it.name);
-        if (locked) b.appendChild(el("small", "", "🔒" + it.min));
+        var locked = isLocked("badges", i), b = el("button", (i === draft.badge ? "on" : "") + (locked ? " locked" : ""), it.e || "∅"); b.type = "button";
+        b.title = it.name + (locked ? " — à obtenir dans une crate (aperçu)" : ""); b.setAttribute("aria-label", "Badge " + it.name);
+        if (locked) b.appendChild(el("small", "", "🔒"));
         b.onclick = function () { draft.badge = i; say(""); renderOptions(); renderPreview(); };
         bd.appendChild(b);
       });
       var nc = $("nameColors"); nc.textContent = "";
       P.nameColors.forEach(function (c, i) {
-        var locked = isLocked("nameColors", i, L), b = el("button", (i === draft.nameColor ? "on" : "") + (locked ? " locked" : "")); b.type = "button"; b.style.background = c.css;
-        b.title = c.name + (locked ? " — niv. " + c.min + " (aperçu)" : ""); b.setAttribute("aria-label", "Couleur du pseudo " + c.name);
+        var locked = isLocked("nameColors", i), b = el("button", (i === draft.nameColor ? "on" : "") + (locked ? " locked" : "")); b.type = "button"; b.style.background = c.css;
+        b.title = c.name + (locked ? " — à obtenir dans une crate (aperçu)" : ""); b.setAttribute("aria-label", "Couleur du pseudo " + c.name);
         b.onclick = function () { draft.nameColor = i; say(""); renderOptions(); renderPreview(); };
         nc.appendChild(b);
       });
@@ -382,12 +360,12 @@
       if (!name) { say("Choisis un pseudo.", "ko"); $("pName").focus(); return; }
       if (!draft.favId) { say("Choisis ton Pokémon préféré : son sprite sera ta photo.", "ko"); $("pFav").focus(); return; }
       // Éléments encore verrouillés : on garde la valeur déjà enregistrée (si elle est débloquée), sinon la valeur par défaut.
-      var lv = curLevel().level, saved = P.get(), reverted = [];
+      var saved = P.get(), reverted = [];
       LOCKS.forEach(function (k) {
         var list = P[k[1]];
-        if (isLocked(k[1], draft[k[0]], lv)) {
+        if (isLocked(k[1], draft[k[0]])) {
           var old = saved ? saved[k[0]] : 0;
-          draft[k[0]] = list[old] && list[old].min <= lv ? old : 0;
+          draft[k[0]] = list[old] && !isLocked(k[1], old) ? old : 0;
           reverted.push(k[2]);
         }
       });
@@ -433,7 +411,7 @@
       ]));
     }
     $("resetStats").addEventListener("click", function () {
-      if (window.confirm("Réinitialiser toutes tes statistiques ? Ton niveau et ton historique sont conservés.") && window.PokeStats) window.PokeStats.reset();
+      if (window.confirm("Réinitialiser toutes tes statistiques ? Ton historique est conservé.") && window.PokeStats) window.PokeStats.reset();
     });
     // ---- Historique des dernières parties ----
     var MODES = { wordle: ["🟩", "Wordle"], whois: ["❔", "Qui est-ce ?"], guess: ["🔴", "Devinette"] };
@@ -456,13 +434,13 @@
         if (e.m === "wordle" && e.k) detail += " · " + e.k + (e.k > 1 ? " essais" : " essai");
         if (e.m === "whois" && e.w && e.k) detail += " · " + secs(e.k);
         t.appendChild(el("small", "", detail + " · " + ago(e.t))); row.appendChild(t);
-        row.appendChild(el("div", "hx", "+" + (e.xp || 0) + " XP")); body.appendChild(row);
+        body.appendChild(row);
       });
     }
     $("clearHist").addEventListener("click", function () {
       if (window.confirm("Vider l'historique de tes parties ?") && window.PokeStats) window.PokeStats.clearHistory();
     });
-    window.addEventListener("statschange", function () { renderStats(); renderHistory(); renderLevel(); renderOptions(); });
+    window.addEventListener("statschange", function () { renderStats(); renderHistory(); renderOptions(); });
     renderStats(); renderHistory();
     // Un objet vient d'être gagné dans une crate : il se déverrouille tout de suite dans l'éditeur.
     window.addEventListener("cratechange", function () { renderOptions(); renderPreview(); });

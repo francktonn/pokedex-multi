@@ -28,7 +28,6 @@
     ".chip{display:inline-block; margin-top:6px; padding:2px 10px; border-radius:999px; font-size:12px; font-weight:800; background:var(--accent); text-shadow:0 1px 2px rgba(0,0,0,.4);}",
     ".motto{margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,.18); font-style:italic; font-weight:700; font-size:14px; opacity:.92;}",
     ".ttl{font-weight:800; font-size:12px; opacity:.9; margin-top:2px; color:#FFC93C;}",
-    ".lv{display:inline-block; margin:6px 6px 0 0; padding:2px 10px; border-radius:999px; font-size:12px; font-weight:800; color:#221d17; background:#FFC93C;}",
     ".team{display:flex; gap:4px; margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,.18);}",
     ".team span{flex:1; min-width:0; aspect-ratio:1; border-radius:12px; background:rgba(0,0,0,.28); display:flex; align-items:center; justify-content:center;}",
     ".team img{width:92%; height:92%; object-fit:contain; image-rendering:pixelated;}",
@@ -102,7 +101,6 @@
     if (PP && PP.paint) PP.paint({ card: c, avatar: av, name: nmEl }, card, p.name || "Joueur"); else nmEl.textContent = p.name || "Joueur";
     if (ttl) who.appendChild(el("div", "ttl", ttl.name));
     var fv = el("div", "fv", p.avatar ? "Préféré : n°" + p.avatar : "Pas de Pokémon préféré"); who.appendChild(fv);
-    if (card.l > 0 || (p.me && window.PokeStats)) who.appendChild(el("span", "lv", "Niv. " + (p.me && window.PokeStats ? window.PokeStats.level().level : card.l)));
     if (ti) who.appendChild(el("span", "chip", "Type " + ti[1]));
     if (card.m) c.appendChild(el("div", "motto", "« " + card.m + " »"));
     if (Array.isArray(card.tm) && card.tm.length) {
