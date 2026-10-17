@@ -2260,8 +2260,13 @@
     --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,0) 22%),linear-gradient(160deg,#2d2540,#1b1527 55%,#07050b); }
   /* Skin exclusif de la crate Halloween */
   :root[data-skin="banshitrouye"] { --red:#d9671a; --red-dark:#7a3a0a; --red-darker:#2a1240; --red-mid:#b9560f; --skin-glow:rgba(125,255,154,.30);
-    --skin-device: url(https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/711.png) no-repeat right -16px bottom -12px/130px auto, linear-gradient(180deg,rgba(255,255,255,.2),rgba(255,255,255,0) 22%),linear-gradient(160deg,#ff9a2e 0%,#c2570f 34%,#5b2a86 72%,#2a1240 100%);
-    --skin-device-dark: url(https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/711.png) no-repeat right -16px bottom -12px/130px auto, linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 22%),linear-gradient(160deg,#8a4a12,#4a2467 60%,#150a26); }
+    --skin-device: linear-gradient(180deg,rgba(255,255,255,.2),rgba(255,255,255,0) 22%),linear-gradient(160deg,#ff9a2e 0%,#c2570f 34%,#5b2a86 72%,#2a1240 100%);
+    --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 22%),linear-gradient(160deg,#8a4a12,#4a2467 60%,#150a26); }
+  /* Banshitrouye pose sur la coque : coin haut droit, au-dessus de tout, sans gêner les clics */
+  :root[data-skin="banshitrouye"] .device::after{ content:""; position:absolute; top:4px; right:12px; width:64px; height:64px; z-index:6; pointer-events:none;
+    background:url(https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/711.png) center/contain no-repeat; filter:drop-shadow(0 3px 5px rgba(0,0,0,.45)) drop-shadow(0 0 8px rgba(125,255,154,.55)); animation:pk-gfloat 3.2s ease-in-out infinite; }
+  @keyframes pk-gfloat{ 50%{ transform:translateY(-4px) rotate(-4deg); } }
+  @media (prefers-reduced-motion:reduce){ :root[data-skin="banshitrouye"] .device::after{ animation:none; } }
   :root[data-skin] .device{ background: var(--skin-device); }
   :root[data-skin] body{
     background: radial-gradient(900px 500px at 15% -10%, var(--skin-glow), transparent 60%),
