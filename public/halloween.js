@@ -152,7 +152,7 @@
     Object.keys(SK).forEach(function (id) {
       if (!SK[id].hwc) return;
       var key = "skin:" + id;
-      out.push({ key: key, kind: "skin", list: "skins", idx: 0, id: id, field: "", catName: "Skin du Pokédex", name: SK[id].name, price: 0, css: SK[id].color || "", rar: Math.min(RARITIES.length - 1, SK[id].hwc), owned: !!s.owned[key], crate: true });
+      out.push({ key: key, kind: "skin", list: "skins", idx: 0, id: id, field: "", catName: "Skin du Pokédex", name: SK[id].name, price: 0, css: SK[id].color || "", rar: Math.min(RARITIES.length - 1, SK[id].hwc), owned: !!s.owned[key], crate: true, art: SK[id].art || 0 });
     });
     if (P) CATS.forEach(function (c) {
       (P[c[0]] || []).forEach(function (it, i) {

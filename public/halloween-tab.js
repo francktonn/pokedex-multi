@@ -71,6 +71,7 @@
     ".gd .gb:disabled{opacity:.55; cursor:default; box-shadow:none;} .gd .gb.alt{background:var(--card); color:var(--ink); border:1px solid var(--line); box-shadow:0 3px 0 rgba(0,0,0,.12);}",
     ".pvbox{min-height:64px; display:flex; align-items:center; justify-content:center; border-radius:10px; overflow:hidden;}",
     ".skpv{width:100%; height:64px; border-radius:12px; position:relative; box-shadow:inset 0 0 0 3px rgba(0,0,0,.2), inset 0 2px 0 rgba(255,255,255,.35);}",
+    ".skpv img{position:absolute; right:6px; bottom:2px; height:94%; width:auto; object-fit:contain; pointer-events:none;}",
     ".skpv::after{content:''; position:absolute; top:10px; left:10px; width:16px; height:16px; border-radius:50%; background:radial-gradient(circle at 35% 30%,#bfe9ff,#3b8fd6 55%,#1b5a9c); box-shadow:0 0 0 2px rgba(255,255,255,.6);}",
     /* aperçus de carte (même rendu que le profil, version compacte) */
     ".card{position:relative; overflow:hidden; width:100%; border-radius:12px; padding:8px; color:#fff; border:2px solid var(--frame);",
@@ -270,7 +271,9 @@
     var BG_KEY = { bgs: "bg", titles: "title", frameStyles: "f", shapes: "h", effects: "e", nameFonts: "nf", nameColors: "nc" };
     function preview(it) {
       var box = el("div", "pvbox");
-      if (it.kind === "skin") { var sk = el("div", "skpv"); sk.style.background = it.css; box.appendChild(sk); return box; }
+      if (it.kind === "skin") { var sk = el("div", "skpv"); sk.style.background = it.css;
+        if (it.art) { var im = document.createElement("img"); im.alt = ""; im.src = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/" + it.art + ".png"; sk.appendChild(im); }
+        box.appendChild(sk); return box; }
       if (!P) return box;
       var base = P.get() || {}, c = { f: 0, h: 0, e: 0, nf: 0, nc: 0 }, bg = 0, title = 0, k = BG_KEY[it.list];
       if (k === "bg") bg = it.idx; else if (k === "title") title = it.idx; else c[k] = it.idx;
