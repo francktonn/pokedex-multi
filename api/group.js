@@ -13,7 +13,7 @@ const MAX_DEX_ID = 1025;
 const TTL = 60 * 60 * 12;
 const MAX_MEMBERS = 12;
 const ONLINE_MS = 15000;
-const MODES = ['guess', 'whois', 'rule'];
+const MODES = ['guess'];
 
 let redisClient = null;
 function getRedis() {
