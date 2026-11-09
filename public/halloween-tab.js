@@ -268,15 +268,15 @@
     });
 
     // ---- Boutique ----
-    var BG_KEY = { bgs: "bg", titles: "title", frameStyles: "f", shapes: "h", effects: "e", nameFonts: "nf", nameColors: "nc" };
+    var BG_KEY = { bgs: "bg", frameStyles: "f", shapes: "h", effects: "e", nameFonts: "nf", nameColors: "nc" };
     function preview(it) {
       var box = el("div", "pvbox");
       if (it.kind === "skin") { var sk = el("div", "skpv"); sk.style.background = it.css;
         if (it.art) { var im = document.createElement("img"); im.alt = ""; im.src = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/" + it.art + ".png"; sk.appendChild(im); }
         box.appendChild(sk); return box; }
       if (!P) return box;
-      var base = P.get() || {}, c = { f: 0, h: 0, e: 0, nf: 0, nc: 0 }, bg = 0, title = 0, k = BG_KEY[it.list];
-      if (k === "bg") bg = it.idx; else if (k === "title") title = it.idx; else c[k] = it.idx;
+      var base = P.get() || {}, c = { f: 0, h: 0, e: 0, nf: 0, nc: 0 }, bg = 0, k = BG_KEY[it.list];
+      if (k === "bg") bg = it.idx; else c[k] = it.idx;
       var card = el("div", "card");
       card.style.setProperty("--frame", P.frame(base.color || 0));
       card.style.setProperty("--accent", "#D99A12");
@@ -285,7 +285,6 @@
       var av = el("div", "avatar", "🎃"); row.appendChild(av);
       var who = el("div", "who"); row.appendChild(who);
       var nm = el("div", "nm"); who.appendChild(nm);
-      if (title) who.appendChild(el("div", "ttl", P.titles[title].name));
       P.paint({ card: card, avatar: av, name: nm }, c, base.name || "Dresseur");
       card.classList.add("pv"); // paint() réécrit className : on remet nos classes ensuite
       box.appendChild(card);

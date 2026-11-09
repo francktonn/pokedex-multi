@@ -27,11 +27,11 @@
       return { name: String(p.name || "").trim().slice(0,16), favId: Number(p.favId) || null, favName: String(p.favName || ""),
         style: int(p.style, 2), color: int(p.color, 15), motto: String(p.motto || "").trim().slice(0,40),
         type: /^[a-z]{3,10}$/.test(p.type || "") ? p.type : "",
-        bg: int(p.bg, 21), title: int(p.title, 25),
+        bg: int(p.bg, 21),
         frameStyle: int(p.frameStyle, 10), shape: int(p.shape, 6), effect: int(p.effect, 10), nameFont: int(p.nameFont, 6), nameColor: int(p.nameColor, 11),
         team: (Array.isArray(p.team) ? p.team : []).map(Number).filter(function(n){ return Math.floor(n) === n && n >= 1 && n <= 1025; }).slice(0,6) };
     }
-    // Fonds de carte et titres (min > 0 = objet de crate ; sa valeur ne sert plus qu'à définir la rareté).
+    // Fonds de carte (min > 0 = objet de crate ; sa valeur ne sert plus qu'à définir la rareté).
     var BGS = [
       { name:"Classique", min:0,  css:"linear-gradient(150deg, color-mix(in srgb, var(--accent) 55%, #1a1411), #1a1411 85%)" },
       { name:"Aurore",    min:0,  css:"linear-gradient(135deg, color-mix(in srgb, var(--accent) 85%, #fff), color-mix(in srgb, var(--accent) 30%, #120d0a) 60%, #120d0a)" },
@@ -58,17 +58,6 @@
       { name:"Toile d'araignée", min:0, hw:180, css:"repeating-conic-gradient(from 0deg at 100% 0, rgba(255,255,255,.2) 0 1deg, transparent 1deg 15deg), repeating-radial-gradient(circle at 100% 0, transparent 0 16px, rgba(255,255,255,.16) 16px 17px), linear-gradient(160deg, #16091f, #2d1240)" },
       // Exclusif de la crate Halloween (hwc = rareté : 2 épique, 3 légendaire ; jamais dans la boutique ni dans les crates normales)
       { name:"Banshitrouye", min:0, hwc:2, css:"url(https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/711.png) no-repeat right 3% center/auto 94%, radial-gradient(70% 50% at 80% 105%, rgba(125,255,154,.5), transparent 70%), radial-gradient(2.5px 2.5px at 12% 28%, #d6ff9c, transparent), radial-gradient(2px 2px at 40% 18%, #d6ff9c, transparent), radial-gradient(2px 2px at 30% 78%, #ffd27a, transparent), linear-gradient(160deg, #120a24, #2b1346 62%, #0d0818)" }
-    ];
-    var TITLES = [
-      { name:"Aucun titre", min:0 }, { name:"Dresseur novice", min:0 }, { name:"Apprenti dresseur", min:3 }, { name:"Chasseur de shiny", min:5 },
-      { name:"As du quiz", min:8 }, { name:"Œil de lynx", min:12 }, { name:"Maître Pokédex", min:15 }, { name:"Champion d'arène", min:20 },
-      { name:"Membre du Conseil 4", min:30 }, { name:"Maître Pokémon", min:40 },
-      { name:"Explorateur", min:6 }, { name:"Collectionneur", min:10 }, { name:"Stratège", min:18 }, { name:"Légende vivante", min:25 },
-      { name:"Gardien du Pokédex", min:35 }, { name:"Dresseur étoilé", min:50 }, { name:"Entité mythique", min:70 },
-      { name:"Pionnier du Pass", min:0, pass:10 }, { name:"Élite du Pass", min:0, pass:20 }, { name:"Maître du Pass", min:0, pass:30 },
-      // Exclusifs Halloween
-      { name:"Chasseur de fantômes", min:0, hw:50 }, { name:"Apprenti sorcier", min:0, hw:50 }, { name:"Roi des citrouilles", min:0, hw:100 },
-      { name:"Maître des bonbons", min:0, hw:100 }, { name:"Spectre du Pokédex", min:0, hw:150 }, { name:"Seigneur d'Halloween", min:0, hw:300 }
     ];
     // Personnalisation avancée (min > 0 = objet de crate, rareté selon min ; les éléments verrouillés restent visibles en aperçu).
     var FRAME_STYLES = [ { name:"Solide", min:0 }, { name:"Double", min:0 }, { name:"Pointillé", min:2 }, { name:"Relief", min:4 }, { name:"Néon", min:8 }, { name:"Arc-en-ciel", min:14 }, { name:"Cristal", min:0, pass:20 }, { name:"Flammes", min:0, pass:30 },
@@ -169,7 +158,7 @@
         return BASE + (style === 1 ? "shiny/" : "") + id + ".png";
       },
       frame: function(i){ return FRAMES[int(i, 15)]; },
-      frames: FRAMES, bgs: BGS, titles: TITLES, frameStyles: FRAME_STYLES, shapes: SHAPES, effects: EFFECTS, nameFonts: NAME_FONTS, nameColors: NAME_COLORS, cardCss: CARD_CSS,
+      frames: FRAMES, bgs: BGS, frameStyles: FRAME_STYLES, shapes: SHAPES, effects: EFFECTS, nameFonts: NAME_FONTS, nameColors: NAME_COLORS, cardCss: CARD_CSS,
       // Applique les options avancées d'une carte {f,h,e,nf,nc} sur les éléments (carte, photo, pseudo). Utilisé par l'éditeur et par la fenêtre de profil.
       paint: function(els, c, nameText){
         c = c || {};
@@ -190,7 +179,7 @@
         var S = window.PokeStats ? window.PokeStats.get() : null, x = null;
         if(S) x = { qp:S.whois.played, qc:S.whois.correct, qb:S.whois.bestMs, gf:S.guess.found, gm:S.guess.missed };
         var t = p.type ? TYPE_KEYS.indexOf(p.type) + 1 : 0;
-        return { s: p.style, c: p.color, t: t > 0 ? t : 0, m: p.motto, x: x, b: p.bg, ti: p.title, tm: p.team, f: p.frameStyle, h: p.shape, e: p.effect, nf: p.nameFont, nc: p.nameColor };
+        return { s: p.style, c: p.color, t: t > 0 ? t : 0, m: p.motto, x: x, b: p.bg, tm: p.team, f: p.frameStyle, h: p.shape, e: p.effect, nf: p.nameFont, nc: p.nameColor };
       }
     };
 
@@ -210,7 +199,7 @@
     var HKEY = "pokeHistory_v1", HMAX = 20;
     // Les anciennes manches de Wordle (mode supprimé) sont ignorées.
     function readHist(){
-      try{ var h = JSON.parse(localStorage.getItem(HKEY) || "[]"); return Array.isArray(h) ? h.filter(function(e){ return e && e.m !== "wordle"; }).slice(0, HMAX) : []; }catch(e){ return []; }
+      try{ var h = JSON.parse(localStorage.getItem(HKEY) || "[]"); return Array.isArray(h) ? h.filter(function(e){ return e && e.m !== "wordle" && e.m !== "whois"; }).slice(0, HMAX) : []; }catch(e){ return []; }
     }
     function pushHist(entry){
       var h = readHist(); h.unshift(entry);
@@ -260,7 +249,7 @@
   (function(){
     var KEY = "pokeCrates_v1";
     // [liste dans PokeProfile, champ du profil, libellé]
-    var CATS = [ ["bgs","bg","Fond de carte"], ["titles","title","Titre"], ["frameStyles","frameStyle","Style de cadre"], ["shapes","shape","Forme de photo"],
+    var CATS = [ ["bgs","bg","Fond de carte"], ["frameStyles","frameStyle","Style de cadre"], ["shapes","shape","Forme de photo"],
       ["effects","effect","Effet animé"], ["nameFonts","nameFont","Police du pseudo"], ["nameColors","nameColor","Couleur du pseudo"] ];
     // La rareté dépend de la valeur min de l'objet (voir listes de PokeProfile) ; w = poids du tirage.
     var RARITIES = [ { name:"Commun", color:"#8e9aa8", max:5, w:55 }, { name:"Rare", color:"#3a86d6", max:12, w:30 },
@@ -405,7 +394,7 @@
     var PR = [ {m:200},{c:1},{m:300},{c:1},{m:400},{c:2},{m:500},{c:1},{m:600},{m:1000,c:2},
                {c:2},{m:700},{c:2},{m:800},{c:3},{m:900},{c:2},{m:1000},{c:3},{m:1500,c:3},
                {c:3},{m:1200},{c:3},{m:1300},{c:4},{m:1500},{c:4},{m:2000},{c:5},{m:3000,c:5} ];
-    var ITEM_LISTS = [ ["bgs","bg","Fond de carte"], ["titles","title","Titre"], ["frameStyles","frameStyle","Style de cadre"], ["shapes","shape","Forme de photo"],
+    var ITEM_LISTS = [ ["bgs","bg","Fond de carte"], ["frameStyles","frameStyle","Style de cadre"], ["shapes","shape","Forme de photo"],
       ["effects","effect","Effet animé"], ["nameFonts","nameFont","Police du pseudo"], ["nameColors","nameColor","Couleur du pseudo"] ];
     function passItems(tier){
       var P = window.PokeProfile, out = [];
@@ -495,8 +484,8 @@
       // Skins à afficher dans le profil : le skin par défaut, ceux déjà obtenus et ceux de la saison en cours.
       skinList: function(){
         var s = read(), cur = themeOf(seasonNum()).skins;
-        return Object.keys(SKINS).filter(function(id){ return id === "default" || s.skins[id] || cur.indexOf(id) >= 0; })
-          .map(function(id){ return { id:id, name:SKINS[id].name, color:SKINS[id].color, tier:SKINS[id].tier, owned:id === "default" || !!s.skins[id], current:cur.indexOf(id) >= 0 }; })
+        return Object.keys(SKINS)
+          .map(function(id){ return { id:id, name:SKINS[id].name, color:SKINS[id].color, tier:SKINS[id].tier, owned:true, current:cur.indexOf(id) >= 0 }; })
           .sort(function(a, b){ return (a.tier - b.tier) || (a.current ? 1 : 0) - (b.current ? 1 : 0); });
       },
       state: function(){
@@ -582,7 +571,7 @@
         passItems().forEach(function(it){ s.items[it.list + ":" + it.idx] = true; });
         write(s);
       },
-      ownsSkin: function(id){ return id === "default" || (!!SKINS[id] && !!read().skins[id]); },
+      ownsSkin: function(id){ return !!SKINS[id]; }, // tous les skins sont débloqués pour tout le monde
       // Offre un skin sans passer par un palier (boutique d'événement). false s'il n'existe pas ou s'il est déjà possédé.
       grantSkin: function(id){
         if(!SKINS[id] || id === "default") return false;
@@ -2283,18 +2272,12 @@
 <nav class="modetabs" id="modeTabs" role="tablist" aria-label="Mode de jeu">
   <button type="button" role="tab" id="tabGroup" class="modetab" aria-selected="false" data-tab="group"><span class="ic">👥</span><span class="lb">Groupe</span></button>
   <button type="button" role="tab" id="tabGuess" class="modetab active" aria-selected="true" data-tab="guess"><span class="ic">🔴</span><span class="lb">Devinette</span></button>
-  <button type="button" role="tab" id="tabWhois" class="modetab" aria-selected="false" data-tab="whois"><span class="ic">❔</span><span class="lb">Qui est-ce ?</span></button>
-  <button type="button" role="tab" id="tabRule" class="modetab" aria-selected="false" data-tab="rule"><span class="ic">🧩</span><span class="lb">La règle</span></button>
   <button type="button" role="tab" id="tabProfile" class="modetab" aria-selected="false" data-tab="profile"><span class="ic">👤</span><span class="lb">Profil</span></button>
   <button type="button" role="tab" id="tabHalloween" class="modetab" style="display:none;" aria-selected="false" data-tab="halloween"><span class="ic">🎃</span><span class="lb">Halloween</span></button>
-  <button type="button" role="tab" id="tabCrates" class="modetab" aria-selected="false" data-tab="crates"><span class="ic">🎁</span><span class="lb">Bonus</span></button>
 </nav>
 <div id="grpBar" class="grpbar" style="display:none;"></div>
 <div id="groupPane" style="display:none;"><div id="groupHost"></div></div>
-<div id="whoisPane" style="display:none;"><div id="whoisHost"></div></div>
-<div id="rulePane" style="display:none;"><div id="ruleHost"></div></div>
 <div id="profilePane" style="display:none;"><div id="profileHost"></div></div>
-<div id="cratesPane" style="display:none;"><div id="cratesHost"></div></div>
 <div id="halloweenPane" style="display:none;"><div id="halloweenHost"></div></div>
 
 
@@ -6311,20 +6294,16 @@
   mpClearSession(); // on ne recolle plus automatiquement à l'ancienne partie après un rechargement
 })();
 </script>
-<script src="profilecard.js?v=4"></script>
+<script src="profilecard.js?v=5"></script>
 <script src="enhance.js"></script>
-<script src="bonus.js?v=1"></script>
 <script src="halloween.js?v=1"></script>
 <script>
 (function(){
   // Onglets : chaque onglet (sauf Devinette) est chargé à la première ouverture, dans un Shadow DOM isolé.
   var TABS = {
     guess:   { btn: "tabGuess" },
-    whois:   { btn: "tabWhois",   pane: "whoisPane",   host: "whoisHost",   src: "whois.js?v=6",   api: "WhoIsTab",   label: "whois.js" },
-    rule:    { btn: "tabRule",    pane: "rulePane",    host: "ruleHost",    src: "rule.js?v=2",    api: "RuleTab",    label: "rule.js" },
-    group:   { btn: "tabGroup",   pane: "groupPane",   host: "groupHost",   src: "group.js?v=2",   api: "GroupTab",   label: "group.js" },
-    profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=12", api: "ProfileTab", label: "profile.js" },
-    crates:  { btn: "tabCrates",  pane: "cratesPane",  host: "cratesHost",  src: "crates.js?v=10",  api: "CratesTab",  label: "crates.js" },
+    group:   { btn: "tabGroup",   pane: "groupPane",   host: "groupHost",   src: "group.js?v=3",   api: "GroupTab",   label: "group.js" },
+    profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=13", api: "ProfileTab", label: "profile.js" },
     halloween: { btn: "tabHalloween", pane: "halloweenPane", host: "halloweenHost", src: "halloween-tab.js?v=1", api: "HalloweenTab", label: "halloween-tab.js" }
   };
   var loaded = {};
@@ -6362,11 +6341,6 @@
   }
   Object.keys(TABS).forEach(function(k){ document.getElementById(TABS[k].btn).onclick = function(){ setTab(k); }; });
   window.PokeTabs = { set: setTab, load: load, current: function(){ var a = "guess"; Object.keys(TABS).forEach(function(k){ if (document.getElementById(TABS[k].btn).classList.contains("active")) a = k; }); return a; } };
-  // Pastille rouge sur l'onglet Bonus tant qu'une crate attend d'être ouverte.
-  function crateDot(){ try{ document.getElementById("tabCrates").classList.toggle("has-dot", !!((window.PokeCrates && window.PokeCrates.available()) || (window.PokePass && window.PokePass.claimable() > 0) || (window.PokeQuests && window.PokeQuests.claimable() > 0))); }catch(e){} }
-  window.addEventListener("cratechange", crateDot); window.addEventListener("passchange", crateDot); window.addEventListener("questchange", crateDot);
-  document.addEventListener("visibilitychange", function(){ if (!document.hidden) crateDot(); });
-  setInterval(crateDot, 60000); crateDot();
   // Onglet 🎃 : visible seulement pendant l'événement Halloween ; pastille tant que la récompense de connexion du jour n'est pas récupérée.
   function hwTab(){
     try{
@@ -6381,8 +6355,6 @@
   try{
     var q = new URLSearchParams(location.search);
     if (q.get("group")) start = "group";
-    else if (q.get("whois")) start = "whois";
-    else if (q.get("rule")) start = "rule";
     else if (!q.get("code")) { var saved = localStorage.getItem("modeTab"); if (TABS[saved]) start = saved; }
   }catch(e){}
   if (start !== "guess") setTab(start);

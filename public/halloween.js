@@ -29,7 +29,7 @@
   var CRATE_CANDY = [{ n: 60, w: 40 }, { n: 100, w: 30 }, { n: 150, w: 18 }, { n: 250, w: 9 }, { n: 500, w: 3 }]; // lots de bonbons (poids)
 
   // Listes de PokeProfile → champ du profil → libellé (même table que les crates et le Battle Pass)
-  var CATS = [["bgs", "bg", "Fond de carte"], ["titles", "title", "Titre"], ["frameStyles", "frameStyle", "Style de cadre"], ["shapes", "shape", "Forme de photo"],
+  var CATS = [["bgs", "bg", "Fond de carte"], ["frameStyles", "frameStyle", "Style de cadre"], ["shapes", "shape", "Forme de photo"],
     ["effects", "effect", "Effet animé"], ["nameFonts", "nameFont", "Police du pseudo"], ["nameColors", "nameColor", "Couleur du pseudo"]];
   var RARITIES = [{ name: "Commun", color: "#8e9aa8", max: 100 }, { name: "Rare", color: "#3a86d6", max: 250 },
     { name: "Épique", color: "#9b6bd6", max: 500 }, { name: "Légendaire", color: "#E6A700", max: 999999 }];

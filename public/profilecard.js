@@ -66,7 +66,7 @@
   function statsFor(p, card) {
     if (p.me && window.PokeStats) {
       var S = window.PokeStats.get();
-      return { qp: S.whois.played, qc: S.whois.correct, qb: S.whois.bestMs, gf: S.guess.found, gm: S.guess.missed };
+      return { qp: 0, qc: 0, qb: 0, gf: S.guess.found, gm: S.guess.missed };
     }
     return card && card.x ? card.x : null;
   }
@@ -80,8 +80,8 @@
     }
     var style = Number(card.s) || 0, frameList = (window.PokeProfile && window.PokeProfile.frames) || FRAMES, frame = frameList[Number(card.c)] || frameList[0];
     var ti = card.t > 0 ? TYPES[card.t - 1] : null;
-    var PP = window.PokeProfile, bgs = PP && PP.bgs, titles = PP && PP.titles;
-    var bgDef = bgs && bgs[Number(card.b)] ? bgs[Number(card.b)] : null, ttl = titles && Number(card.ti) > 0 ? titles[Number(card.ti)] : null;
+    var PP = window.PokeProfile, bgs = PP && PP.bgs;
+    var bgDef = bgs && bgs[Number(card.b)] ? bgs[Number(card.b)] : null;
     var back = root.getElementById("back"); back.textContent = "";
     host.classList.toggle("dark", document.documentElement.getAttribute("data-theme") === "dark");
 
@@ -99,7 +99,6 @@
     var who = el("div", "who"); row.appendChild(who);
     var nmEl = el("div", "nm"); who.appendChild(nmEl);
     if (PP && PP.paint) PP.paint({ card: c, avatar: av, name: nmEl }, card, p.name || "Joueur"); else nmEl.textContent = p.name || "Joueur";
-    if (ttl) who.appendChild(el("div", "ttl", ttl.name));
     var fv = el("div", "fv", p.avatar ? "Préféré : n°" + p.avatar : "Pas de Pokémon préféré"); who.appendChild(fv);
     if (ti) who.appendChild(el("span", "chip", "Type " + ti[1]));
     if (card.m) c.appendChild(el("div", "motto", "« " + card.m + " »"));
@@ -113,12 +112,11 @@
     var s = statsFor(p, card);
     if (!s) { box.appendChild(el("p", "none", "Ce joueur n'a pas encore de statistiques à partager.")); }
     else {
-      var total = s.qp + s.gf + s.gm;
+      var total = s.gf + s.gm;
       if (!total) box.appendChild(el("p", "none", "Pas encore de statistiques."));
       else {
         function sec(title, tiles) { box.appendChild(el("h3", "", title)); var g = el("div", "tiles"); tiles.forEach(function (t) { g.appendChild(t); }); box.appendChild(g); }
-        if (s.qp) sec("❔ Qui est-ce ?", [tile(s.qp, "Manches"), tile(pct(s.qc, s.qp), "Réussite"), tile(secs(s.qb), "Meilleur temps")]);
-        if (s.gf + s.gm) sec("🔴 Devinette", [tile(s.gf, "Devinés"), tile(s.gm, "Ratés"), tile(pct(s.gf, s.gf + s.gm), "Précision")]);
+                if (s.gf + s.gm) sec("🔴 Devinette", [tile(s.gf, "Devinés"), tile(s.gm, "Ratés"), tile(pct(s.gf, s.gf + s.gm), "Précision")]);
       }
     }
     host.classList.add("open");

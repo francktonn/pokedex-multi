@@ -108,18 +108,17 @@
 
   var HTML = [
     '<div class="device">',
-    '  <div class="top"><span class="lens"></span><span class="brand">MON PROFIL</span><span class="wallet" id="wallet" title="Tes Pokédollars"></span><button type="button" class="themebtn" id="themeBtn" aria-label="Mode sombre">🌙</button></div>',
+    '  <div class="top"><span class="lens"></span><span class="brand">MON PROFIL</span><button type="button" class="themebtn" id="themeBtn" aria-label="Mode sombre">🌙</button></div>',
     '  <section class="panel" id="cardPanel">',
     '    <div class="head"><h2>Ma carte</h2><button type="button" class="gear" id="gear" aria-label="Modifier ma carte" aria-expanded="false" title="Modifier ma carte">⚙️</button></div>',
     '    <div class="card" id="card">',
-    '      <div class="avatarbox"><div class="avatar" id="avatar"><span>?</span></div><div class="who"><div class="nm" id="avName">Sans pseudo</div><div class="ttl hidden" id="avTitle"></div><div class="fv" id="avFav">Pokémon préféré : à choisir</div><span class="tchip hidden" id="avType"></span></div></div>',
+    '      <div class="avatarbox"><div class="avatar" id="avatar"><span>?</span></div><div class="who"><div class="nm" id="avName">Sans pseudo</div><div class="fv" id="avFav">Pokémon préféré : à choisir</div><span class="tchip hidden" id="avType"></span></div></div>',
     '      <div class="motto" id="avMotto"></div>',
     '      <div class="team hidden" id="avTeam"></div>',
     '    </div>',
     '    <div class="pvnote hidden" id="pvNote"></div>',
     '    <div id="editor" class="hidden">',
     '    <p class="sub" style="margin-top:12px">Ton pseudo, ta photo et ton style seront utilisés automatiquement dans tous les modes de jeu.</p>',
-    '    <p class="hint2">👁️ Les éléments marqués 🔒 sont déjà prévisualisables sur ta carte : ils seront enregistrés dès que tu les auras obtenus dans une crate (onglet Bonus) ou, pour les éléments 👑, avec le Pass Premium.</p>',
     '    <label for="pName">Ton pseudo</label>',
     '    <input type="text" id="pName" maxlength="16" autocomplete="off" placeholder="Sacha">',
     '    <label for="pFav">Ton Pokémon préféré</label>',
@@ -130,7 +129,6 @@
     '    <label>Couleur du cadre</label><div class="swatches" id="swatches"></div>',
     '    <label>Type préféré</label><div class="types" id="types"></div>',
     '    <label>Fond de carte</label><div class="bgs" id="bgs"></div>',
-    '    <label>Titre</label><div class="titles" id="titles"></div>',
     '    <label>Style du cadre</label><div class="bgs" id="frameStyles"></div>',
     '    <label>Forme de la photo</label><div class="bgs" id="shapes"></div>',
     '    <label>Effet animé</label><div class="bgs" id="effects"></div>',
@@ -174,9 +172,9 @@
   var STYLES = ["Normal", "✨ Shiny", "🖼️ Artwork"];
   var FRAME_NAMES = ["Or", "Rouge", "Bleu", "Vert", "Rose", "Violet", "Orange", "Argent", "Turquoise", "Citron vert", "Corail", "Ciel", "Lilas", "Bronze", "Ardoise", "Champagne"];
   // [clé du brouillon, liste dans PokeProfile, libellé, nom pour l'indice de déblocage]
-  var LOCKS = [["bg", "bgs", "Fond", "fond"], ["title", "titles", "Titre", "titre"], ["frameStyle", "frameStyles", "Style de cadre", "style de cadre"], ["shape", "shapes", "Forme", "forme de photo"],
+  var LOCKS = [["bg", "bgs", "Fond", "fond"], ["frameStyle", "frameStyles", "Style de cadre", "style de cadre"], ["shape", "shapes", "Forme", "forme de photo"],
     ["effect", "effects", "Effet", "effet"], ["nameFont", "nameFonts", "Police du pseudo", "police de pseudo"], ["nameColor", "nameColors", "Couleur du pseudo", "couleur de pseudo"]];
-  function newDraft() { return { favId: null, favName: "", style: 0, color: 0, type: "", bg: 0, title: 0, team: [], frameStyle: 0, shape: 0, effect: 0, nameFont: 0, nameColor: 0 }; }
+  function newDraft() { return { favId: null, favName: "", style: 0, color: 0, type: "", bg: 0, team: [], frameStyle: 0, shape: 0, effect: 0, nameFont: 0, nameColor: 0 }; }
 
   var mounted = false;
   window.ProfileTab = {
@@ -196,18 +194,8 @@
     var P = window.PokeProfile;
     var names = [], folded = [];
     var draft = newDraft();
-    // Objets de crate : les éléments avec min > 0 ne sont débloqués que si tu les as obtenus dans une crate.
-    var C = window.PokeCrates, LISTOF = {};
-    LOCKS.forEach(function (k) { LISTOF[k[0]] = k[1]; });
-    var PS = window.PokePass;
-    function owned(list, i) { return !!(C && C.owns(list, i)); }
-    // Objets de crate (min > 0) ou exclusifs du Pass Premium (pass = palier) : verrouillés tant qu'ils ne sont pas obtenus.
-    function isLocked(list, i) {
-      var it = P[list][i]; if (!it) return false;
-      if (it.hw || it.hwc) return !(window.PokeHalloween && window.PokeHalloween.ownsItem(list, i)); // exclusif Halloween (bonbons ou crate)
-      if (it.pass) return !(PS && PS.ownsItem(list, i));
-      return it.min > 0 && !owned(list, i);
-    }
+    // Tous les éléments de personnalisation sont débloqués pour tout le monde.
+    function isLocked() { return false; }
 
     function fold(s) { return String(s || "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[’']/g, "'").replace(/[\s\-.]+/g, " ").trim(); }
     function nameOf(id) { return names[id - 1] || ("Pokémon n°" + id); }
@@ -247,7 +235,6 @@
       $("avFav").textContent = draft.favId ? "Préféré : " + nameOf(draft.favId) + " · n°" + draft.favId : "Pokémon préféré : à choisir";
       var bgd = P.bgs[draft.bg] || P.bgs[0];
       host.style.setProperty("--bg", bgd.css);
-      var tt = $("avTitle"); tt.classList.toggle("hidden", !draft.title); tt.textContent = draft.title ? P.titles[draft.title].name : "";
       var tm = $("avTeam"); tm.textContent = ""; tm.classList.toggle("hidden", !draft.team.length);
       draft.team.forEach(function (id) {
         var sp = el("span"), im = document.createElement("img"); im.alt = nameOf(id); im.loading = "lazy"; im.src = P.sprite(id, 0); sp.appendChild(im); tm.appendChild(sp);
@@ -291,7 +278,6 @@
       });
       function fill(id, key, list, labelOf) { var box = $(id); box.textContent = ""; list.forEach(function (it, i) { box.appendChild(optBtn(labelOf(it), i, key, list)); }); }
       fill("bgs", "bg", P.bgs, function (it) { return it.name; });
-      fill("titles", "title", P.titles, function (it) { return it.name; });
       fill("frameStyles", "frameStyle", P.frameStyles, function (it) { return it.name; });
       fill("shapes", "shape", P.shapes, function (it) { return it.name; });
       fill("effects", "effect", P.effects, function (it) { return it.name; });
@@ -372,7 +358,7 @@
           reverted.push(k[2]);
         }
       });
-      P.set({ name: name, favId: draft.favId, favName: nameOf(draft.favId), style: draft.style, color: draft.color, type: draft.type, motto: $("pMotto").value, bg: draft.bg, title: draft.title, team: draft.team,
+      P.set({ name: name, favId: draft.favId, favName: nameOf(draft.favId), style: draft.style, color: draft.color, type: draft.type, motto: $("pMotto").value, bg: draft.bg, team: draft.team,
         frameStyle: draft.frameStyle, shape: draft.shape, effect: draft.effect, nameFont: draft.nameFont, nameColor: draft.nameColor });
       if (reverted.length && window.toast) window.toast("Profil enregistré. Encore verrouillé, donc non appliqué : " + reverted.join(", ") + ".", { kind: "warn", icon: "🔒", ttl: 6000 });
       $("clear").classList.remove("hidden");
@@ -398,13 +384,9 @@
     function renderStats() {
       var S = window.PokeStats ? window.PokeStats.get() : null, body = $("statsBody"); body.textContent = "";
       if (!S) { body.appendChild(el("p", "sub", "Statistiques indisponibles.")); return; }
-      var q = S.whois, g = S.guess;
-      var total = q.played + g.found + g.missed;
+      var g = S.guess;
+      var total = g.found + g.missed;
       $("statsSub").textContent = total ? "Sur cet appareil, tous modes confondus." : "Elles se remplissent au fil de tes parties, sur cet appareil.";
-      body.appendChild(section("❔ Qui est-ce ?", [
-        tile(q.played, "Manches jouées"), tile(q.correct, "Bonnes réponses"), tile(pct(q.correct, q.played), "Réussite"),
-        tile(secs(q.bestMs), "Meilleur temps"), tile(secs(q.correct ? q.msSum / q.correct : 0), "Temps moyen")
-      ]));
       body.appendChild(section("🔴 Devinette", [
         tile(g.found, "Pokémon devinés"), tile(g.missed, "Essais ratés"), tile(pct(g.found, g.found + g.missed), "Précision")
       ]));
@@ -413,7 +395,7 @@
       if (window.confirm("Réinitialiser toutes tes statistiques ? Ton historique est conservé.") && window.PokeStats) window.PokeStats.reset();
     });
     // ---- Historique des dernières parties ----
-    var MODES = { whois: ["❔", "Qui est-ce ?"], guess: ["🔴", "Devinette"] };
+    var MODES = { guess: ["🔴", "Devinette"] };
     function ago(t) {
       var s = Math.max(0, Math.round((Date.now() - t) / 1000));
       if (s < 60) return "à l'instant"; if (s < 3600) return "il y a " + Math.floor(s / 60) + " min";
@@ -446,7 +428,7 @@
       if (!box || !PPs) return;
       box.textContent = "";
       var cur = PPs.state().skin, se = PPs.season();
-      var sub = $("skinSub"); if (sub) sub.textContent = se.icon + " Saison " + se.n + " · " + se.name + " : débloque les skins aux paliers 10, 20 et 30 du Battle Pass. Les skins obtenus restent à toi pour toujours.";
+      var sub = $("skinSub"); if (sub) sub.textContent = se.icon + " Saison " + se.n + " · " + se.name + " : tous les skins sont débloqués, choisis celui que tu préfères.";
       PPs.skinList().forEach(function (sk) {
         var b = el("button", "sk" + (cur === sk.id ? " on" : "") + (sk.owned ? "" : " no")); b.type = "button";
         var sw = el("span", "sw"); sw.style.background = sk.color; b.appendChild(sw); b.appendChild(document.createTextNode(sk.name));
@@ -456,11 +438,7 @@
       });
     }
     renderSkins();
-    function renderWallet() { $("wallet").textContent = window.PokeMoney ? window.PokeMoney.format() : ""; }
-    renderWallet(); window.addEventListener("moneychange", renderWallet);
-    // Un objet vient d'être gagné dans une crate : il se déverrouille tout de suite dans l'éditeur.
-    window.addEventListener("cratechange", function () { renderOptions(); renderPreview(); });
-    window.addEventListener("passchange", function () { renderOptions(); renderPreview(); renderSkins(); });
+    //     window.addEventListener("passchange", function () { renderOptions(); renderPreview(); renderSkins(); });
     // Un objet Halloween vient d'être acheté (onglet 🎃) : il se déverrouille tout de suite dans l'éditeur.
     window.addEventListener("halloweenchange", function () { renderOptions(); renderPreview(); });
     // Profil modifié ailleurs (ex. « Équiper » depuis l'onglet Crates) : on recharge la carte si l'éditeur est fermé.
@@ -474,7 +452,7 @@
       $("pName").value = ""; $("pFav").value = ""; $("pTeam").value = ""; $("pMotto").value = ""; $("sugg").textContent = ""; $("teamSugg").textContent = "";
       if (cur) {
         $("pName").value = cur.name; draft.favId = cur.favId || null; draft.favName = cur.favName || "";
-        draft.style = cur.style; draft.color = cur.color; draft.type = cur.type; draft.bg = cur.bg; draft.title = cur.title; draft.team = cur.team.slice(); $("pMotto").value = cur.motto;
+        draft.style = cur.style; draft.color = cur.color; draft.type = cur.type; draft.bg = cur.bg; draft.team = cur.team.slice(); $("pMotto").value = cur.motto;
         draft.frameStyle = cur.frameStyle || 0; draft.shape = cur.shape || 0; draft.effect = cur.effect || 0; draft.nameFont = cur.nameFont || 0; draft.nameColor = cur.nameColor || 0;
         if (cur.favName) $("pFav").value = cur.favName;
       }

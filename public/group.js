@@ -2,16 +2,14 @@
    L'hôte choisit le mode, configure sa salle (dans l'onglet du jeu), puis « envoie le groupe » :
    tous les membres rejoignent alors automatiquement la salle. Les scores repartent de zéro à chaque jeu
    car chaque jeu crée une nouvelle salle. Ce fichier pilote les modes via window.__guessBridge /
-   __whoisBridge / __ruleBridge (créer / rejoindre / quitter une salle). */
+   (créer / rejoindre / quitter une salle). */
 (function () {
   "use strict";
   var API = "/api/group";
   var SESSION_KEY = "group_session";
   var NAME_KEY = "group_name";
   var MODES = {
-    guess:  { label: "Devinette",       icon: "🔴", desc: "Chacun devine le Pokémon des autres.", bridge: "__guessBridge" },
-    whois:  { label: "Qui est-ce ?",    icon: "❔", desc: "Une silhouette, le plus rapide gagne.", bridge: "__whoisBridge" },
-    rule:   { label: "Devine la règle", icon: "🧩", desc: "Une règle secrète, devine celle des autres.", bridge: "__ruleBridge" }
+    guess:  { label: "Devinette",       icon: "🔴", desc: "Chacun devine le Pokémon des autres.", bridge: "__guessBridge" }
   };
 
   var G = { code: null, pid: null, state: null, handled: -1, subMode: null, epoch: 0, timer: null, busy: false, inflight: false, ui: null, inviteCode: "" };
@@ -89,6 +87,8 @@
       .then(function () { G.inflight = false; if (G.code) { clearTimeout(G.timer); G.timer = setTimeout(tick, delay); } });
   }
   async function onState(st) {
+    // Un ancien groupe resté sur un mode supprimé (Qui est-ce ? / La règle) est traité comme « au calme ».
+    if (st.mode && !MODES[st.mode]) { st.phase = "idle"; st.mode = null; st.sub = null; }
     G.state = st;
     if (!isHost() && !G.busy) await follow(st);
     render();
