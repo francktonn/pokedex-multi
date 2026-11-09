@@ -196,6 +196,8 @@
     var draft = newDraft();
     // Tous les éléments de personnalisation sont débloqués pour tout le monde.
     function isLocked() { return false; }
+    var LISTOF = {};
+    LOCKS.forEach(function (k) { LISTOF[k[0]] = k[1]; });
 
     function fold(s) { return String(s || "").trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[’']/g, "'").replace(/[\s\-.]+/g, " ").trim(); }
     function nameOf(id) { return names[id - 1] || ("Pokémon n°" + id); }
