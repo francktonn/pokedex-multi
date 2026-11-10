@@ -2101,6 +2101,22 @@
     user-select:none;
   }
   .notepad-pct-btn:active{ background:var(--gold); }
+  /* Recherche + récapitulatif du bloc-note */
+  .notepad-search{
+    width:100%; box-sizing:border-box; flex-shrink:0;
+    border-radius:10px; border:1px solid var(--border-soft-14);
+    padding:8px 12px; font-family:'Nunito'; font-size:13px;
+    background:var(--card-bg); color:var(--ink);
+  }
+  .notepad-search:focus{ outline:2px solid var(--gold); outline-offset:1px; }
+  .notepad-recap{ display:none; flex-wrap:wrap; gap:4px; flex-shrink:0; padding:6px 8px; border-radius:10px; background:var(--card-bg); border:1px solid var(--border-soft-10); max-height:74px; overflow-y:auto; }
+  .np-rc{ font-family:'Nunito'; font-weight:800; font-size:10.5px; padding:2px 8px; border-radius:999px; color:#fff; }
+  .np-rc.yes{ background:#2e7d32; }
+  .np-rc.no{ background:#c62828; text-decoration:line-through; }
+  .notepad-chip{ min-height:32px; }
+  .notepad-chip:active{ transform:scale(.95); }
+  .notepad-asker-tag:not(.has-asker){ opacity:.4; }
+  .notepad-nores{ font-size:12px; color:var(--text-muted); font-style:italic; padding:4px; }
   .notepad-pct-value{
     min-width:30px;
     text-align:center;
@@ -2494,7 +2510,9 @@
       <div class="notepad-empty" id="notepadEmptyState" style="display:none;">Ajoute au moins un joueur pour commencer à prendre des notes sur son Pokémon secret.</div>
 
       <div class="notepad-active-area" id="notepadActiveArea">
+        <input type="search" class="notepad-search" id="notepadSearch" placeholder="🔎 Chercher une info (feu, légendaire, rouge…)" autocomplete="off" aria-label="Chercher une info dans le bloc-note">
         <div class="notepad-categories-row" id="notepadCategoriesRow"></div>
+        <div class="notepad-recap" id="notepadRecap" aria-label="Récapitulatif des infos notées"></div>
         <div class="notepad-grid-wrap">
           <div class="notepad-grid" id="notepadGrid"></div>
         </div>
@@ -4302,7 +4320,7 @@
   let notepadSaveTimer = null;
   let notepadState = loadNotepadState();
   let notepadMpPlayers = []; // rempli depuis la partie multijoueur en cours (id/name), hors soi-même
-  let notepadChipTimers = {}; // debounce clic simple / double-clic par item
+  let notepadFilter = ""; // recherche en cours dans le bloc-note (non sauvegardée)
   let notepadTeamShared = false; // true si le mode équipes est actif ET qu'on est assigné à une équipe : les notes "mp:<id>" deviennent alors partagées avec les coéquipiers
 
   function loadNotepadState(){
@@ -4514,14 +4532,46 @@
       });
     });
 
+    // Pendant une recherche, on cherche dans toutes les catégories : on masque les onglets.
+    notepadCategoriesRow.style.display = notepadFilter ? "none" : "flex";
     renderNotepadGrid(categories, entry);
+    renderNotepadRecap(entry, categories);
+  }
+
+  // Récapitulatif : tout ce qui est déjà noté (✓ en vert, ✗ en rouge), toutes catégories confondues.
+  function renderNotepadRecap(entry, categories){
+    const el = document.getElementById("notepadRecap");
+    if(!el) return;
+    entry = entry || notepadEnsureData(notepadState.activePlayerKey);
+    categories = categories || noteCategories();
+    let yes = "", no = "";
+    categories.forEach(c => c.items.forEach(it => {
+      const st = entry.checks[it.id];
+      if(st === "yes"){
+        const p = entry.pct && entry.pct[it.id];
+        yes += `<span class="np-rc yes">${mpEscapeHtml(it.label)}${it.hasPercent && p != null && p < 100 ? " " + p + "%" : ""}</span>`;
+      }else if(st === "no"){
+        no += `<span class="np-rc no">${mpEscapeHtml(it.label)}</span>`;
+      }
+    }));
+    el.innerHTML = yes + no;
+    el.style.display = (yes || no) ? "flex" : "none";
   }
 
   function renderNotepadGrid(categories, entry){
-    const cat = categories.find(c => c.key === notepadState.activeCategoryKey);
-    if(!cat){ notepadGrid.innerHTML = ""; return; }
+    let cat = categories.find(c => c.key === notepadState.activeCategoryKey);
+    let list;
+    if(notepadFilter){
+      const q = foldFr(notepadFilter);
+      list = [];
+      categories.forEach(c => c.items.forEach(it => { if(foldFr(it.label).indexOf(q) >= 0) list.push({ it, catKey: c.key }); }));
+      if(!list.length){ notepadGrid.innerHTML = `<div class="notepad-nores">Aucune info ne correspond à « ${mpEscapeHtml(notepadFilter)} ».</div>`; return; }
+    }else{
+      if(!cat){ notepadGrid.innerHTML = ""; return; }
+      list = cat.items.map(it => ({ it, catKey: cat.key }));
+    }
 
-    notepadGrid.innerHTML = cat.items.map(it => {
+    notepadGrid.innerHTML = list.map(({ it, catKey }) => {
       const state = entry.checks[it.id] || null;
       const showPct = it.hasPercent && state === "yes";
       const pctVal = (entry.pct && entry.pct[it.id] != null) ? entry.pct[it.id] : 100;
@@ -4531,7 +4581,7 @@
       return `
       <span class="notepad-chip-wrap">
         <button type="button" class="notepad-chip${state === "yes" ? " is-yes" : ""}${state === "no" ? " is-no" : ""}${asked ? " has-asker" : ""}"
-          data-item-id="${mpEscapeHtml(it.id)}" data-cat="${cat.key}"
+          data-item-id="${mpEscapeHtml(it.id)}" data-cat="${mpEscapeHtml(catKey)}"
           ${it.accent ? `style="border-left:4px solid ${it.accent}"` : ""}>${mpEscapeHtml(it.label)}</button>
         <button type="button" class="notepad-asker-tag${asked ? " has-asker" : ""}" data-item-id="${mpEscapeHtml(it.id)}" title="${tagTitle}">${tagLabel}</button>
         ${it.hasPercent ? `<span class="notepad-pct-wrap" data-pct-wrap="${mpEscapeHtml(it.id)}" style="display:${showPct ? "inline-flex" : "none"}">
@@ -4559,38 +4609,19 @@
     });
   }
 
-  // Un clic = "je sais que c'est vrai" (case verte) ; un second clic rapproché =
-  // "je sais que c'est faux" (case rouge). On distingue les deux à la main (plutôt
-  // que d'utiliser dblclick) pour un comportement fiable au clavier/souris/tactile.
+  // Un seul tap, instantané (plus d'attente ni de double-clic) : vide → ✓ vrai (vert) → ✗ faux (rouge) → vide.
+  // Deux taps rapides donnent donc directement « faux », comme avant.
   function notepadHandleChipClick(chip){
-    const id = chip.dataset.itemId;
-    if(!notepadChipTimers[id]) notepadChipTimers[id] = { count: 0, timer: null };
-    const t = notepadChipTimers[id];
-    t.count++;
-    if(t.count === 1){
-      t.timer = setTimeout(() => {
-        notepadApplyChip(chip, "single");
-        t.count = 0;
-      }, 280);
-    }else{
-      clearTimeout(t.timer);
-      t.count = 0;
-      notepadApplyChip(chip, "double");
-    }
+    notepadApplyChip(chip);
   }
 
-  function notepadApplyChip(chip, kind){
+  function notepadApplyChip(chip){
     const key = notepadState.activePlayerKey;
     if(!key) return;
     const entry = notepadEnsureData(key);
     const id = chip.dataset.itemId;
     const cur = entry.checks[id] || null;
-    let next;
-    if(kind === "single"){
-      next = cur === "yes" ? null : "yes";
-    }else{
-      next = cur === "no" ? null : "no";
-    }
+    const next = cur === null ? "yes" : (cur === "yes" ? "no" : null);
     if(next) entry.checks[id] = next; else delete entry.checks[id];
 
     // Pourcentage de confiance (couleur uniquement) : affiché seulement quand la
@@ -4621,6 +4652,7 @@
     const cat = noteCategories().find(c => c.key === catKey);
     const countEl = notepadCategoriesRow.querySelector(`[data-cat-count="${catKey}"]`);
     if(cat && countEl) countEl.textContent = notepadCatCounts(cat.items, entry.checks) + "/" + cat.items.length;
+    renderNotepadRecap(entry);
   }
 
   function notepadHandlePctBtnClick(btn){
@@ -4637,6 +4669,7 @@
     const wrap = btn.closest(".notepad-pct-wrap");
     const valueEl = wrap ? wrap.querySelector(".notepad-pct-value") : null;
     if(valueEl) valueEl.textContent = v + "%";
+    renderNotepadRecap(entry);
   }
 
   function notepadHandleAddPlayer(e){
@@ -6307,6 +6340,13 @@
   btnNotepad.addEventListener("click", openNotepad);
   btnNotepadClose.addEventListener("click", closeNotepad);
   btnNotepadClear.addEventListener("click", clearNotepad);
+  const notepadSearchInput = document.getElementById("notepadSearch");
+  if(notepadSearchInput){
+    notepadSearchInput.addEventListener("input", () => {
+      notepadFilter = notepadSearchInput.value.trim();
+      renderNotepadActivePlayer();
+    });
+  }
   notepadText.addEventListener("input", onNotepadInput);
   notepadAddPlayerForm.addEventListener("submit", notepadHandleAddPlayer);
   notepadOverlay.addEventListener("click", (e) => { if(e.target === notepadOverlay) closeNotepad(); });
