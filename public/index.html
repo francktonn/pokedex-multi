@@ -1422,6 +1422,8 @@
     gap:8px;
   }
   .mp-guess-box .mp-guess-title{ font-size:13px; font-weight:700; color:var(--ink); }
+  .mp-guess-opts{ display:flex; flex-direction:column; gap:8px; }
+  .mp-guess-opt-row{ display:flex; flex-direction:column; gap:4px; font-size:12.5px; font-weight:700; color:var(--ink); }
   .mp-guess-feedback{ font-size:12.5px; font-weight:700; text-align:center; }
   .mp-guess-feedback.ok{ color:#2a7a3d; }
   .mp-guess-feedback.ko{ color:var(--red-dark); }
@@ -6211,6 +6213,22 @@
         <div class="mp-guess-title">Deviner le Pokémon de ${mpEscapeHtml(targetName)}</div>
         <input type="text" id="mpGuessInput" class="mp-input" placeholder="Nom du Pokémon" autocomplete="off">
         <div class="search-suggest" id="mpGuessSuggest" style="display:none;"></div>
+        <div class="mp-guess-opts">
+          <label class="mp-guess-opt-row">✨ Shiny ?
+            <select id="mpGuessShiny" class="mp-input">
+              <option value="0">Non, normal</option>
+              <option value="1">Oui, shiny</option>
+            </select>
+          </label>
+          <label class="mp-guess-opt-row">🧬 Forme
+            <select id="mpGuessForm" class="mp-input">
+              <option value="normal">Normale</option>
+              <option value="regional">Régionale (Alola, Galar, Hisui, Paldea)</option>
+              <option value="mega">Méga / Primo</option>
+              <option value="gmax">Gigamax</option>
+            </select>
+          </label>
+        </div>
         <div class="btn-row">
           <button class="btn btn-main" id="mpGuessSubmit">Valider</button>
           <button class="btn btn-secondary" id="mpGuessCancel">Annuler</button>
@@ -6270,7 +6288,7 @@
 
     const targetId = mpGuessTargetId;
     try{
-      const result = await mpApiPost("guess", { code: mpRoomCode, playerId: mpPlayerId, targetId, guess: raw });
+      const result = await mpApiPost("guess", { code: mpRoomCode, playerId: mpPlayerId, targetId, guess: raw, shiny: (document.getElementById("mpGuessShiny") || {}).value === "1", form: (document.getElementById("mpGuessForm") || {}).value || "normal" });
       if(result.gone){
         if(feedback){
           feedback.textContent = "Trop tard : ce Pokémon a déjà été deviné, ou ce joueur n'a plus de secret en cours.";
@@ -6306,7 +6324,7 @@
       }else{
         if(window.PokeStats) window.PokeStats.record("guess", { missed: true });
         if(feedback){
-          feedback.textContent = "❌ Raté, essaie encore !";
+          feedback.textContent = "❌ Raté : vérifie le nom, le shiny et la forme, puis réessaie !";
           feedback.className = "mp-guess-feedback ko";
         }
       }
