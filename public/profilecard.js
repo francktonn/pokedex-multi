@@ -23,7 +23,7 @@
     ".avatar img{width:88%; height:88%; object-fit:contain; image-rendering:pixelated;} .avatar img.art{image-rendering:auto;}",
     ".avatar span{font-family:'Silkscreen',monospace; font-size:28px; color:#8ff0a4;}",
     ".who{min-width:0; flex:1; padding-right:28px;}",
-    ".nm{font-family:'Baloo 2',sans-serif; font-weight:800; font-size:22px; line-height:1.1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}",
+    ".nm{font-family:'Bricolage Grotesque','Baloo 2',sans-serif; font-weight:800; font-size:22px; line-height:1.1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}",
     ".fv{opacity:.8; font-weight:700; font-size:13px; margin-top:2px;}",
     ".chip{display:inline-block; margin-top:6px; padding:2px 10px; border-radius:999px; font-size:12px; font-weight:800; background:var(--accent); text-shadow:0 1px 2px rgba(0,0,0,.4);}",
     ".motto{margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,.18); font-style:italic; font-weight:700; font-size:14px; opacity:.92;}",
@@ -31,10 +31,10 @@
     ".team{display:flex; gap:4px; margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,.18);}",
     ".team span{flex:1; min-width:0; aspect-ratio:1; border-radius:12px; background:rgba(0,0,0,.28); display:flex; align-items:center; justify-content:center;}",
     ".team img{width:92%; height:92%; object-fit:contain; image-rendering:pixelated;}",
-    "h3{font-family:'Baloo 2',sans-serif; font-size:15px; margin:14px 0 6px;}",
+    "h3{font-family:'Bricolage Grotesque','Baloo 2',sans-serif; font-size:15px; margin:14px 0 6px;}",
     ".tiles{display:grid; grid-template-columns:repeat(3,1fr); gap:6px;}",
     ".tile{background:rgba(127,127,127,.12); border:1px solid rgba(127,127,127,.25); border-radius:12px; padding:8px 4px; text-align:center;}",
-    ".tile b{display:block; font-family:'Baloo 2',sans-serif; font-size:19px; line-height:1.1;}",
+    ".tile b{display:block; font-family:'Bricolage Grotesque','Baloo 2',sans-serif; font-size:19px; line-height:1.1;}",
     ".tile small{display:block; margin-top:2px; opacity:.65; font-weight:700; font-size:10.5px; line-height:1.2;}",
     ".none{opacity:.65; font-size:13px; font-weight:700; margin:12px 0 0; text-align:center;}"
   ].join("\n");

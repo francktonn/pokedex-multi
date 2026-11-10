@@ -320,7 +320,7 @@ body::before{
 }
 .modetab{
   flex:1; min-height:44px; border:0; border-radius:999px; cursor:pointer;
-  font-family:'Baloo 2',sans-serif; font-weight:800; font-size:14px; color:rgba(255,255,255,.75); padding:0 4px; white-space:nowrap;
+  font-family:'Bricolage Grotesque','Baloo 2',sans-serif; font-weight:800; font-size:14px; color:rgba(255,255,255,.75); padding:0 4px; white-space:nowrap;
   background:transparent; transition:background .2s var(--ease), color .2s, transform .15s var(--ease);
 }
 .modetab:active{ transform:scale(.97); }
@@ -365,3 +365,137 @@ html[data-theme="dark"] .grpbar{ background:#3a3320; color:#ffe9a6; border-color
 
 /* ---- Onglet 🎃 Halloween (visible seulement pendant l'événement) ---- */
 #tabHalloween:not(.active){ color:#ffb35c; }
+
+
+/* =====================================================================
+   THEME 3 — « Poké Ball de nuit »
+   Nuit bleu encre, coque rouge laquée, surfaces blanc froid, écran LCD vert.
+   Un seul geste fort : le bouton Deviner du dock est une vraie Poké Ball.
+   Titres en Bricolage Grotesque, texte en Nunito, Silkscreen réservé aux petits repères.
+   ===================================================================== */
+:root{
+  --red:#E5352B; --red-dark:#B01E17; --red-darker:#5a0f0b;
+  --gold:#FFC21A; --gold-deep:#C98F00;
+  --ink:#14203A; --paper:#F2F5FA; --cream:#F2F5FA;
+  --screen-dark:#08241F; --screen-glow:#7DF2B0;
+  --surface:#F2F5FA; --card-bg:#FFFFFF; --chip-bg:#E4EAF4; --chip-bg-alt:#EDF1F8; --text-muted:#5E6C88;
+  --border-soft-10:rgba(20,32,58,.10); --border-soft-12:rgba(20,32,58,.13); --border-soft-14:rgba(20,32,58,.16);
+  --ball-ink:#121a30;
+}
+:root[data-theme="dark"]{
+  --surface:#18213A; --card-bg:#212C4A; --chip-bg:#2A3759; --chip-bg-alt:#243050;
+  --ink:#E9EEF9; --text-muted:#9FB0D0;
+  --border-soft-10:rgba(255,255,255,.09); --border-soft-12:rgba(255,255,255,.12); --border-soft-14:rgba(255,255,255,.16);
+}
+
+body{
+  background:
+    radial-gradient(560px 420px at 50% -120px, rgba(229,53,43,.38), transparent 70%),
+    linear-gradient(180deg, #0F1733 0%, #080D1F 100%);
+  background-attachment:fixed;
+}
+/* Poké Ball géante en filigrane */
+body::after{
+  content:""; position:fixed; z-index:-1; pointer-events:none;
+  width:150vmin; height:150vmin; right:-85vmin; bottom:-70vmin; border-radius:50%;
+  border:2px solid rgba(255,255,255,.06);
+  background:
+    radial-gradient(circle, transparent 0 7vmin, rgba(255,255,255,.06) 7vmin calc(7vmin + 2px), transparent calc(7vmin + 3px)),
+    linear-gradient(transparent calc(50% - 1px), rgba(255,255,255,.06) 0 calc(50% + 1px), transparent 0);
+}
+h1,h2,h3,.pkm-name,.modetab,.notepad-title{ letter-spacing:-.01em; }
+
+/* ---------- Coque ---------- */
+.device{
+  border-radius:34px;
+  background:linear-gradient(180deg,#F1493E 0%,#DC2F25 42%,#B81F18 100%);
+  border:1px solid rgba(0,0,0,.45);
+  box-shadow:0 30px 50px -22px rgba(0,0,0,.85), inset 0 2px 0 rgba(255,255,255,.4), inset 0 -5px 0 rgba(0,0,0,.2);
+}
+.screen-frame{
+  border:6px solid #050B14; border-radius:22px;
+  background:radial-gradient(circle at 50% 40%, rgba(125,242,176,.2), transparent 65%), var(--screen-dark);
+  box-shadow:inset 0 0 0 2px rgba(125,242,176,.16), inset 0 16px 40px rgba(0,0,0,.65), 0 2px 0 rgba(255,255,255,.2);
+}
+
+/* ---------- Cartes : rayons différenciés, ombre douce, pas de liseré ---------- */
+.nameplate,.info-card,.mp-quickbar{
+  background:var(--surface); border:0; border-radius:22px;
+  box-shadow:0 14px 28px -16px rgba(0,0,0,.6), 0 0 0 1px var(--border-soft-10);
+}
+.info-tile{ border-radius:12px; background:var(--card-bg); box-shadow:0 0 0 1px var(--border-soft-10); }
+.info-tile:hover{ transform:none; }
+.section-label{ color:var(--text-muted); }
+.evo-stage,.form-card{ border-radius:12px; }
+.evo-fork{ border-left-color:var(--red); }
+.flavor{ border-radius:14px; }
+
+/* ---------- Boutons ---------- */
+.btn{ border-radius:16px; min-height:52px; font-weight:800; }
+.btn-main{
+  background:var(--gold); color:#2a1d00;
+  box-shadow:0 4px 0 var(--gold-deep), 0 14px 22px -10px rgba(0,0,0,.55);
+}
+.btn-main:active{ transform:translateY(3px); box-shadow:0 1px 0 var(--gold-deep); }
+.btn-secondary,.btn-config{
+  background:var(--card-bg); color:var(--ink);
+  border:1px solid var(--border-soft-12); box-shadow:0 3px 0 var(--border-soft-12);
+}
+.mp-input,.search-input{ border-radius:16px; }
+.btn:focus-visible,.fab-btn:focus-visible,.modetab:focus-visible,.mp-mode-btn:focus-visible{ outline:3px solid var(--gold); outline-offset:3px; }
+
+/* ---------- Onglets de modes ---------- */
+.modetabs{ background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1); border-radius:22px; padding:4px; }
+.modetab{ border-radius:18px; color:rgba(255,255,255,.7); }
+.modetab.active{ background:var(--gold); color:#2a1d00; box-shadow:0 3px 0 var(--gold-deep); }
+
+/* ---------- Dock : barre + Poké Ball centrale ---------- */
+.fab-stack{
+  left:50%; transform:translateX(-50%); bottom:calc(12px + var(--safe-bottom));
+  width:min(calc(100vw - 20px),440px); height:68px; padding:0 8px; gap:0;
+  display:flex; flex-direction:row; align-items:center; justify-content:space-around;
+  background:rgba(12,18,42,.86); border:1px solid rgba(255,255,255,.1); border-radius:34px;
+  -webkit-backdrop-filter:blur(16px) saturate(1.3); backdrop-filter:blur(16px) saturate(1.3);
+  box-shadow:0 20px 40px -12px rgba(0,0,0,.8);
+}
+.fab-btn{
+  flex:1; width:auto; max-width:none; height:100%; border-radius:22px; background:transparent; box-shadow:none;
+  display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:3px; padding:0 0 7px;
+  font-size:21px; line-height:1; color:#fff;
+}
+.fab-btn:hover{ background:rgba(255,255,255,.08); transform:none; }
+.fab-btn:active{ background:rgba(255,255,255,.14); transform:scale(.94); }
+.fab-btn::after,.fab-btn:hover::after{
+  content:attr(data-label); position:static; transform:none; opacity:1;
+  font:800 10.5px/1 'Nunito',sans-serif; letter-spacing:0; color:rgba(255,255,255,.72);
+}
+#btnGuess{
+  position:relative; flex:0 0 76px; width:76px; height:76px; top:-20px; padding:0; border-radius:50%;
+  font-size:0; justify-content:center; color:transparent;
+  border:3px solid var(--ball-ink);
+  background:
+    radial-gradient(circle at 50% 50%, #fff 0 6px, var(--ball-ink) 6.5px 13px, transparent 13.5px),
+    linear-gradient(180deg,#F1493E 0 45%, var(--ball-ink) 45% 55%, #F4F6FA 55% 100%);
+  box-shadow:0 10px 18px -4px rgba(0,0,0,.75), inset 0 -7px 10px rgba(0,0,0,.14), inset 0 7px 9px rgba(255,255,255,.28);
+  transition:transform .18s var(--ease);
+}
+#btnGuess:hover{ background:
+    radial-gradient(circle at 50% 50%, #fff 0 6px, var(--ball-ink) 6.5px 13px, transparent 13.5px),
+    linear-gradient(180deg,#F1493E 0 45%, var(--ball-ink) 45% 55%, #F4F6FA 55% 100%); transform:translateY(-2px); }
+#btnGuess:active{ transform:scale(.93); background:
+    radial-gradient(circle at 50% 50%, var(--gold) 0 6px, var(--ball-ink) 6.5px 13px, transparent 13.5px),
+    linear-gradient(180deg,#F1493E 0 45%, var(--ball-ink) 45% 55%, #F4F6FA 55% 100%); }
+#btnGuess::after{ position:absolute; left:50%; bottom:-15px; transform:translateX(-50%); color:#fff; }
+#btnGuess.has-badge::before{ top:2px; right:2px; }
+
+/* ---------- Fenêtres : en-tête rouge avec le liseré de la Poké Ball ---------- */
+.notepad-overlay{ background:rgba(6,10,26,.66); }
+.notepad-panel,.notepad-panel-wide,.search-panel,.gc-panel{ border-radius:28px; border:0; background:var(--surface); box-shadow:0 30px 70px -12px rgba(0,0,0,.8); }
+.notepad-head{ background:linear-gradient(180deg,#F1493E,#C4231B); border-bottom:5px solid var(--ball-ink); }
+.mp-code-banner{ border-radius:16px; background:var(--card-bg); box-shadow:0 0 0 1px var(--border-soft-12); }
+.mp-player-row{ border-radius:14px; }
+.toast{ background:rgba(12,18,42,.95); border-radius:16px; }
+@media (max-width:560px){
+  .notepad-panel,.notepad-panel-wide,.search-panel,.gc-panel{ border-radius:28px 28px 0 0; }
+  .device{ border-radius:28px; }
+}
