@@ -2113,6 +2113,26 @@
   .np-rc{ font-family:'Nunito'; font-weight:800; font-size:10.5px; padding:2px 8px; border-radius:999px; color:#fff; }
   .np-rc.yes{ background:#2e7d32; }
   .np-rc.no{ background:#c62828; text-decoration:line-through; }
+  /* --- Navigation du bloc-note : un seul défilement, onglets collés en haut --- */
+  .notepad-panel-wide{ max-height:min(720px, 92vh); max-height:min(720px, 92dvh); }
+  .notepad-panel-wide .notepad-body{ overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
+  .notepad-sticky{
+    position:sticky; top:0; z-index:5; margin:-14px -16px 0; padding:10px 16px 8px;
+    display:flex; flex-direction:column; gap:6px;
+    background:var(--surface); box-shadow:0 8px 8px -8px rgba(0,0,0,.35);
+  }
+  .notepad-sticky .notepad-players-row,
+  .notepad-sticky .notepad-categories-row{
+    flex-wrap:nowrap; overflow-x:auto; scrollbar-width:none; -webkit-overflow-scrolling:touch; padding-bottom:1px;
+  }
+  .notepad-sticky .notepad-players-row::-webkit-scrollbar,
+  .notepad-sticky .notepad-categories-row::-webkit-scrollbar{ display:none; }
+  .notepad-sticky .notepad-player-tab,
+  .notepad-sticky .notepad-cat-tab{ flex:none; white-space:nowrap; }
+  .notepad-panel-wide .notepad-active-area{ flex:none; min-height:auto; }
+  .notepad-panel-wide .notepad-grid-wrap{ flex:none; overflow:visible; padding-right:0; }
+  .notepad-panel-wide .notepad-grid{ min-height:0; }
+  .notepad-panel-wide .notepad-recap{ max-height:none; overflow:visible; }
   .notepad-chip{ min-height:32px; }
   .notepad-chip:active{ transform:scale(.95); }
   .notepad-asker-tag:not(.has-asker){ opacity:.4; }
@@ -2499,9 +2519,13 @@
       <span class="notepad-title">📝 BLOC-NOTE</span>
       <button class="notepad-close" id="btnNotepadClose" aria-label="Fermer">✕</button>
     </div>
-    <div class="notepad-body">
+    <div class="notepad-body" id="notepadScroll">
 
-      <div class="notepad-players-row" id="notepadPlayersRow"></div>
+      <div class="notepad-sticky">
+        <div class="notepad-players-row" id="notepadPlayersRow"></div>
+        <input type="search" class="notepad-search" id="notepadSearch" placeholder="🔎 Chercher une info (feu, légendaire, rouge…)" autocomplete="off" aria-label="Chercher une info dans le bloc-note">
+        <div class="notepad-categories-row" id="notepadCategoriesRow"></div>
+      </div>
       <form class="notepad-add-player" id="notepadAddPlayerForm">
         <input type="text" id="notepadAddPlayerInput" maxlength="16" placeholder="Ajouter un joueur…" autocomplete="off">
         <button type="submit" class="notepad-add-player-btn" title="Ajouter">＋</button>
@@ -2510,8 +2534,6 @@
       <div class="notepad-empty" id="notepadEmptyState" style="display:none;">Ajoute au moins un joueur pour commencer à prendre des notes sur son Pokémon secret.</div>
 
       <div class="notepad-active-area" id="notepadActiveArea">
-        <input type="search" class="notepad-search" id="notepadSearch" placeholder="🔎 Chercher une info (feu, légendaire, rouge…)" autocomplete="off" aria-label="Chercher une info dans le bloc-note">
-        <div class="notepad-categories-row" id="notepadCategoriesRow"></div>
         <div class="notepad-recap" id="notepadRecap" aria-label="Récapitulatif des infos notées"></div>
         <div class="notepad-grid-wrap">
           <div class="notepad-grid" id="notepadGrid"></div>
@@ -2703,12 +2725,6 @@
         { id:"cat:bebe", label:"Bébé" }
       ]},
       { key:"color", label:"Couleur", items: Object.keys(COLOR_FR).map(k => ({ id:"color:"+k, label:COLOR_FR[k], hasPercent:true })) },
-      { key:"size", label:"Taille & poids", items: [
-        { id:"size:grand", label:"Plus d'1 m" },
-        { id:"size:petit", label:"Moins de 50 cm" },
-        { id:"size:lourd", label:"Plus de 50 kg" },
-        { id:"size:leger", label:"Moins de 10 kg" }
-      ]},
       { key:"evo", label:"Évolution", items: [
         { id:"evo:base", label:"Pokémon de base" },
         { id:"evo:sous_evolution", label:"Sous-évolution" },
@@ -4457,7 +4473,9 @@
     else entry.askedBy[id] = true;
     saveNotepadState();
     notepadPushTeamPatch(key, { askedBy: { [id]: !!entry.askedBy[id] } });
+    const sc = document.getElementById("notepadScroll"), top = sc ? sc.scrollTop : 0;
     renderNotepadActivePlayer();
+    if(sc) sc.scrollTop = top; // ne pas être renvoyé en haut après avoir marqué une question
   }
 
   function renderNotepadPlayers(){
@@ -4498,9 +4516,12 @@
 
   function renderNotepadActivePlayer(){
     const key = notepadState.activePlayerKey;
+    const searchEl = document.getElementById("notepadSearch");
+    if(searchEl) searchEl.style.display = key ? "" : "none";
     if(!key){
       notepadEmptyState.style.display = "block";
       notepadActiveArea.style.display = "none";
+      notepadCategoriesRow.style.display = "none";
       return;
     }
     notepadEmptyState.style.display = "none";
@@ -4529,6 +4550,7 @@
         notepadState.activeCategoryKey = btn.dataset.catKey;
         saveNotepadState();
         renderNotepadActivePlayer();
+        const sc = document.getElementById("notepadScroll"); if(sc) sc.scrollTop = 0; // on repart du haut de la nouvelle catégorie
       });
     });
 
