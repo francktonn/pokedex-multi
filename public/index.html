@@ -2612,6 +2612,37 @@
     "generation-viii":"8","generation-ix":"9"
   };
 
+  // Génération d'apparition d'une forme alternative (Alola = 7, Galar = 8, Méga = 6…), à partir du jeu
+  // où elle est apparue (version_group de la forme dans PokeAPI), sinon d'après son suffixe.
+  const VERSION_GROUP_GEN = {
+    "red-blue":"1","yellow":"1","gold-silver":"2","crystal":"2",
+    "ruby-sapphire":"3","emerald":"3","firered-leafgreen":"3","colosseum":"3","xd":"3",
+    "diamond-pearl":"4","platinum":"4","heartgold-soulsilver":"4",
+    "black-white":"5","black-2-white-2":"5","x-y":"6","omega-ruby-alpha-sapphire":"6",
+    "sun-moon":"7","ultra-sun-ultra-moon":"7","lets-go-pikachu-lets-go-eevee":"7",
+    "sword-shield":"8","the-isle-of-armor":"8","the-crown-tundra":"8","brilliant-diamond-and-shining-pearl":"8","legends-arceus":"8",
+    "scarlet-violet":"9","the-teal-mask":"9","the-indigo-disk":"9","legends-za":"9","mega-dimension":"9"
+  };
+  function formGenerationFromSuffix(name, speciesName){
+    const suffix = name.length > speciesName.length ? name.slice(speciesName.length + 1) : name;
+    if(suffix.includes("mega") || suffix.includes("primal")) return "6";
+    if(suffix.includes("alola") || suffix.includes("totem")) return "7";
+    if(suffix.includes("gmax") || suffix.includes("eternamax") || suffix.includes("galar") || suffix.includes("hisui")) return "8";
+    if(suffix.includes("paldea")) return "9";
+    return null;
+  }
+  async function formGeneration(pokemon, species){
+    try{
+      const formUrl = pokemon.forms && pokemon.forms[0] && pokemon.forms[0].url;
+      if(formUrl){
+        const form = await fetchJSON(formUrl);
+        const g = form.version_group && VERSION_GROUP_GEN[form.version_group.name];
+        if(g) return g;
+      }
+    }catch(e){}
+    return formGenerationFromSuffix(pokemon.name, species.name);
+  }
+
   const COLOR_FR = {
     black:"Noir", blue:"Bleu", brown:"Marron", gray:"Gris", green:"Vert",
     pink:"Rose", purple:"Violet", red:"Rouge", white:"Blanc", yellow:"Jaune",
@@ -3349,6 +3380,8 @@
     // Forme affichée : "de base" si c'est la variété par défaut de l'espèce, sinon on
     // réutilise les mêmes helpers que pour la liste "Autres formes" afin de rester cohérent
     // (Méga-Évolution, Forme Gigamax, Forme régionale, etc.).
+    // Génération affichée : celle de l'espèce pour la forme de base, celle d'apparition pour une forme alternative.
+    const generation = (!pokemon.is_default && await formGeneration(pokemon, species)) || GEN_FR[species.generation.name] || "?";
     const formInfo = pokemon.is_default
       ? { key: "base", label: "Forme de base", icon: "⭐" }
       : { key: formKindFromSuffix(pokemon.name, species.name), label: formLabelFromSuffix(pokemon.name, species.name), icon: "🔀" };
@@ -3383,7 +3416,7 @@
       spriteShiny: officialArtShinyUrl(pokemon.id),
       spriteSmallShiny: smallSpriteShinyUrl(pokemon.id),
       types: pokemon.types.map(t => t.type.name),
-      generation: GEN_FR[species.generation.name] || "?",
+      generation: generation,
       heightM: (pokemon.height/10).toFixed(1),
       weightKg: (pokemon.weight/10).toFixed(1),
       stats: pokemon.stats.map(s => ({ name: s.stat.name, value: s.base_stat })),
