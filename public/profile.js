@@ -277,7 +277,7 @@
         b.onclick = function () { draft.color = i; say(""); renderOptions(); renderPreview(); };
         sw.appendChild(b);
       });
-      function fill(id, key, list, labelOf) { var box = $(id); box.textContent = ""; list.forEach(function (it, i) { box.appendChild(optBtn(labelOf(it), i, key, list)); }); }
+      function fill(id, key, list, labelOf) { var box = $(id); box.textContent = ""; list.forEach(function (it, i) { if (it.off) return; box.appendChild(optBtn(labelOf(it), i, key, list)); }); }
       fill("bgs", "bg", P.bgs, function (it) { return it.name; });
       fill("frameStyles", "frameStyle", P.frameStyles, function (it) { return it.name; });
       fill("effects", "effect", P.effects, function (it) { return it.name; });

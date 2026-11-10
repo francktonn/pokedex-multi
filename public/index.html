@@ -77,6 +77,24 @@
       { name:"Cosmique", css:"linear-gradient(90deg,#7c3aed,#38bdf8,#f0abfc,#7c3aed)", grad:true, min:0, pass:30 },
       { name:"Citrouille", css:"#ff7a1a", min:0, hw:60 },
       { name:"Spectral", css:"linear-gradient(90deg,#7dff9a,#b48cff,#7dff9a)", grad:true, min:0, hw:150 } ];
+    // Éléments retirés de la personnalisation. On garde leur place dans les listes (les profils déjà
+    // enregistrés stockent des numéros) mais ils sont masqués de l'éditeur, retirés des crates / du
+    // Battle Pass / de la boutique Halloween, et s'affichent comme l'option par défaut.
+    (function(){
+      var OFF = [
+        [BGS, ["Aurore","Rayures","Pois","Forêt","Damier","Aurore boréale","Citrouilles","Cimetière","Toile d'araignée","Banshitrouye"]],
+        [FRAME_STYLES, ["Hanté","Toiles","Lanterne de Banshitrouye"]],
+        [EFFECTS, ["Chauves-souris","Brume","Feux follets","Procession de Banshitrouye"]],
+        [NAME_FONTS, ["Hanté","Sanglant"]]
+      ];
+      OFF.forEach(function(g){
+        g[0].forEach(function(it){
+          if(g[1].indexOf(it.name) < 0) return;
+          it.off = true; it.min = 0; delete it.pass; delete it.hw; delete it.hwc;
+          if(g[0] === BGS) it.css = BGS[0].css || "";
+        });
+      });
+    })();
     // CSS partagé (carte du profil + fenêtre de profil des autres joueurs) : style de cadre, forme de la photo, effets, police du pseudo.
     var CARD_CSS = [
       ".card{position:relative; overflow:hidden;}",
@@ -163,6 +181,9 @@
       paint: function(els, c, nameText){
         c = c || {};
         var f = int(c.f, 10), h = int(c.h, 6), e = int(c.e, 10), nf = int(c.nf, 6), nc = int(c.nc, 11);
+        if(FRAME_STYLES[f] && FRAME_STYLES[f].off) f = 0;
+        if(EFFECTS[e] && EFFECTS[e].off) e = 0;
+        if(NAME_FONTS[nf] && NAME_FONTS[nf].off) nf = 0;
         if(els.card) els.card.className = "card" + (f ? " fs" + f : "") + (e ? " ef" + e : "");
         if(els.avatar) els.avatar.className = "avatar"; /* photo toujours ronde */
         if(els.name){
