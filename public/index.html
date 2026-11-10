@@ -2575,20 +2575,16 @@
         <div class="gc-checkbox-grid" id="gcGenGrid"></div>
       </div>
 
-      <div class="gc-section">
-        <div class="mp-section-label">Catégories de Pokémon</div>
-        <div class="gc-switch-list" id="gcCategoryList"></div>
-      </div>
-
-      <div class="gc-section">
-        <div class="mp-section-label">Formes spéciales</div>
-        <div class="gc-switch-list" id="gcFormsList"></div>
+      <!-- Catégories et formes spéciales : options retirées (tout est toujours activé). Conteneurs gardés cachés pour le script. -->
+      <div hidden aria-hidden="true">
+        <div id="gcCategoryList"></div>
+        <div id="gcFormsList"></div>
       </div>
 
       <div class="gc-section">
         <div class="mp-section-label">Difficulté</div>
         <div class="gc-switch-list" id="gcDifficultyList"></div>
-        <div class="gc-hint">En mode chromatique, les Pokémon s'affichent avec leurs couleurs shiny : bien plus dur à reconnaître !<br>🔥 Mode hardcore : toutes les options de Pokémon sont activées (hors « tout chromatique »), chaque Pokémon a 15 % de chances d'être chromatique, et en équipes tu ne vois plus le Pokémon de tes équipiers.</div>
+        <div class="gc-hint">🔥 Mode hardcore : chaque Pokémon a 15 % de chances d'être chromatique, et en équipes tu ne vois plus le Pokémon de tes équipiers.</div>
       </div>
 
       <div class="gc-summary">
@@ -3532,6 +3528,17 @@
     return s;
   }
 
+  // Options retirées de l'interface : catégories et formes toujours activées, jamais « tout chromatique ».
+  function normalizeGameSettings(s){
+    if(!s) return s;
+    s.categories = Object.assign({}, s.categories);
+    s.forms = Object.assign({}, s.forms);
+    Object.keys(s.categories).forEach(k => { s.categories[k] = true; });
+    Object.keys(s.forms).forEach(k => { s.forms[k] = true; });
+    s.shinyOnly = false;
+    return s;
+  }
+
   let gameSettings = loadGameSettings();
 
   function loadGameSettings(){
@@ -3548,13 +3555,14 @@
         hardcore: parsed.hardcore === true
       };
       if(!merged.generations.length) merged.generations = def.generations;
+      normalizeGameSettings(merged);
       applyHardcoreToSettings(merged);
       return merged;
     }catch(e){ return def; }
   }
 
   function saveGameSettings(settings){
-    gameSettings = settings;
+    gameSettings = normalizeGameSettings(settings);
     try{ localStorage.setItem(GAME_SETTINGS_KEY, JSON.stringify(settings)); }catch(e){}
     drawPoolCache = null; // la configuration a changé : le pool de tirage doit être reconstruit
   }
@@ -3736,7 +3744,6 @@
   // le pool de Pokémon, elles changent seulement la façon dont le secret est affiché.
   // Elles vivent donc à la racine de la config, pas dans un sous-objet.
   const GC_DIFFICULTY_DEFS = [
-    { key:"shinyOnly", label:"Chromatique uniquement (shiny)" },
     { key:"hardcore", label:"🔥 Mode hardcore" }
   ];
 
