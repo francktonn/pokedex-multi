@@ -3288,7 +3288,35 @@
     return list;
   }
 
+  // Manaphy et Phione : PokeAPI les range dans deux familles séparées, alors que l'œuf de
+  // Manaphy donne un Phione (avec Ditto). On les relie à la main, comme un lien de famille.
+  const EGG_LINKS = {
+    manaphy: { parent: { name:"manaphy", id:490 }, child: { name:"phione", id:489 },
+               trigger: "Éclot d'un œuf de Manaphy (avec Ditto)" }
+  };
   async function buildEvolutionData(speciesData, currentName){
+    const data = await buildEvolutionDataBase(speciesData, currentName);
+    try{
+      const link = EGG_LINKS.manaphy;
+      const isParent = currentName === link.parent.name, isChild = currentName === link.child.name;
+      if(!isParent && !isChild) return data;
+      const other = isParent ? link.child : link.parent;
+      const info = await fetchEvoStageInfo("https://pokeapi.co/api/v2/pokemon-species/" + other.id + "/");
+      if(!info.id) return data;
+      const stage = { name: other.name, id: info.id, displayName: info.displayName, sprite: smallSpriteUrl(info.id), trigger: isParent ? link.trigger : "" };
+      if(isParent){
+        if(!data.descendants.some(d => d.name === stage.name)){
+          data.descendants.push(stage);
+          data.descendantTree = (data.descendantTree || []).concat([Object.assign({ children: [] }, stage)]);
+        }
+      }else if(!data.ancestors.some(a => a.name === stage.name)){
+        data.ancestors.unshift(stage);
+        data.currentTrigger = link.trigger;
+      }
+    }catch(e){}
+    return data;
+  }
+  async function buildEvolutionDataBase(speciesData, currentName){
     try{
       const chainData = await fetchJSON(speciesData.evolution_chain.url);
       const root = parseEvoChain(chainData.chain, null);
