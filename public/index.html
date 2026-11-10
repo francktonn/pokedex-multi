@@ -2102,13 +2102,6 @@
   }
   .notepad-pct-btn:active{ background:var(--gold); }
   /* Recherche + récapitulatif du bloc-note */
-  .notepad-search{
-    width:100%; box-sizing:border-box; flex-shrink:0;
-    border-radius:10px; border:1px solid var(--border-soft-14);
-    padding:8px 12px; font-family:'Nunito'; font-size:13px;
-    background:var(--card-bg); color:var(--ink);
-  }
-  .notepad-search:focus{ outline:2px solid var(--gold); outline-offset:1px; }
   .notepad-recap{ display:none; flex-wrap:wrap; gap:4px; flex-shrink:0; padding:6px 8px; border-radius:10px; background:var(--card-bg); border:1px solid var(--border-soft-10); max-height:74px; overflow-y:auto; }
   .np-rc{ font-family:'Nunito'; font-weight:800; font-size:10.5px; padding:2px 8px; border-radius:999px; color:#fff; }
   .np-rc.yes{ background:#2e7d32; }
@@ -2133,10 +2126,21 @@
   .notepad-panel-wide .notepad-grid-wrap{ flex:none; overflow:visible; padding-right:0; }
   .notepad-panel-wide .notepad-grid{ min-height:0; }
   .notepad-panel-wide .notepad-recap{ max-height:none; overflow:visible; }
+  .notepad-pickbar{
+    flex:0 0 100%; display:flex; align-items:stretch; gap:4px; padding:4px;
+    background:rgba(127,127,127,.12); border-radius:10px;
+  }
+  .notepad-pick-title{ display:flex; align-items:center; padding:0 6px; font-family:'Silkscreen',monospace; font-size:9px; color:var(--text-muted); letter-spacing:.05em; text-transform:uppercase; }
+  .notepad-pick{
+    flex:1; min-height:34px; font-family:'Nunito'; font-weight:800; font-size:12px; cursor:pointer;
+    color:var(--ink); background:var(--chip-bg); border:1px solid var(--border-soft-12); border-radius:8px;
+    touch-action:manipulation; user-select:none; transition:background .1s ease, color .1s ease;
+  }
+  .notepad-pick:active{ transform:scale(.96); }
+  .notepad-pick.on{ background:#2e7d32; border-color:#2e7d32; color:#fff; }
   .notepad-chip{ min-height:32px; }
   .notepad-chip:active{ transform:scale(.95); }
   .notepad-asker-tag:not(.has-asker){ opacity:.4; }
-  .notepad-nores{ font-size:12px; color:var(--text-muted); font-style:italic; padding:4px; }
   .notepad-pct-value{
     min-width:30px;
     text-align:center;
@@ -2523,7 +2527,6 @@
 
       <div class="notepad-sticky">
         <div class="notepad-players-row" id="notepadPlayersRow"></div>
-        <input type="search" class="notepad-search" id="notepadSearch" placeholder="🔎 Chercher une info (feu, légendaire, rouge…)" autocomplete="off" aria-label="Chercher une info dans le bloc-note">
         <div class="notepad-categories-row" id="notepadCategoriesRow"></div>
       </div>
       <form class="notepad-add-player" id="notepadAddPlayerForm">
@@ -2726,12 +2729,13 @@
       ]},
       { key:"color", label:"Couleur", items: Object.keys(COLOR_FR).map(k => ({ id:"color:"+k, label:COLOR_FR[k], hasPercent:true })) },
       { key:"evo", label:"Évolution", items: [
-        { id:"evo:base", label:"Pokémon de base" },
-        { id:"evo:sous_evolution", label:"Sous-évolution" },
-        { id:"evo:famille_2", label:"Famille de 2" },
-        { id:"evo:famille_3", label:"Famille de 3" },
+        { id:"evo:seul", label:"Pokémon seul" },
+        // Famille de N : une fois cochée, une barre propose la place du Pokémon dans la famille (un seul choix).
+        { id:"evo:famille_2", label:"Famille de 2", picks:[
+          { id:"evo:f2_base", label:"Base" }, { id:"evo:f2_last", label:"Dernier" } ] },
+        { id:"evo:famille_3", label:"Famille de 3", picks:[
+          { id:"evo:f3_base", label:"Base" }, { id:"evo:f3_mid", label:"Milieu" }, { id:"evo:f3_last", label:"Dernier" } ] },
         { id:"evo:peut_evoluer", label:"Peut encore évoluer" },
-        { id:"evo:finale", label:"Fin d'évolution" },
         { id:"evo:objet", label:"Évolue avec un objet" },
         { id:"evo:echange", label:"Évolue par échange" }
       ]},
@@ -4336,7 +4340,6 @@
   let notepadSaveTimer = null;
   let notepadState = loadNotepadState();
   let notepadMpPlayers = []; // rempli depuis la partie multijoueur en cours (id/name), hors soi-même
-  let notepadFilter = ""; // recherche en cours dans le bloc-note (non sauvegardée)
   let notepadTeamShared = false; // true si le mode équipes est actif ET qu'on est assigné à une équipe : les notes "mp:<id>" deviennent alors partagées avec les coéquipiers
 
   function loadNotepadState(){
@@ -4516,8 +4519,6 @@
 
   function renderNotepadActivePlayer(){
     const key = notepadState.activePlayerKey;
-    const searchEl = document.getElementById("notepadSearch");
-    if(searchEl) searchEl.style.display = key ? "" : "none";
     if(!key){
       notepadEmptyState.style.display = "block";
       notepadActiveArea.style.display = "none";
@@ -4554,8 +4555,7 @@
       });
     });
 
-    // Pendant une recherche, on cherche dans toutes les catégories : on masque les onglets.
-    notepadCategoriesRow.style.display = notepadFilter ? "none" : "flex";
+    notepadCategoriesRow.style.display = "";
     renderNotepadGrid(categories, entry);
     renderNotepadRecap(entry, categories);
   }
@@ -4571,7 +4571,8 @@
       const st = entry.checks[it.id];
       if(st === "yes"){
         const p = entry.pct && entry.pct[it.id];
-        yes += `<span class="np-rc yes">${mpEscapeHtml(it.label)}${it.hasPercent && p != null && p < 100 ? " " + p + "%" : ""}</span>`;
+        const pk = it.picks && it.picks.find(x => entry.checks[x.id] === "yes");
+        yes += `<span class="np-rc yes">${mpEscapeHtml(it.label)}${pk ? " · " + mpEscapeHtml(pk.label) : ""}${it.hasPercent && p != null && p < 100 ? " " + p + "%" : ""}</span>`;
       }else if(st === "no"){
         no += `<span class="np-rc no">${mpEscapeHtml(it.label)}</span>`;
       }
@@ -4581,19 +4582,11 @@
   }
 
   function renderNotepadGrid(categories, entry){
-    let cat = categories.find(c => c.key === notepadState.activeCategoryKey);
-    let list;
-    if(notepadFilter){
-      const q = foldFr(notepadFilter);
-      list = [];
-      categories.forEach(c => c.items.forEach(it => { if(foldFr(it.label).indexOf(q) >= 0) list.push({ it, catKey: c.key }); }));
-      if(!list.length){ notepadGrid.innerHTML = `<div class="notepad-nores">Aucune info ne correspond à « ${mpEscapeHtml(notepadFilter)} ».</div>`; return; }
-    }else{
-      if(!cat){ notepadGrid.innerHTML = ""; return; }
-      list = cat.items.map(it => ({ it, catKey: cat.key }));
-    }
+    const cat = categories.find(c => c.key === notepadState.activeCategoryKey);
+    if(!cat){ notepadGrid.innerHTML = ""; return; }
+    const catKey = cat.key;
 
-    notepadGrid.innerHTML = list.map(({ it, catKey }) => {
+    notepadGrid.innerHTML = cat.items.map(it => {
       const state = entry.checks[it.id] || null;
       const showPct = it.hasPercent && state === "yes";
       const pctVal = (entry.pct && entry.pct[it.id] != null) ? entry.pct[it.id] : 100;
@@ -4611,11 +4604,18 @@
           <span class="notepad-pct-value" data-pct-value="${mpEscapeHtml(it.id)}">${pctVal}%</span>
           <button type="button" class="notepad-pct-btn" data-pct-id="${mpEscapeHtml(it.id)}" data-pct-delta="5" aria-label="Augmenter">+</button>
         </span>` : ""}
-      </span>`;
+      </span>${(it.picks && state === "yes") ? `
+      <div class="notepad-pickbar" role="group" aria-label="Place dans la famille">
+        <span class="notepad-pick-title">Place</span>
+        ${it.picks.map(p => `<button type="button" class="notepad-pick${entry.checks[p.id] === "yes" ? " on" : ""}" data-item-id="${mpEscapeHtml(it.id)}" data-pick-id="${mpEscapeHtml(p.id)}">${mpEscapeHtml(p.label)}</button>`).join("")}
+      </div>` : ""}`;
     }).join("");
 
     notepadGrid.querySelectorAll(".notepad-chip").forEach(chip => {
       chip.addEventListener("click", () => notepadHandleChipClick(chip));
+    });
+    notepadGrid.querySelectorAll(".notepad-pick").forEach(btn => {
+      btn.addEventListener("click", () => notepadHandlePickClick(btn));
     });
     notepadGrid.querySelectorAll(".notepad-asker-tag").forEach(btn => {
       btn.addEventListener("click", (e) => {
@@ -4633,6 +4633,39 @@
 
   // Un seul tap, instantané (plus d'attente ni de double-clic) : vide → ✓ vrai (vert) → ✗ faux (rouge) → vide.
   // Deux taps rapides donnent donc directement « faux », comme avant.
+  function notepadFindItem(id){
+    const cats = noteCategories();
+    for(let i = 0; i < cats.length; i++){
+      const it = cats[i].items.find(x => x.id === id);
+      if(it) return it;
+    }
+    return null;
+  }
+
+  // Réaffiche le bloc-note sans renvoyer en haut de la liste.
+  function notepadRerenderKeepScroll(){
+    const sc = document.getElementById("notepadScroll"), top = sc ? sc.scrollTop : 0;
+    renderNotepadActivePlayer();
+    if(sc) sc.scrollTop = top;
+  }
+
+  // Choix de la place dans la famille (Base / Milieu / Dernier) : un seul à la fois, re-taper l'enlève.
+  // Stocké dans `checks` (ids evo:f2_*, evo:f3_*), donc partagé avec les coéquipiers sans changement serveur.
+  function notepadHandlePickClick(btn){
+    const key = notepadState.activePlayerKey;
+    if(!key) return;
+    const item = notepadFindItem(btn.dataset.itemId);
+    if(!item || !item.picks) return;
+    const entry = notepadEnsureData(key);
+    const id = btn.dataset.pickId, wasOn = entry.checks[id] === "yes";
+    const patch = {};
+    item.picks.forEach(p => { if(entry.checks[p.id]){ delete entry.checks[p.id]; patch[p.id] = null; } });
+    if(!wasOn){ entry.checks[id] = "yes"; patch[id] = "yes"; }
+    saveNotepadState();
+    notepadPushTeamPatch(key, { checks: patch });
+    notepadRerenderKeepScroll();
+  }
+
   function notepadHandleChipClick(chip){
     notepadApplyChip(chip);
   }
@@ -4675,6 +4708,17 @@
     const countEl = notepadCategoriesRow.querySelector(`[data-cat-count="${catKey}"]`);
     if(cat && countEl) countEl.textContent = notepadCatCounts(cat.items, entry.checks) + "/" + cat.items.length;
     renderNotepadRecap(entry);
+
+    // Case « Famille de N » : la barre de choix apparaît quand elle passe à ✓ et disparaît (choix effacé) sinon.
+    const item = notepadFindItem(id);
+    if(item && item.picks){
+      if(next !== "yes"){
+        const patch = {};
+        item.picks.forEach(p => { if(entry.checks[p.id]){ delete entry.checks[p.id]; patch[p.id] = null; } });
+        if(Object.keys(patch).length){ saveNotepadState(); notepadPushTeamPatch(key, { checks: patch }); }
+      }
+      notepadRerenderKeepScroll();
+    }
   }
 
   function notepadHandlePctBtnClick(btn){
@@ -6362,58 +6406,6 @@
   btnNotepad.addEventListener("click", openNotepad);
   btnNotepadClose.addEventListener("click", closeNotepad);
   btnNotepadClear.addEventListener("click", clearNotepad);
-  const notepadSearchInput = document.getElementById("notepadSearch");
-  if(notepadSearchInput){
-    notepadSearchInput.addEventListener("input", () => {
-      notepadFilter = notepadSearchInput.value.trim();
-      renderNotepadActivePlayer();
-    });
-  }
-  notepadText.addEventListener("input", onNotepadInput);
-  notepadAddPlayerForm.addEventListener("submit", notepadHandleAddPlayer);
-  notepadOverlay.addEventListener("click", (e) => { if(e.target === notepadOverlay) closeNotepad(); });
-  document.addEventListener("keydown", (e) => {
-    if(e.key !== "Escape") return;
-    if(notepadOverlay.classList.contains("open")) closeNotepad();
-    if(searchOverlay.classList.contains("open")) closeSearch();
-  });
-
-  btnSearch.addEventListener("click", openSearch);
-  btnSearchClose.addEventListener("click", closeSearch);
-  btnSearchGo.addEventListener("click", runSearch);
-  searchInput.addEventListener("keydown", (e) => { if(e.key === "Enter") runSearch(); });
-  searchInput.addEventListener("input", onSearchInputTyped);
-  searchOverlay.addEventListener("click", (e) => { if(e.target === searchOverlay) closeSearch(); });
-
-  btnMultiplayer.addEventListener("click", mpOpen);
-  btnMpClose.addEventListener("click", mpClose);
-  if(mpAllyToggleBtn) mpAllyToggleBtn.addEventListener("click", mpToggleTeammateView);
-  mpOverlay.addEventListener("click", (e) => { if(e.target === mpOverlay) mpClose(); });
-  document.addEventListener("keydown", (e) => {
-    if(e.key === "Escape" && mpOverlay.classList.contains("open")) mpClose();
-  });
-
-  btnGuess.addEventListener("click", guessOpen);
-  btnGuessClose.addEventListener("click", guessClose);
-  guessOverlay.addEventListener("click", (e) => { if(e.target === guessOverlay) guessClose(); });
-  document.addEventListener("keydown", (e) => {
-    if(e.key === "Escape" && guessOverlay.classList.contains("open")) guessClose();
-  });
-
-  // ---------- Confirmation avant de quitter / rafraîchir la page ----------
-  // Évite qu'un clic accidentel sur "Actualiser", "Fermer l'onglet" ou "Précédent"
-  // ne coupe tout le monde en pleine partie multijoueur (ou fasse perdre une manche
-  // solo en cours). Le navigateur affiche sa propre boîte de dialogue de confirmation ;
-  // les navigateurs modernes n'affichent plus de texte personnalisé pour des raisons de
-  // sécurité, mais définir returnValue reste nécessaire pour déclencher l'alerte native.
-  function hasUnsavedGameInProgress(){
-    // Partie multijoueur active (lobby ou manche en cours) : quitter fait perdre sa
-    // place / son secret vis-à-vis des autres joueurs.
-    if(mpRoomCode) return true;
-    // Partie solo : un Pokémon a déjà été tiré (une devinette est en cours).
-    if(current) return true;
-    return false;
-  }
   window.addEventListener("beforeunload", function(e){
     if(!hasUnsavedGameInProgress()) return;
     e.preventDefault();
