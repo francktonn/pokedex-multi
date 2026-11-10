@@ -206,6 +206,10 @@ function normalizeConfig(raw) {
     shinyOnly = false;
   }
 
+  // Options retirées de l'interface : catégories et formes toujours activées, jamais « tout chromatique ».
+  Object.keys(categories).forEach(k => { categories[k] = true; });
+  Object.keys(forms).forEach(k => { forms[k] = true; });
+  shinyOnly = false;
   return { generations, categories, forms, mode, shinyOnly, hardcore };
 }
 
