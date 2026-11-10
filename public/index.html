@@ -924,10 +924,14 @@
 
   .stats{display:flex; flex-direction:column; gap:6px;}
   .stat-row{display:grid; grid-template-columns: 80px 1fr 30px; align-items:center; gap:8px;}
-  .stat-row .label{font-size:11px; font-weight:700; color:#6b6357;}
-  .stat-bar-bg{background:#efe9da; border-radius:6px; height:8px; overflow:hidden;}
-  .stat-bar-fill{height:100%; border-radius:6px; transition: width .6s ease;}
+  .stat-row .label{font-size:11px; font-weight:700; color:var(--text-muted);}
+  .stat-bar-bg{background:rgba(127,127,127,.2); border-radius:6px; height:9px; overflow:hidden;}
+  .stat-bar-fill{height:100%; width:var(--w); border-radius:6px; background:var(--c); box-shadow: inset 0 -2px 0 rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.35); animation: statgrow .7s cubic-bezier(.2,.8,.2,1) both;}
+  @keyframes statgrow{ from{ width:0; } }
+  @media (prefers-reduced-motion: reduce){ .stat-bar-fill{ animation:none; } }
   .stat-row .num{font-size:11px; font-weight:800; text-align:right; color:var(--ink);}
+  .stat-total{display:flex; justify-content:space-between; align-items:center; margin-top:6px; padding-top:6px; border-top:1px dashed rgba(127,127,127,.35); font-size:11px; font-weight:800; color:var(--text-muted);}
+  .stat-total b{font-family:'Baloo 2',sans-serif; font-size:15px; color:var(--ink);}
 
   .evo-section{ margin-top:2px; }
   .evo-row{
@@ -2339,6 +2343,9 @@
       <div class="section-label">Faiblesses &amp; résistances</div>
       <div class="type-effect" id="typeEffect"></div>
 
+      <div class="section-label">Statistiques de base</div>
+      <div class="stats" id="statsBlock"></div>
+
       <div class="section-label">Évolutions</div>
       <div class="evo-section" id="evoSection">
         <div class="evo-hint" id="evoHint" style="display:none;"></div>
@@ -2451,6 +2458,9 @@
 
           <div class="section-label">Faiblesses &amp; résistances</div>
           <div class="type-effect" id="searchTypeEffect"></div>
+
+          <div class="section-label">Statistiques de base</div>
+          <div class="stats" id="searchStatsBlock"></div>
 
           <div class="section-label">Évolutions</div>
           <div class="evo-hint" id="searchEvoHint" style="display:none;">Touche un Pokémon de la famille ou une autre forme pour voir sa fiche.</div>
@@ -3958,6 +3968,22 @@
     return rowsHtml || `<div class="type-effect-none">Aucune faiblesse ni résistance particulière.</div>`;
   }
 
+  // Statistiques de base : une barre colorée par stat (rouge = faible, vert = élevée) + le total.
+  const STAT_FR = { "hp":"PV", "attack":"Attaque", "defense":"Défense", "special-attack":"Atq. Spé.", "special-defense":"Déf. Spé.", "speed":"Vitesse" };
+  function buildStatsHTML(stats){
+    if(!stats || !stats.length) return "";
+    let total = 0;
+    const rows = stats.map(st => {
+      total += st.value;
+      const pct = Math.min(100, Math.round(st.value / 200 * 100));
+      const hue = Math.round(Math.min(st.value, 160) / 160 * 120); // 0 = rouge … 120 = vert
+      return `<div class="stat-row"><span class="label">${STAT_FR[st.name] || st.name}</span>`
+        + `<div class="stat-bar-bg"><div class="stat-bar-fill" style="--w:${pct}%; --c:hsl(${hue},70%,48%)"></div></div>`
+        + `<span class="num">${st.value}</span></div>`;
+    }).join("");
+    return rows + `<div class="stat-total"><span>TOTAL</span><b>${total}</b></div>`;
+  }
+
   function renderTypeEffect(types){
     typeEffect.innerHTML = buildTypeEffectHTML(types);
   }
@@ -4098,6 +4124,7 @@
     valForm.className = "val form-" + data.form.key;
 
     renderTypeEffect(data.types);
+    document.getElementById("statsBlock").innerHTML = buildStatsHTML(data.stats);
 
 
     flavorText.textContent = data.flavor;
@@ -4703,6 +4730,7 @@
     searchValForm.className = "val form-" + data.form.key;
 
     searchTypeEffect.innerHTML = buildTypeEffectHTML(data.types);
+    document.getElementById("searchStatsBlock").innerHTML = buildStatsHTML(data.stats);
     searchFlavorText.textContent = data.flavor;
 
     renderEvolutions(data, searchEvoRow, { search: true });
