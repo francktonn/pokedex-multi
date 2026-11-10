@@ -441,8 +441,6 @@
     }
     renderSkins();
     //     window.addEventListener("passchange", function () { renderOptions(); renderPreview(); renderSkins(); });
-    // Un objet Halloween vient d'être acheté (onglet 🎃) : il se déverrouille tout de suite dans l'éditeur.
-    window.addEventListener("halloweenchange", function () { renderOptions(); renderPreview(); });
     // Profil modifié ailleurs (ex. « Équiper » depuis l'onglet Crates) : on recharge la carte si l'éditeur est fermé.
     window.addEventListener("profilechange", function () { if ($("editor").classList.contains("hidden")) fillFromSaved(); });
 

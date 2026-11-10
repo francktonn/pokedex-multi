@@ -458,7 +458,6 @@
         if(gain.crates && window.PokeCrates) gain.crates = window.PokeCrates.grant(gain.crates); else gain.crates = 0;
         var fresh = { season:n, xp:0, claimed:{}, skin:s.skin, premium:false, pclaimed:{}, skins:s.skins, items:s.items, last:{ n:s.season, level:lv, money:gain.money, crates:gain.crates } };
         write(fresh);
-        if(window.toast) window.toast("Nouvelle saison : " + themeOf(n).name + " ! Récompenses de la saison " + s.season + " récupérées (niveau " + lv + ").", { kind:"win", icon:themeOf(n).icon, ttl:6000 });
       } finally { syncing = false; }
     }
     function read(){ sync(); var s = parse(); if(!s.season) s.season = seasonNum(); return s; }
@@ -590,7 +589,6 @@
     if(window.PokeCrates) window.PokeCrates.unlockAll();
     if(window.PokePass) window.PokePass.unlockAll();
     if(window.PokeMoney) window.PokeMoney.add(99999999);
-    if(window.PokeHalloween) window.PokeHalloween.unlockAll();
   } };
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2321,12 +2319,10 @@
   <button type="button" role="tab" id="tabGroup" class="modetab" aria-selected="false" data-tab="group"><span class="ic">👥</span><span class="lb">Groupe</span></button>
   <button type="button" role="tab" id="tabGuess" class="modetab active" aria-selected="true" data-tab="guess"><span class="ic">🔴</span><span class="lb">Devinette</span></button>
   <button type="button" role="tab" id="tabProfile" class="modetab" aria-selected="false" data-tab="profile"><span class="ic">👤</span><span class="lb">Profil</span></button>
-  <button type="button" role="tab" id="tabHalloween" class="modetab" style="display:none;" aria-selected="false" data-tab="halloween"><span class="ic">🎃</span><span class="lb">Halloween</span></button>
 </nav>
 <div id="grpBar" class="grpbar" style="display:none;"></div>
 <div id="groupPane" style="display:none;"><div id="groupHost"></div></div>
 <div id="profilePane" style="display:none;"><div id="profileHost"></div></div>
-<div id="halloweenPane" style="display:none;"><div id="halloweenHost"></div></div>
 
 
 <div class="stage">
@@ -5251,27 +5247,6 @@
   let mpIsHost = false; // suis-je l'hôte de la partie en cours ? (seul lui peut modifier la config)
   let mpRoomConfig = null; // dernière configuration connue de la partie (générations/catégories/formes)
   let mpLastKnownState = null; // dernier état de partie reçu, réutilisé pour afficher le panneau "Deviner"
-  let mpRoundsFinishedSeen = null;
-  let mpRoundsFinishedCode = null;
-  const MP_ROUND_REWARD_MIN = 10, MP_ROUND_REWARD_MAX = 80;
-  function mpCheckRoundReward(state){
-    if(mpRoundsFinishedCode !== mpRoomCode){ mpRoundsFinishedCode = mpRoomCode; mpRoundsFinishedSeen = null; }
-    const n = state && state.roundsFinished;
-    if(typeof n !== "number") return;
-    if(mpRoundsFinishedSeen === null){ mpRoundsFinishedSeen = n; return; }
-    if(n > mpRoundsFinishedSeen){
-      const prevSeen = mpRoundsFinishedSeen;
-      let total = 0;
-      for(let i = mpRoundsFinishedSeen; i < n; i++) total += MP_ROUND_REWARD_MIN + Math.floor(Math.random() * (MP_ROUND_REWARD_MAX - MP_ROUND_REWARD_MIN + 1));
-      mpRoundsFinishedSeen = n;
-      if(window.PokeMoney) window.PokeMoney.add(total);
-      if(window.PokeQuests) window.PokeQuests.track("rounds", n - prevSeen);
-      const xp = (window.PokePass ? window.PokePass.xpRound : 0) * (n - prevSeen);
-      if(window.PokePass) window.PokePass.addXp(xp);
-      const candies = window.PokeHalloween ? window.PokeHalloween.onRound(n - prevSeen) : 0; // événement Halloween : bonbons par manche
-      if(window.toast) window.toast("Manche terminée ! +" + total + " ₽" + (xp ? " · +" + xp + " XP" : "") + (candies ? " · +" + candies + " 🍬" : ""), { kind:"ok", icon:"💰" });
-    }
-  }
   let mpTeamsPickedPlayerId = null; // (hôte, mode équipes) joueur actuellement "sélectionné" en attente d'un tap sur une équipe/zone "non assignés"
 
   // Le tirage aléatoire "solo" (bouton principal du Pokédex) est désactivé pendant
@@ -5573,7 +5548,6 @@
       return;
     }
     mpCurrentStatus = state.status || "lobby";
-    mpCheckRoundReward(state);
     mpUpdateDrawAvailability();
     const me = state.me;
     const isHost = !!state.isHost;
@@ -6487,15 +6461,13 @@
 </script>
 <script src="profilecard.js?v=5"></script>
 <script src="enhance.js"></script>
-<script src="halloween.js?v=1"></script>
 <script>
 (function(){
   // Onglets : chaque onglet (sauf Devinette) est chargé à la première ouverture, dans un Shadow DOM isolé.
   var TABS = {
     guess:   { btn: "tabGuess" },
     group:   { btn: "tabGroup",   pane: "groupPane",   host: "groupHost",   src: "group.js?v=3",   api: "GroupTab",   label: "group.js" },
-    profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=14", api: "ProfileTab", label: "profile.js" },
-    halloween: { btn: "tabHalloween", pane: "halloweenPane", host: "halloweenHost", src: "halloween-tab.js?v=1", api: "HalloweenTab", label: "halloween-tab.js" }
+    profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=14", api: "ProfileTab", label: "profile.js" }
   };
   var loaded = {};
   function fail(t, msg){
@@ -6518,7 +6490,6 @@
   }
   function setTab(name){
     if (!TABS[name]) name = "guess";
-    if (name === "halloween" && !(window.PokeHalloween && window.PokeHalloween.active())) name = "guess"; // l'événement est terminé (ou pas encore commencé)
     document.body.classList.toggle("tab-off", name !== "guess");
     Object.keys(TABS).forEach(function(k){
       var on = k === name, b = document.getElementById(TABS[k].btn);
@@ -6532,16 +6503,6 @@
   }
   Object.keys(TABS).forEach(function(k){ document.getElementById(TABS[k].btn).onclick = function(){ setTab(k); }; });
   window.PokeTabs = { set: setTab, load: load, current: function(){ var a = "guess"; Object.keys(TABS).forEach(function(k){ if (document.getElementById(TABS[k].btn).classList.contains("active")) a = k; }); return a; } };
-  // Onglet 🎃 : visible seulement pendant l'événement Halloween ; pastille tant que la récompense de connexion du jour n'est pas récupérée.
-  function hwTab(){
-    try{
-      var b = document.getElementById("tabHalloween"), H = window.PokeHalloween, on = !!(H && H.active());
-      b.style.display = on ? "" : "none";
-      b.classList.toggle("has-dot", on && H.login.state().canClaim);
-      if(!on && window.PokeTabs && window.PokeTabs.current() === "halloween") window.PokeTabs.set("guess");
-    }catch(e){}
-  }
-  window.addEventListener("halloweenchange", hwTab); window.addEventListener("halloweentick", hwTab); hwTab();
   var start = "guess";
   try{
     var q = new URLSearchParams(location.search);
