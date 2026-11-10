@@ -308,9 +308,9 @@
       k.onclick = function () { if (window.confirm("Retirer " + m.name + " du groupe ?")) doKick(m.id); };
       li.appendChild(k);
     }
-    if (m.card && window.PokeCard && m.id !== G.pid) {
+    if (m.card && window.PokeCard) {
       nm.style.cursor = "pointer";
-      nm.onclick = function () { try { window.PokeCard.show({ name: m.name, avatar: m.avatar, card: m.card, me: false }); } catch (e) {} };
+      nm.onclick = function () { try { window.PokeCard.show({ name: m.name, avatar: m.avatar, card: m.card, me: m.id === G.pid }); } catch (e) {} };
     }
     return li;
   }

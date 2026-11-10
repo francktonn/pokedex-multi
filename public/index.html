@@ -164,7 +164,7 @@
         c = c || {};
         var f = int(c.f, 10), h = int(c.h, 6), e = int(c.e, 10), nf = int(c.nf, 6), nc = int(c.nc, 11);
         if(els.card) els.card.className = "card" + (f ? " fs" + f : "") + (e ? " ef" + e : "");
-        if(els.avatar) els.avatar.className = "avatar" + (h ? " sh" + h : "");
+        if(els.avatar) els.avatar.className = "avatar"; /* photo toujours ronde */
         if(els.name){
           var col = NAME_COLORS[nc];
           els.name.className = "nm" + (nf ? " nf" + nf : "") + (col.grad ? " ncg" : "");
@@ -179,7 +179,7 @@
         var S = window.PokeStats ? window.PokeStats.get() : null, x = null;
         if(S) x = { qp:S.whois.played, qc:S.whois.correct, qb:S.whois.bestMs, gf:S.guess.found, gm:S.guess.missed };
         var t = p.type ? TYPE_KEYS.indexOf(p.type) + 1 : 0;
-        return { s: p.style, c: p.color, t: t > 0 ? t : 0, m: p.motto, x: x, b: p.bg, tm: p.team, f: p.frameStyle, h: p.shape, e: p.effect, nf: p.nameFont, nc: p.nameColor };
+        return { s: p.style, c: p.color, t: t > 0 ? t : 0, m: p.motto, x: x, b: p.bg, tm: p.team, f: p.frameStyle, h: 0, e: p.effect, nf: p.nameFont, nc: p.nameColor };
       }
     };
 
@@ -249,7 +249,7 @@
   (function(){
     var KEY = "pokeCrates_v1";
     // [liste dans PokeProfile, champ du profil, libellé]
-    var CATS = [ ["bgs","bg","Fond de carte"], ["frameStyles","frameStyle","Style de cadre"], ["shapes","shape","Forme de photo"],
+    var CATS = [ ["bgs","bg","Fond de carte"], ["frameStyles","frameStyle","Style de cadre"],
       ["effects","effect","Effet animé"], ["nameFonts","nameFont","Police du pseudo"], ["nameColors","nameColor","Couleur du pseudo"] ];
     // La rareté dépend de la valeur min de l'objet (voir listes de PokeProfile) ; w = poids du tirage.
     var RARITIES = [ { name:"Commun", color:"#8e9aa8", max:5, w:55 }, { name:"Rare", color:"#3a86d6", max:12, w:30 },
@@ -394,7 +394,7 @@
     var PR = [ {m:200},{c:1},{m:300},{c:1},{m:400},{c:2},{m:500},{c:1},{m:600},{m:1000,c:2},
                {c:2},{m:700},{c:2},{m:800},{c:3},{m:900},{c:2},{m:1000},{c:3},{m:1500,c:3},
                {c:3},{m:1200},{c:3},{m:1300},{c:4},{m:1500},{c:4},{m:2000},{c:5},{m:3000,c:5} ];
-    var ITEM_LISTS = [ ["bgs","bg","Fond de carte"], ["frameStyles","frameStyle","Style de cadre"], ["shapes","shape","Forme de photo"],
+    var ITEM_LISTS = [ ["bgs","bg","Fond de carte"], ["frameStyles","frameStyle","Style de cadre"],
       ["effects","effect","Effet animé"], ["nameFonts","nameFont","Police du pseudo"], ["nameColors","nameColor","Couleur du pseudo"] ];
     function passItems(tier){
       var P = window.PokeProfile, out = [];
