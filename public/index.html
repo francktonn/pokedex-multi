@@ -964,6 +964,15 @@
     margin:0 2px;
   }
   .evo-none{ font-size:12px; color:var(--text-muted); font-style:italic; }
+  /* Embranchement : plusieurs évolutions possibles depuis le même Pokémon */
+  .evo-fork{
+    display:flex; flex-direction:column; gap:6px;
+    padding:4px 0 4px 8px; margin-left:2px;
+    border-left:2.5px solid var(--gold);
+    border-radius:2px;
+  }
+  .evo-or{ font-family:'Silkscreen', monospace; font-size:8px; letter-spacing:.04em; color:var(--text-muted); text-transform:uppercase; }
+  .evo-branch{ display:flex; align-items:center; flex-wrap:wrap; gap:4px; }
 
   /* Famille cliquable : toucher un Pokémon affiche sa fiche, avec retour facile */
   .evo-hint{ font-size:11px; color:var(--text-muted); font-style:italic; margin:-2px 0 6px; }
@@ -3313,7 +3322,17 @@
       // Condition qui a permis au Pokémon actuellement affiché d'évoluer depuis son stade précédent
       const currentTrigger = await formatEvoTrigger(currentNode.evolutionDetails);
 
-      return { ancestors, descendants, currentTrigger };
+      // Arbre des descendants : permet d'afficher les embranchements (ex : Kirlia -> Gardevoir OU Gallame)
+      async function buildTree(n){
+        const info = await fetchEvoStageInfo(n.url);
+        if(!info.id || info.id > MAX_DEX_ID) return null;
+        const trigger = await formatEvoTrigger(n.evolutionDetails);
+        const kids = (await Promise.all(n.children.map(buildTree))).filter(Boolean);
+        return { name: n.name, id: info.id, displayName: info.displayName, sprite: smallSpriteUrl(info.id), trigger, children: kids };
+      }
+      const descendantTree = (await Promise.all(currentNode.children.map(buildTree))).filter(Boolean);
+
+      return { ancestors, descendants, descendantTree, currentTrigger };
     }catch(e){
       return { ancestors: [], descendants: [], currentTrigger: "" };
     }
@@ -4325,10 +4344,45 @@
       return;
     }
 
-    evo.descendants.forEach(d => {
-      targetEl.appendChild(makeEvoArrow());
-      targetEl.appendChild(makeEvoStage(d, stageOpts(d)));
-    });
+    // Descendants : si une évolution se sépare en plusieurs (Kirlia -> Gardevoir / Gallame),
+    // chaque branche est affichée sur sa propre ligne, reliée au même parent par un embranchement,
+    // au lieu d'une suite de flèches qui laisserait croire que l'une évolue en l'autre.
+    function renderBranches(children, container){
+      if(!children || !children.length) return;
+      if(children.length === 1){
+        const c = children[0];
+        container.appendChild(makeEvoArrow());
+        container.appendChild(makeEvoStage(c, stageOpts(c)));
+        renderBranches(c.children, container);
+        return;
+      }
+      const fork = document.createElement("div");
+      fork.className = "evo-fork";
+      fork.setAttribute("role", "group");
+      fork.setAttribute("aria-label", "Évolution au choix : " + children.map(c => c.displayName || formatName(c.name)).join(" ou "));
+      children.forEach(c => {
+        const branch = document.createElement("div");
+        branch.className = "evo-branch";
+        branch.appendChild(makeEvoArrow());
+        branch.appendChild(makeEvoStage(c, stageOpts(c)));
+        renderBranches(c.children, branch);
+        fork.appendChild(branch);
+      });
+      const label = document.createElement("span");
+      label.className = "evo-or";
+      label.textContent = "au choix";
+      container.appendChild(fork);
+      fork.insertBefore(label, fork.firstChild);
+    }
+    if(Array.isArray(evo.descendantTree)){
+      renderBranches(evo.descendantTree, targetEl);
+    }else{
+      // Ancien format (sans arbre) : liste à plat
+      evo.descendants.forEach(d => {
+        targetEl.appendChild(makeEvoArrow());
+        targetEl.appendChild(makeEvoStage(d, stageOpts(d)));
+      });
+    }
   }
 
   // ---------- Notepad (bloc-note, localStorage) ----------
