@@ -39,24 +39,6 @@
     try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) {}
   }
 
-  // ---------- Confettis ----------
-  function confetti(count) {
-    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    var colors = ["#FFC93C", "#E23B30", "#5ee06a", "#3a86d6", "#F95587", "#ffffff"];
-    for (var i = 0; i < (count || 60); i++) {
-      var c = document.createElement("span");
-      c.className = "confetti";
-      c.style.left = Math.random() * 100 + "vw";
-      c.style.background = colors[i % colors.length];
-      c.style.setProperty("--dx", (Math.random() * 160 - 80) + "px");
-      c.style.setProperty("--rot", (360 + Math.random() * 720) + "deg");
-      c.style.setProperty("--dur", (1.8 + Math.random() * 1.4) + "s");
-      c.style.animationDelay = (Math.random() * 0.4) + "s";
-      document.body.appendChild(c);
-      (function (n) { setTimeout(function () { if (n.parentNode) n.parentNode.removeChild(n); }, 3800); })(c);
-    }
-  }
-
   // ---------- Libellés du dock (accessibilité + survol) ----------
   var labels = { btnSearch: "Pokédex", btnGuess: "Deviner", btnNotepad: "Notes" };
   Object.keys(labels).forEach(function (id) {
@@ -140,8 +122,9 @@
     wrap.appendChild(share);
   }
 
-  // ---------- Retours de jeu (bonne / mauvaise réponse, fin de manche) ----------
-  var lastBannerText = "";
+  // ---------- Retours de jeu ----------
+  // Plus de notification de bonne réponse, de victoire ni de fin de manche (le message de la partie reste affiché dans la fenêtre).
+  // Seule une légère vibration signale une mauvaise réponse.
   function watchFeedback() {
     var fbs = document.querySelectorAll(".mp-guess-feedback");
     fbs.forEach(function (fb) {
@@ -149,25 +132,8 @@
       if (!t || fb.dataset.seen === t) return;
       if (fb.id === "gcErrorMsg") return;
       fb.dataset.seen = t;
-      if (fb.classList.contains("ok")) {
-        vibrate([40, 30, 80]);
-        toast(t, { kind: "ok", icon: "🎉" });
-      } else if (fb.classList.contains("ko")) {
-        vibrate(120);
-      }
+      if (fb.classList.contains("ko")) vibrate(120);
     });
-    var banner = $("mpRoundBanner");
-    if (banner && banner.style.display !== "none") {
-      var bt = banner.textContent.trim();
-      if (bt && bt !== lastBannerText) {
-        lastBannerText = bt;
-        toast(bt, { kind: "win", icon: "🏆", ttl: 6000 });
-        confetti(70);
-        vibrate([60, 40, 60, 40, 140]);
-      }
-    } else if (banner) {
-      lastBannerText = "";
-    }
   }
 
   var moScheduled = false;

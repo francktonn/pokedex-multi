@@ -496,7 +496,6 @@
         var s = read(), before = level(s.xp);
         s.xp = Math.min(XP_TIER * MAX_TIER, s.xp + n); write(s);
         var after = level(s.xp);
-        if(after > before && window.toast) window.toast("Battle Pass : palier " + after + " atteint !", { kind:"win", icon:"🏆" });
       },
       canClaim: function(t){ var s = read(); return t >= 1 && t <= MAX_TIER && level(s.xp) >= t && !s.claimed[t]; },
       claimable: function(){ var s = read(), lv = level(s.xp), n = 0; for(var t = 1; t <= lv; t++){ if(!s.claimed[t]) n++; if(s.premium && !s.pclaimed[t]) n++; } return n; },
