@@ -3288,32 +3288,19 @@
     return list;
   }
 
-  // Manaphy et Phione : PokeAPI les range dans deux familles séparées, alors que l'œuf de
-  // Manaphy donne un Phione (avec Ditto). On les relie à la main, comme un lien de famille.
-  const EGG_LINKS = {
-    manaphy: { parent: { name:"manaphy", id:490 }, child: { name:"phione", id:489 },
-               trigger: "Éclot d'un œuf de Manaphy (avec Ditto)" }
-  };
+  // Manaphy et Phione ne sont PAS de la même famille (Phione n'est qu'un Pokémon qui éclot d'un œuf
+  // de Manaphy) : on les retire de la famille l'un de l'autre, quoi que renvoie PokeAPI.
+  const NOT_FAMILY = { manaphy: "phione", phione: "manaphy" };
   async function buildEvolutionData(speciesData, currentName){
     const data = await buildEvolutionDataBase(speciesData, currentName);
-    try{
-      const link = EGG_LINKS.manaphy;
-      const isParent = currentName === link.parent.name, isChild = currentName === link.child.name;
-      if(!isParent && !isChild) return data;
-      const other = isParent ? link.child : link.parent;
-      const info = await fetchEvoStageInfo("https://pokeapi.co/api/v2/pokemon-species/" + other.id + "/");
-      if(!info.id) return data;
-      const stage = { name: other.name, id: info.id, displayName: info.displayName, sprite: smallSpriteUrl(info.id), trigger: isParent ? link.trigger : "" };
-      if(isParent){
-        if(!data.descendants.some(d => d.name === stage.name)){
-          data.descendants.push(stage);
-          data.descendantTree = (data.descendantTree || []).concat([Object.assign({ children: [] }, stage)]);
-        }
-      }else if(!data.ancestors.some(a => a.name === stage.name)){
-        data.ancestors.unshift(stage);
-        data.currentTrigger = link.trigger;
-      }
-    }catch(e){}
+    const banned = NOT_FAMILY[currentName];
+    if(!banned) return data;
+    const dropTree = list => (list || []).filter(n => n.name !== banned).map(n => Object.assign({}, n, { children: dropTree(n.children) }));
+    const hadBanned = data.ancestors.some(a => a.name === banned);
+    data.ancestors = data.ancestors.filter(a => a.name !== banned);
+    data.descendants = data.descendants.filter(d => d.name !== banned);
+    if(Array.isArray(data.descendantTree)) data.descendantTree = dropTree(data.descendantTree);
+    if(hadBanned && !data.ancestors.length) data.currentTrigger = "";
     return data;
   }
   async function buildEvolutionDataBase(speciesData, currentName){
