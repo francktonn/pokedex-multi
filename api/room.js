@@ -490,12 +490,13 @@ async function startNewRound(room) {
     const name = await fetchSecretName(entry);
     // Hardcore : tirage chromatique décidé ICI, côté serveur (jamais par le client).
     const shiny = !!config.hardcore && Math.random() < HARDCORE_SHINY_CHANCE;
-    return { pid, pokemonId: entry.pokemonId, name, shiny };
+    return { pid, pokemonId: entry.pokemonId, name, shiny, formKind: entry.kind || 'normal' };
   }));
-  draws.forEach(({ pid, pokemonId, name, shiny }) => {
+  draws.forEach(({ pid, pokemonId, name, shiny, formKind }) => {
     room.players[pid].pokemonId = pokemonId;
     room.players[pid].pokemonName = name;
     room.players[pid].shiny = shiny;
+    room.players[pid].formKind = formKind; // 'normal' | 'regional' | 'mega' | 'gmax'
   });
   room.status = 'playing';
 }
@@ -1017,7 +1018,12 @@ module.exports = async (req, res) => {
           res.status(200).json({ correct: false, gone: true });
           return;
         }
-        const isCorrect = guessMatches(guess, target.pokemonName);
+        // Il faut trouver le nom ET indiquer correctement si le Pokémon est chromatique et sous quelle forme.
+        const guessShiny = body.shiny === true;
+        const guessForm = ['normal', 'regional', 'mega', 'gmax'].includes(body.form) ? body.form : 'normal';
+        const isCorrect = guessMatches(guess, target.pokemonName)
+          && guessShiny === !!target.shiny
+          && guessForm === (target.formKind || 'normal');
         if (!isCorrect) {
           res.status(200).json({ correct: false });
           return;
@@ -1028,6 +1034,7 @@ module.exports = async (req, res) => {
         target.pokemonId = null;
         target.pokemonName = null;
         target.shiny = false;
+        target.formKind = null;
 
         // Fin de manche :
         // - Mode classique (ffa) : la manche continue jusqu'à ce qu'il ne reste plus
