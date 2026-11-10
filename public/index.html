@@ -2420,7 +2420,6 @@
 <div class="fab-stack">
   <button class="fab-btn" id="btnSearch" title="Rechercher un Pokémon" aria-label="Rechercher un Pokémon">🔍</button>
   <button class="fab-btn" id="btnGuess" title="Deviner le Pokémon des autres" aria-label="Deviner le Pokémon des autres">🎯</button>
-  <button class="fab-btn" id="btnMultiplayer" title="Multijoueur" aria-label="Ouvrir le mode multijoueur">👥</button>
   <button class="fab-btn" id="btnNotepad" title="Bloc-note" aria-label="Ouvrir le bloc-note">📝</button>
 </div>
 
@@ -2943,7 +2942,7 @@
   const btnGcCancel = document.getElementById("btnGcCancel");
   const btnGcValidate = document.getElementById("btnGcValidate");
 
-  const btnMultiplayer = document.getElementById("btnMultiplayer");
+  const btnMultiplayer = document.getElementById("btnMultiplayer"); // retiré du dock : la fenêtre multijoueur s'ouvre depuis l'onglet Groupe
   const btnMpClose = document.getElementById("btnMpClose");
   const mpOverlay = document.getElementById("mpOverlay");
   const mpBody = document.getElementById("mpBody");
@@ -5976,11 +5975,11 @@
     if(!guessBody) return;
     if(!state || !state.players || !mpRoomCode){
       guessBody.innerHTML = `
-        <div class="mp-note">Rejoins ou crée une partie dans l'onglet Multijoueur pour pouvoir deviner le Pokémon des autres joueurs.</div>
-        <button class="btn btn-secondary" id="guessOpenMpBtn">👥 Ouvrir Multijoueur</button>
+        <div class="mp-note">Rejoins ou crée un groupe dans l'onglet Groupe pour pouvoir deviner le Pokémon des autres joueurs.</div>
+        <button class="btn btn-secondary" id="guessOpenMpBtn">👥 Aller au Groupe</button>
       `;
       const openMpBtn = document.getElementById("guessOpenMpBtn");
-      if(openMpBtn) openMpBtn.addEventListener("click", () => { guessClose(); mpOpen(); });
+      if(openMpBtn) openMpBtn.addEventListener("click", () => { guessClose(); if(window.PokeTabs) window.PokeTabs.set("group"); });
       return;
     }
     const isPlaying = state.status === "playing";
@@ -6406,6 +6405,50 @@
   btnNotepad.addEventListener("click", openNotepad);
   btnNotepadClose.addEventListener("click", closeNotepad);
   btnNotepadClear.addEventListener("click", clearNotepad);
+  notepadText.addEventListener("input", onNotepadInput);
+  notepadAddPlayerForm.addEventListener("submit", notepadHandleAddPlayer);
+  notepadOverlay.addEventListener("click", (e) => { if(e.target === notepadOverlay) closeNotepad(); });
+  document.addEventListener("keydown", (e) => {
+    if(e.key !== "Escape") return;
+    if(notepadOverlay.classList.contains("open")) closeNotepad();
+    if(searchOverlay.classList.contains("open")) closeSearch();
+  });
+
+  btnSearch.addEventListener("click", openSearch);
+  btnSearchClose.addEventListener("click", closeSearch);
+  btnSearchGo.addEventListener("click", runSearch);
+  searchInput.addEventListener("keydown", (e) => { if(e.key === "Enter") runSearch(); });
+  searchInput.addEventListener("input", onSearchInputTyped);
+  searchOverlay.addEventListener("click", (e) => { if(e.target === searchOverlay) closeSearch(); });
+
+  btnMpClose.addEventListener("click", mpClose);
+  if(mpAllyToggleBtn) mpAllyToggleBtn.addEventListener("click", mpToggleTeammateView);
+  mpOverlay.addEventListener("click", (e) => { if(e.target === mpOverlay) mpClose(); });
+  document.addEventListener("keydown", (e) => {
+    if(e.key === "Escape" && mpOverlay.classList.contains("open")) mpClose();
+  });
+
+  btnGuess.addEventListener("click", guessOpen);
+  btnGuessClose.addEventListener("click", guessClose);
+  guessOverlay.addEventListener("click", (e) => { if(e.target === guessOverlay) guessClose(); });
+  document.addEventListener("keydown", (e) => {
+    if(e.key === "Escape" && guessOverlay.classList.contains("open")) guessClose();
+  });
+
+  // ---------- Confirmation avant de quitter / rafraîchir la page ----------
+  // Évite qu'un clic accidentel sur "Actualiser", "Fermer l'onglet" ou "Précédent"
+  // ne coupe tout le monde en pleine partie multijoueur (ou fasse perdre une manche
+  // solo en cours). Le navigateur affiche sa propre boîte de dialogue de confirmation ;
+  // les navigateurs modernes n'affichent plus de texte personnalisé pour des raisons de
+  // sécurité, mais définir returnValue reste nécessaire pour déclencher l'alerte native.
+  function hasUnsavedGameInProgress(){
+    // Partie multijoueur active (lobby ou manche en cours) : quitter fait perdre sa
+    // place / son secret vis-à-vis des autres joueurs.
+    if(mpRoomCode) return true;
+    // Partie solo : un Pokémon a déjà été tiré (une devinette est en cours).
+    if(current) return true;
+    return false;
+  }
   window.addEventListener("beforeunload", function(e){
     if(!hasUnsavedGameInProgress()) return;
     e.preventDefault();

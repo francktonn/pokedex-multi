@@ -58,7 +58,7 @@
   }
 
   // ---------- Libellés du dock (accessibilité + survol) ----------
-  var labels = { btnSearch: "Pokédex", btnGuess: "Deviner", btnMultiplayer: "Partie", btnNotepad: "Notes" };
+  var labels = { btnSearch: "Pokédex", btnGuess: "Deviner", btnNotepad: "Notes" };
   Object.keys(labels).forEach(function (id) {
     var b = $(id);
     if (b) b.setAttribute("data-label", labels[id]);
@@ -210,8 +210,11 @@
   // ---------- Ouverture automatique du multijoueur depuis un lien d'invitation ----------
   window.addEventListener("load", function () {
     if (!inviteCode) return;
-    var b = $("btnMultiplayer");
-    if (b) setTimeout(function () { b.click(); }, 350);
+    // Le bouton « Partie » n'existe plus : on ouvre la fenêtre multijoueur via la passerelle du Groupe.
+    setTimeout(function () {
+      if (window.__guessBridge && window.__guessBridge.open) window.__guessBridge.open();
+      else { var b = $("btnMultiplayer"); if (b) b.click(); }
+    }, 350);
   });
 
   // ---------- Ferme les fenêtres avec le retour arrière du téléphone ----------
