@@ -1053,6 +1053,10 @@
     max-width:120px;
   }
   .form-card img{ width:40px; height:40px; object-fit:contain; }
+  .form-card.form-tap{ cursor:pointer; transition:transform .12s ease, box-shadow .12s ease; -webkit-tap-highlight-color:transparent; }
+  .form-card.form-tap:hover{ transform:translateY(-2px); box-shadow: inset 0 0 0 2px rgba(0,0,0,.25), 0 4px 8px rgba(0,0,0,.18); }
+  .form-card.form-tap:active{ transform:scale(.96); }
+  .form-card.form-tap:focus-visible{ outline:3px solid var(--gold); outline-offset:2px; }
   .form-card .form-label{ font-size:9.5px; font-weight:700; color:var(--ink); text-align:center; line-height:1.3; }
 
   /* shiny toggle */
@@ -2449,7 +2453,7 @@
           <div class="type-effect" id="searchTypeEffect"></div>
 
           <div class="section-label">Évolutions</div>
-          <div class="evo-hint" id="searchEvoHint" style="display:none;">Touche un Pokémon de la famille pour voir sa fiche.</div>
+          <div class="evo-hint" id="searchEvoHint" style="display:none;">Touche un Pokémon de la famille ou une autre forme pour voir sa fiche.</div>
           <div class="evo-section"><div class="evo-row" id="searchEvoRow"></div></div>
 
           <div class="section-label" id="searchFormsLabel" style="display:none;">Autres formes</div>
@@ -2908,7 +2912,7 @@
   let homeView = null;
   let viewingPeek = false;
   let mainViewSeq = 0;
-  const EVO_HINT_DEFAULT = "Touche un Pokémon de la famille pour voir sa fiche.";
+  const EVO_HINT_DEFAULT = "Touche un Pokémon de la famille ou une autre forme pour voir sa fiche.";
   let evoHintTimer = null;
   let flickerTimer = null;
 
@@ -3350,13 +3354,16 @@
       : { key: formKindFromSuffix(pokemon.name, species.name), label: formLabelFromSuffix(pokemon.name, species.name), icon: "🔀" };
 
     // Formes alternatives (Méga-Évolutions, formes régionales, Gigamax, etc.)
-    const otherVarieties = (species.varieties || []).filter(v => !v.is_default);
+    // On liste toutes les variétés sauf celle affichée : sur la fiche d'une forme (Méga, régionale…),
+    // la forme de base fait donc partie de la liste, pour pouvoir y revenir.
+    const otherVarieties = (species.varieties || []).filter(v => v.pokemon.name !== pokemon.name);
     const forms = (await Promise.all(otherVarieties.map(async v => {
       try{
         const formPokemon = await fetchJSON(v.pokemon.url);
         return {
+          id: formPokemon.id,
           name: formPokemon.name,
-          label: formLabelFromSuffix(formPokemon.name, species.name),
+          label: v.is_default ? "Forme de base" : formLabelFromSuffix(formPokemon.name, species.name),
           sprite: officialArtUrl(formPokemon.id),
           spriteSmall: smallSpriteUrl(formPokemon.id)
         };
@@ -3922,7 +3929,7 @@
     typeEffect.innerHTML = buildTypeEffectHTML(types);
   }
 
-  function buildFormCard(f){
+  function buildFormCard(f, onPick){
     const card = document.createElement("div");
     card.className = "form-card";
     card.appendChild(createImgWithFallback([f.sprite, f.spriteSmall], f.label));
@@ -3930,10 +3937,20 @@
     label.className = "form-label";
     label.textContent = f.label;
     card.appendChild(label);
+    if(onPick && f.id){
+      card.classList.add("form-tap");
+      card.setAttribute("role", "button");
+      card.tabIndex = 0;
+      card.setAttribute("aria-label", "Voir la fiche : " + f.label);
+      card.addEventListener("click", () => onPick(f));
+      card.addEventListener("keydown", e => {
+        if(e.key === "Enter" || e.key === " "){ e.preventDefault(); onPick(f); }
+      });
+    }
     return card;
   }
 
-  function renderForms(forms, labelEl, rowEl){
+  function renderForms(forms, labelEl, rowEl, onPick){
     labelEl = labelEl || formsLabel;
     rowEl = rowEl || formsRow;
     rowEl.innerHTML = "";
@@ -3944,7 +3961,7 @@
     }
     labelEl.style.display = "block";
     rowEl.style.display = "flex";
-    forms.forEach(f => rowEl.appendChild(buildFormCard(f)));
+    forms.forEach(f => rowEl.appendChild(buildFormCard(f, onPick)));
   }
 
   // Quelle configuration pilote l'affichage : celle de la partie multijoueur en cours
@@ -4053,7 +4070,7 @@
     flavorText.textContent = data.flavor;
 
     renderEvolutions(data, null, { interactive: true });
-    renderForms(data.forms);
+    renderForms(data.forms, undefined, undefined, peekForm);
     updatePeekBanner(data);
   }
 
@@ -4074,6 +4091,12 @@
     if(msg !== EVO_HINT_DEFAULT){
       evoHintTimer = setTimeout(() => { evoHint.textContent = EVO_HINT_DEFAULT; }, 3500);
     }
+  }
+
+  // Toucher une forme (Méga, régionale…) affiche sa fiche ; si c'est la fiche de départ, on y revient.
+  function peekForm(f){
+    if(viewingPeek && homeView && f.id === homeView.data.pokemonId){ returnToHomePokemon(); return; }
+    peekPokemon({ id: f.id });
   }
 
   async function peekPokemon(node){
@@ -4164,7 +4187,7 @@
     if(ropts.interactive){
       clearTimeout(evoHintTimer);
       evoHint.textContent = EVO_HINT_DEFAULT;
-      evoHint.style.display = hasFamily ? "block" : "none";
+      evoHint.style.display = (hasFamily || (data.forms && data.forms.length)) ? "block" : "none";
     }
 
     // Options d'un stade de la famille : cliquable (sur l'écran principal) pour consulter sa
@@ -4650,8 +4673,8 @@
     searchFlavorText.textContent = data.flavor;
 
     renderEvolutions(data, searchEvoRow, { search: true });
-    searchEvoHint.style.display = (data.evolution && (data.evolution.ancestors.length || data.evolution.descendants.length)) ? "block" : "none";
-    renderForms(data.forms, searchFormsLabel, searchFormsRow);
+    searchEvoHint.style.display = ((data.evolution && (data.evolution.ancestors.length || data.evolution.descendants.length)) || (data.forms && data.forms.length)) ? "block" : "none";
+    renderForms(data.forms, searchFormsLabel, searchFormsRow, searchFormStage);
   }
 
   // ---------- Index des noms français (recherche par nom FR, syllabe, faute de frappe) ----------
@@ -4899,6 +4922,16 @@
 
   // Clic sur un stade d'évolution dans le résultat de recherche : on charge sa fiche
   // dans le même panneau, puis on remonte en haut du résultat.
+  // Toucher une forme dans la recherche : ouvre sa fiche (le filtre de configuration a déjà validé l'espèce).
+  async function searchFormStage(f){
+    if(!f || !f.id) return;
+    await performSearchById(f.id, f.label, { skipFilter: true });
+    const body = document.getElementById("searchResultBody");
+    if(body && typeof body.scrollIntoView === "function"){
+      body.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
   async function searchEvoStage(node){
     if(!node || !node.id) return;
     await performSearchById(node.id, node.displayName || formatName(node.name));
@@ -4910,7 +4943,7 @@
 
   // Lance une recherche directement à partir d'un id de Pokédex national (utilisé quand
   // l'utilisateur clique sur une suggestion, ou quand une correspondance a déjà été trouvée).
-  async function performSearchById(id, rawForError){
+  async function performSearchById(id, rawForError, opts){
     hideSuggestions();
     searchHint.style.display = "none";
     searchError.style.display = "none";
@@ -4918,7 +4951,7 @@
     searchLoading.style.display = "flex";
     btnSearchGo.disabled = true;
     try{
-      if(!(await isSearchIdAllowed(id))){
+      if(!(opts && opts.skipFilter) && !(await isSearchIdAllowed(id))){
         searchLoading.style.display = "none";
         searchError.style.display = "block";
         searchError.textContent = SEARCH_EXCLUDED_MSG;
