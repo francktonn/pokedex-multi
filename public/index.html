@@ -77,24 +77,6 @@
       { name:"Cosmique", css:"linear-gradient(90deg,#7c3aed,#38bdf8,#f0abfc,#7c3aed)", grad:true, min:0, pass:30 },
       { name:"Citrouille", css:"#ff7a1a", min:0, hw:60 },
       { name:"Spectral", css:"linear-gradient(90deg,#7dff9a,#b48cff,#7dff9a)", grad:true, min:0, hw:150 } ];
-    // Éléments retirés de la personnalisation. On garde leur place dans les listes (les profils déjà
-    // enregistrés stockent des numéros) mais ils sont masqués de l'éditeur, retirés des crates / du
-    // Battle Pass / de la boutique Halloween, et s'affichent comme l'option par défaut.
-    (function(){
-      var OFF = [
-        [BGS, ["Aurore","Rayures","Pois","Forêt","Damier","Aurore boréale","Citrouilles","Cimetière","Toile d'araignée","Banshitrouye"]],
-        [FRAME_STYLES, ["Hanté","Toiles","Lanterne de Banshitrouye"]],
-        [EFFECTS, ["Chauves-souris","Brume","Feux follets","Procession de Banshitrouye"]],
-        [NAME_FONTS, ["Hanté","Sanglant"]]
-      ];
-      OFF.forEach(function(g){
-        g[0].forEach(function(it){
-          if(g[1].indexOf(it.name) < 0) return;
-          it.off = true; it.min = 0; delete it.pass; delete it.hw; delete it.hwc;
-          if(g[0] === BGS) it.css = BGS[0].css || "";
-        });
-      });
-    })();
     // CSS partagé (carte du profil + fenêtre de profil des autres joueurs) : style de cadre, forme de la photo, effets, police du pseudo.
     var CARD_CSS = [
       ".card{position:relative; overflow:hidden;}",
@@ -181,11 +163,8 @@
       paint: function(els, c, nameText){
         c = c || {};
         var f = int(c.f, 10), h = int(c.h, 6), e = int(c.e, 10), nf = int(c.nf, 6), nc = int(c.nc, 11);
-        if(FRAME_STYLES[f] && FRAME_STYLES[f].off) f = 0;
-        if(EFFECTS[e] && EFFECTS[e].off) e = 0;
-        if(NAME_FONTS[nf] && NAME_FONTS[nf].off) nf = 0;
         if(els.card) els.card.className = "card" + (f ? " fs" + f : "") + (e ? " ef" + e : "");
-        if(els.avatar) els.avatar.className = "avatar"; /* photo toujours ronde */
+        if(els.avatar) els.avatar.className = "avatar" + (h ? " sh" + h : "");
         if(els.name){
           var col = NAME_COLORS[nc];
           els.name.className = "nm" + (nf ? " nf" + nf : "") + (col.grad ? " ncg" : "");
@@ -200,7 +179,7 @@
         var S = window.PokeStats ? window.PokeStats.get() : null, x = null;
         if(S) x = { qp:S.whois.played, qc:S.whois.correct, qb:S.whois.bestMs, gf:S.guess.found, gm:S.guess.missed };
         var t = p.type ? TYPE_KEYS.indexOf(p.type) + 1 : 0;
-        return { s: p.style, c: p.color, t: t > 0 ? t : 0, m: p.motto, x: x, b: p.bg, tm: p.team, f: p.frameStyle, h: 0, e: p.effect, nf: p.nameFont, nc: p.nameColor };
+        return { s: p.style, c: p.color, t: t > 0 ? t : 0, m: p.motto, x: x, b: p.bg, tm: p.team, f: p.frameStyle, h: p.shape, e: p.effect, nf: p.nameFont, nc: p.nameColor };
       }
     };
 
@@ -270,7 +249,7 @@
   (function(){
     var KEY = "pokeCrates_v1";
     // [liste dans PokeProfile, champ du profil, libellé]
-    var CATS = [ ["bgs","bg","Fond de carte"], ["frameStyles","frameStyle","Style de cadre"],
+    var CATS = [ ["bgs","bg","Fond de carte"], ["frameStyles","frameStyle","Style de cadre"], ["shapes","shape","Forme de photo"],
       ["effects","effect","Effet animé"], ["nameFonts","nameFont","Police du pseudo"], ["nameColors","nameColor","Couleur du pseudo"] ];
     // La rareté dépend de la valeur min de l'objet (voir listes de PokeProfile) ; w = poids du tirage.
     var RARITIES = [ { name:"Commun", color:"#8e9aa8", max:5, w:55 }, { name:"Rare", color:"#3a86d6", max:12, w:30 },
@@ -415,7 +394,7 @@
     var PR = [ {m:200},{c:1},{m:300},{c:1},{m:400},{c:2},{m:500},{c:1},{m:600},{m:1000,c:2},
                {c:2},{m:700},{c:2},{m:800},{c:3},{m:900},{c:2},{m:1000},{c:3},{m:1500,c:3},
                {c:3},{m:1200},{c:3},{m:1300},{c:4},{m:1500},{c:4},{m:2000},{c:5},{m:3000,c:5} ];
-    var ITEM_LISTS = [ ["bgs","bg","Fond de carte"], ["frameStyles","frameStyle","Style de cadre"],
+    var ITEM_LISTS = [ ["bgs","bg","Fond de carte"], ["frameStyles","frameStyle","Style de cadre"], ["shapes","shape","Forme de photo"],
       ["effects","effect","Effet animé"], ["nameFonts","nameFont","Police du pseudo"], ["nameColors","nameColor","Couleur du pseudo"] ];
     function passItems(tier){
       var P = window.PokeProfile, out = [];
@@ -612,7 +591,7 @@
   } };
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Baloo+2:wght@500;700;800&family=Nunito:ital,wght@0,400;0,600;0,700;1,600&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&family=Nunito:ital,wght@0,400;0,600;0,700;1,600&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --red: #D6362A;
@@ -868,7 +847,7 @@
     box-shadow: inset 0 0 0 2px rgba(0,0,0,.06), 0 4px 0 rgba(0,0,0,.15);
   }
   .pkm-name{
-    font-family:'Bricolage Grotesque','Baloo 2', sans-serif;
+    font-family:'Baloo 2', sans-serif;
     font-weight:800;
     font-size: clamp(20px, 5vw, 26px);
     color: var(--ink);
@@ -914,7 +893,7 @@
     box-shadow: inset 0 0 0 1px rgba(0,0,0,.06);
   }
   .info-tile .eyebrow{font-size:9px; color:var(--text-muted); display:block;}
-  .info-tile .val{font-family:'Bricolage Grotesque','Baloo 2'; font-weight:700; font-size:14px; color:var(--ink);}
+  .info-tile .val{font-family:'Baloo 2'; font-weight:700; font-size:14px; color:var(--ink);}
   .val.cat-legendary{color:#B8860B;}
   .val.cat-mythical{color:#A33EA1;}
   .val.cat-ultrabeast{color:#37474F;}
@@ -949,7 +928,7 @@
   @media (prefers-reduced-motion: reduce){ .stat-bar-fill{ animation:none; } }
   .stat-row .num{font-size:11px; font-weight:800; text-align:right; color:var(--ink);}
   .stat-total{display:flex; justify-content:space-between; align-items:center; margin-top:6px; padding-top:6px; border-top:1px dashed rgba(127,127,127,.35); font-size:11px; font-weight:800; color:var(--text-muted);}
-  .stat-total b{font-family:'Bricolage Grotesque','Baloo 2',sans-serif; font-size:15px; color:var(--ink);}
+  .stat-total b{font-family:'Baloo 2',sans-serif; font-size:15px; color:var(--ink);}
 
   .evo-section{ margin-top:2px; }
   .evo-row{
@@ -985,15 +964,6 @@
     margin:0 2px;
   }
   .evo-none{ font-size:12px; color:var(--text-muted); font-style:italic; }
-  /* Embranchement : plusieurs évolutions possibles depuis le même Pokémon */
-  .evo-fork{
-    display:flex; flex-direction:column; gap:6px;
-    padding:4px 0 4px 8px; margin-left:2px;
-    border-left:2.5px solid var(--gold);
-    border-radius:2px;
-  }
-  .evo-or{ font-family:'Silkscreen', monospace; font-size:8px; letter-spacing:.04em; color:var(--text-muted); text-transform:uppercase; }
-  .evo-branch{ display:flex; align-items:center; flex-wrap:wrap; gap:4px; }
 
   /* Famille cliquable : toucher un Pokémon affiche sa fiche, avec retour facile */
   .evo-hint{ font-size:11px; color:var(--text-muted); font-style:italic; margin:-2px 0 6px; }
@@ -1147,7 +1117,7 @@
   /* controls */
   .controls{margin-top:16px; display:flex; flex-direction:column; gap:10px;}
   .btn{
-    font-family:'Bricolage Grotesque','Baloo 2', sans-serif;
+    font-family:'Baloo 2', sans-serif;
     font-weight:700;
     font-size:15px;
     border:none;
@@ -1430,7 +1400,7 @@
   .mp-kick-btn:hover{ opacity:1; background:rgba(176,69,61,.12); }
   .mp-guess-btn{
     margin-left:auto;
-    font-family:'Bricolage Grotesque','Baloo 2', sans-serif;
+    font-family:'Baloo 2', sans-serif;
     font-weight:700;
     font-size:12px;
     color:#fff;
@@ -1452,8 +1422,6 @@
     gap:8px;
   }
   .mp-guess-box .mp-guess-title{ font-size:13px; font-weight:700; color:var(--ink); }
-  .mp-guess-opts{ display:flex; flex-direction:column; gap:8px; }
-  .mp-guess-opt-row{ display:flex; flex-direction:column; gap:4px; font-size:12.5px; font-weight:700; color:var(--ink); }
   .mp-guess-feedback{ font-size:12.5px; font-weight:700; text-align:center; }
   .mp-guess-feedback.ok{ color:#2a7a3d; }
   .mp-guess-feedback.ko{ color:var(--red-dark); }
@@ -1476,7 +1444,7 @@
     text-align:center;
   }
   .mp-round-banner{
-    font-family:'Bricolage Grotesque','Baloo 2', sans-serif;
+    font-family:'Baloo 2', sans-serif;
     font-weight:700;
     font-size:12.5px;
     text-align:center;
@@ -1501,7 +1469,7 @@
   .mp-mode-label{ font-size:12.5px; font-weight:700; color:var(--ink); }
   .mp-mode-switch{ display:flex; gap:4px; }
   .mp-mode-btn{
-    font-family:'Bricolage Grotesque','Baloo 2', sans-serif;
+    font-family:'Baloo 2', sans-serif;
     font-weight:700;
     font-size:11.5px;
     color:var(--ink);
@@ -1554,7 +1522,7 @@
   }
   .mp-teams-actions{ display:flex; gap:6px; }
   .mp-teams-action-btn{
-    font-family:'Bricolage Grotesque','Baloo 2', sans-serif;
+    font-family:'Baloo 2', sans-serif;
     font-weight:700;
     font-size:11px;
     color:var(--ink);
@@ -1602,7 +1570,7 @@
     min-width:0;
     border:none;
     background:transparent;
-    font-family:'Bricolage Grotesque','Baloo 2', sans-serif;
+    font-family:'Baloo 2', sans-serif;
     font-weight:700;
     font-size:12.5px;
     color:var(--ink);
@@ -1684,7 +1652,7 @@
     justify-content:center;
     gap:6px;
     width:100%;
-    font-family:'Bricolage Grotesque','Baloo 2', sans-serif;
+    font-family:'Baloo 2', sans-serif;
     font-weight:700;
     font-size:12.5px;
     color:#fff;
@@ -2134,7 +2102,6 @@
   .notepad-recap{ display:none; flex-wrap:wrap; gap:4px; flex-shrink:0; padding:6px 8px; border-radius:10px; background:var(--card-bg); border:1px solid var(--border-soft-10); max-height:74px; overflow-y:auto; }
   .np-rc{ font-family:'Nunito'; font-weight:800; font-size:10.5px; padding:2px 8px; border-radius:999px; color:#fff; }
   .np-rc.yes{ background:#2e7d32; }
-  .np-rc.no{ background:#c62828; text-decoration:line-through; }
   /* --- Navigation du bloc-note : un seul défilement, onglets collés en haut --- */
   .notepad-panel-wide{ max-height:min(720px, 92vh); max-height:min(720px, 92dvh); }
   .notepad-panel-wide .notepad-body{ overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
@@ -2596,16 +2563,20 @@
         <div class="gc-checkbox-grid" id="gcGenGrid"></div>
       </div>
 
-      <!-- Catégories et formes spéciales : options retirées (tout est toujours activé). Conteneurs gardés cachés pour le script. -->
-      <div hidden aria-hidden="true">
-        <div id="gcCategoryList"></div>
-        <div id="gcFormsList"></div>
+      <div class="gc-section">
+        <div class="mp-section-label">Catégories de Pokémon</div>
+        <div class="gc-switch-list" id="gcCategoryList"></div>
+      </div>
+
+      <div class="gc-section">
+        <div class="mp-section-label">Formes spéciales</div>
+        <div class="gc-switch-list" id="gcFormsList"></div>
       </div>
 
       <div class="gc-section">
         <div class="mp-section-label">Difficulté</div>
         <div class="gc-switch-list" id="gcDifficultyList"></div>
-        <div class="gc-hint">🔥 Mode hardcore : chaque Pokémon a 15 % de chances d'être chromatique, et en équipes tu ne vois plus le Pokémon de tes équipiers.</div>
+        <div class="gc-hint">En mode chromatique, les Pokémon s'affichent avec leurs couleurs shiny : bien plus dur à reconnaître !<br>🔥 Mode hardcore : toutes les options de Pokémon sont activées (hors « tout chromatique »), chaque Pokémon a 15 % de chances d'être chromatique, et en équipes tu ne vois plus le Pokémon de tes équipiers.</div>
       </div>
 
       <div class="gc-summary">
@@ -3309,22 +3280,7 @@
     return list;
   }
 
-  // Manaphy et Phione ne sont PAS de la même famille (Phione n'est qu'un Pokémon qui éclot d'un œuf
-  // de Manaphy) : on les retire de la famille l'un de l'autre, quoi que renvoie PokeAPI.
-  const NOT_FAMILY = { manaphy: "phione", phione: "manaphy" };
   async function buildEvolutionData(speciesData, currentName){
-    const data = await buildEvolutionDataBase(speciesData, currentName);
-    const banned = NOT_FAMILY[currentName];
-    if(!banned) return data;
-    const dropTree = list => (list || []).filter(n => n.name !== banned).map(n => Object.assign({}, n, { children: dropTree(n.children) }));
-    const hadBanned = data.ancestors.some(a => a.name === banned);
-    data.ancestors = data.ancestors.filter(a => a.name !== banned);
-    data.descendants = data.descendants.filter(d => d.name !== banned);
-    if(Array.isArray(data.descendantTree)) data.descendantTree = dropTree(data.descendantTree);
-    if(hadBanned && !data.ancestors.length) data.currentTrigger = "";
-    return data;
-  }
-  async function buildEvolutionDataBase(speciesData, currentName){
     try{
       const chainData = await fetchJSON(speciesData.evolution_chain.url);
       const root = parseEvoChain(chainData.chain, null);
@@ -3354,17 +3310,7 @@
       // Condition qui a permis au Pokémon actuellement affiché d'évoluer depuis son stade précédent
       const currentTrigger = await formatEvoTrigger(currentNode.evolutionDetails);
 
-      // Arbre des descendants : permet d'afficher les embranchements (ex : Kirlia -> Gardevoir OU Gallame)
-      async function buildTree(n){
-        const info = await fetchEvoStageInfo(n.url);
-        if(!info.id || info.id > MAX_DEX_ID) return null;
-        const trigger = await formatEvoTrigger(n.evolutionDetails);
-        const kids = (await Promise.all(n.children.map(buildTree))).filter(Boolean);
-        return { name: n.name, id: info.id, displayName: info.displayName, sprite: smallSpriteUrl(info.id), trigger, children: kids };
-      }
-      const descendantTree = (await Promise.all(currentNode.children.map(buildTree))).filter(Boolean);
-
-      return { ancestors, descendants, descendantTree, currentTrigger };
+      return { ancestors, descendants, currentTrigger };
     }catch(e){
       return { ancestors: [], descendants: [], currentTrigger: "" };
     }
@@ -3564,17 +3510,6 @@
     return s;
   }
 
-  // Options retirées de l'interface : catégories et formes toujours activées, jamais « tout chromatique ».
-  function normalizeGameSettings(s){
-    if(!s) return s;
-    s.categories = Object.assign({}, s.categories);
-    s.forms = Object.assign({}, s.forms);
-    Object.keys(s.categories).forEach(k => { s.categories[k] = true; });
-    Object.keys(s.forms).forEach(k => { s.forms[k] = true; });
-    s.shinyOnly = false;
-    return s;
-  }
-
   let gameSettings = loadGameSettings();
 
   function loadGameSettings(){
@@ -3591,14 +3526,13 @@
         hardcore: parsed.hardcore === true
       };
       if(!merged.generations.length) merged.generations = def.generations;
-      normalizeGameSettings(merged);
       applyHardcoreToSettings(merged);
       return merged;
     }catch(e){ return def; }
   }
 
   function saveGameSettings(settings){
-    gameSettings = normalizeGameSettings(settings);
+    gameSettings = settings;
     try{ localStorage.setItem(GAME_SETTINGS_KEY, JSON.stringify(settings)); }catch(e){}
     drawPoolCache = null; // la configuration a changé : le pool de tirage doit être reconstruit
   }
@@ -3780,6 +3714,7 @@
   // le pool de Pokémon, elles changent seulement la façon dont le secret est affiché.
   // Elles vivent donc à la racine de la config, pas dans un sous-objet.
   const GC_DIFFICULTY_DEFS = [
+    { key:"shinyOnly", label:"Chromatique uniquement (shiny)" },
     { key:"hardcore", label:"🔥 Mode hardcore" }
   ];
 
@@ -4387,45 +4322,10 @@
       return;
     }
 
-    // Descendants : si une évolution se sépare en plusieurs (Kirlia -> Gardevoir / Gallame),
-    // chaque branche est affichée sur sa propre ligne, reliée au même parent par un embranchement,
-    // au lieu d'une suite de flèches qui laisserait croire que l'une évolue en l'autre.
-    function renderBranches(children, container){
-      if(!children || !children.length) return;
-      if(children.length === 1){
-        const c = children[0];
-        container.appendChild(makeEvoArrow());
-        container.appendChild(makeEvoStage(c, stageOpts(c)));
-        renderBranches(c.children, container);
-        return;
-      }
-      const fork = document.createElement("div");
-      fork.className = "evo-fork";
-      fork.setAttribute("role", "group");
-      fork.setAttribute("aria-label", "Évolution au choix : " + children.map(c => c.displayName || formatName(c.name)).join(" ou "));
-      children.forEach(c => {
-        const branch = document.createElement("div");
-        branch.className = "evo-branch";
-        branch.appendChild(makeEvoArrow());
-        branch.appendChild(makeEvoStage(c, stageOpts(c)));
-        renderBranches(c.children, branch);
-        fork.appendChild(branch);
-      });
-      const label = document.createElement("span");
-      label.className = "evo-or";
-      label.textContent = "au choix";
-      container.appendChild(fork);
-      fork.insertBefore(label, fork.firstChild);
-    }
-    if(Array.isArray(evo.descendantTree)){
-      renderBranches(evo.descendantTree, targetEl);
-    }else{
-      // Ancien format (sans arbre) : liste à plat
-      evo.descendants.forEach(d => {
-        targetEl.appendChild(makeEvoArrow());
-        targetEl.appendChild(makeEvoStage(d, stageOpts(d)));
-      });
-    }
+    evo.descendants.forEach(d => {
+      targetEl.appendChild(makeEvoArrow());
+      targetEl.appendChild(makeEvoStage(d, stageOpts(d)));
+    });
   }
 
   // ---------- Notepad (bloc-note, localStorage) ----------
@@ -4659,19 +4559,18 @@
     if(!el) return;
     entry = entry || notepadEnsureData(notepadState.activePlayerKey);
     categories = categories || noteCategories();
-    let yes = "", no = "";
+    let yes = "";
     categories.forEach(c => c.items.forEach(it => {
       const st = entry.checks[it.id];
       if(st === "yes"){
         const p = entry.pct && entry.pct[it.id];
         const pk = it.picks && it.picks.find(x => entry.checks[x.id] === "yes");
         yes += `<span class="np-rc yes">${mpEscapeHtml(it.label)}${pk ? " · " + mpEscapeHtml(pk.label) : ""}${it.hasPercent && p != null && p < 100 ? " " + p + "%" : ""}</span>`;
-      }else if(st === "no"){
-        no += `<span class="np-rc no">${mpEscapeHtml(it.label)}</span>`;
       }
     }));
-    el.innerHTML = yes + no;
-    el.style.display = (yes || no) ? "flex" : "none";
+    // Récapitulatif : uniquement les infos confirmées (✓ vert).
+    el.innerHTML = yes;
+    el.style.display = yes ? "flex" : "none";
   }
 
   function renderNotepadGrid(categories, entry){
@@ -6310,22 +6209,6 @@
         <div class="mp-guess-title">Deviner le Pokémon de ${mpEscapeHtml(targetName)}</div>
         <input type="text" id="mpGuessInput" class="mp-input" placeholder="Nom du Pokémon" autocomplete="off">
         <div class="search-suggest" id="mpGuessSuggest" style="display:none;"></div>
-        <div class="mp-guess-opts">
-          <label class="mp-guess-opt-row">✨ Shiny ?
-            <select id="mpGuessShiny" class="mp-input">
-              <option value="0">Non, normal</option>
-              <option value="1">Oui, shiny</option>
-            </select>
-          </label>
-          <label class="mp-guess-opt-row">🧬 Forme
-            <select id="mpGuessForm" class="mp-input">
-              <option value="normal">Normale</option>
-              <option value="regional">Régionale (Alola, Galar, Hisui, Paldea)</option>
-              <option value="mega">Méga / Primo</option>
-              <option value="gmax">Gigamax</option>
-            </select>
-          </label>
-        </div>
         <div class="btn-row">
           <button class="btn btn-main" id="mpGuessSubmit">Valider</button>
           <button class="btn btn-secondary" id="mpGuessCancel">Annuler</button>
@@ -6385,7 +6268,7 @@
 
     const targetId = mpGuessTargetId;
     try{
-      const result = await mpApiPost("guess", { code: mpRoomCode, playerId: mpPlayerId, targetId, guess: raw, shiny: (document.getElementById("mpGuessShiny") || {}).value === "1", form: (document.getElementById("mpGuessForm") || {}).value || "normal" });
+      const result = await mpApiPost("guess", { code: mpRoomCode, playerId: mpPlayerId, targetId, guess: raw });
       if(result.gone){
         if(feedback){
           feedback.textContent = "Trop tard : ce Pokémon a déjà été deviné, ou ce joueur n'a plus de secret en cours.";
@@ -6421,7 +6304,7 @@
       }else{
         if(window.PokeStats) window.PokeStats.record("guess", { missed: true });
         if(feedback){
-          feedback.textContent = "❌ Raté : vérifie le nom, le shiny et la forme, puis réessaie !";
+          feedback.textContent = "❌ Raté, essaie encore !";
           feedback.className = "mp-guess-feedback ko";
         }
       }
