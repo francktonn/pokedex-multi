@@ -463,7 +463,7 @@
     function read(){ sync(); var s = parse(); if(!s.season) s.season = seasonNum(); return s; }
     function applySkin(id){
       var el = document.documentElement;
-      if(id && id !== "default" && SKINS[id]) el.setAttribute("data-skin", id); else el.removeAttribute("data-skin");
+      el.removeAttribute("data-skin"); // plus de skins de Pokédex : toujours l'apparence par défaut
     }
     function tiers(){ return R.map(function(r, i){ return { tier:i + 1, money:r.m || 0, crates:r.c || 0, skin:r.s ? skinOfTier(i + 1) : null }; }); }
     function premiumTiers(){
@@ -481,12 +481,7 @@
         return { n:n, name:t.name, icon:t.icon, skins:t.skins.slice(), endsAt:seasonEnd(n), msLeft:Math.max(0, seasonEnd(n) - Date.now()), last:read().last };
       },
       // Skins à afficher dans le profil : le skin par défaut, ceux déjà obtenus et ceux de la saison en cours.
-      skinList: function(){
-        var s = read(), cur = themeOf(seasonNum()).skins;
-        return Object.keys(SKINS)
-          .map(function(id){ return { id:id, name:SKINS[id].name, color:SKINS[id].color, tier:SKINS[id].tier, owned:true, current:cur.indexOf(id) >= 0 }; })
-          .sort(function(a, b){ return (a.tier - b.tier) || (a.current ? 1 : 0) - (b.current ? 1 : 0); });
-      },
+      skinList: function(){ return []; }, // skins du Pokédex supprimés
       state: function(){
         var s = read(), lv = level(s.xp);
         return { xp:s.xp, level:lv, into: lv >= MAX_TIER ? XP_TIER : s.xp - lv * XP_TIER, claimed:s.claimed, skin:s.skin, premium:s.premium, pclaimed:s.pclaimed };
@@ -569,7 +564,7 @@
         passItems().forEach(function(it){ s.items[it.list + ":" + it.idx] = true; });
         write(s);
       },
-      ownsSkin: function(id){ return !!SKINS[id]; }, // tous les skins sont débloqués pour tout le monde
+      ownsSkin: function(id){ return false; }, // skins du Pokédex supprimés
       // Offre un skin sans passer par un palier (boutique d'événement). false s'il n'existe pas ou s'il est déjà possédé.
       grantSkin: function(id){
         if(!SKINS[id] || id === "default") return false;
@@ -2252,60 +2247,6 @@
     display:flex;
     justify-content:center;
     margin-bottom:6px;
-  }
-  /* ============ SKINS DU POKÉDEX (Battle Pass) ============ */
-  :root[data-skin="ocean"]  { --red:#2F7FD8; --red-dark:#1B4F94; --red-darker:#0d2a52; --red-mid:#2670c4; --skin-glow:rgba(47,127,216,.30); }
-  :root[data-skin="spectre"]{ --red:#7D4FD6; --red-dark:#4B2A96; --red-darker:#22104d; --red-mid:#6A40BC; --skin-glow:rgba(125,79,214,.32); }
-  :root[data-skin="gold"]   { --red:#C98A10; --red-dark:#8A5A06; --red-darker:#3d2602; --red-mid:#E0A82A; --skin-glow:rgba(255,201,60,.30); }
-  :root[data-skin="ocean"]  { --skin-device: linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,0) 22%),linear-gradient(160deg,#2F7FD8,#2670c4 55%,#1B4F94);
-                              --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 22%),linear-gradient(160deg,#1f5fa8,#164a85 55%,#0a2347); }
-  :root[data-skin="spectre"]{ --skin-device: linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,0) 22%),linear-gradient(160deg,#7D4FD6,#6A40BC 55%,#4B2A96);
-                              --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 22%),linear-gradient(160deg,#5b3aa0,#46297e 55%,#1d0e44); }
-  :root[data-skin="gold"]   { --skin-device: linear-gradient(180deg,rgba(255,255,255,.28),rgba(255,255,255,0) 22%),linear-gradient(160deg,#F6D56A 0%,#D9A21B 30%,#8A5A06 62%,#E0A82A 100%);
-                              --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.12),rgba(255,255,255,0) 22%),linear-gradient(160deg,#b8860b,#7a4f05 55%,#2e1d01); }
-  :root[data-skin="foret"] { --red:#2E9B57; --red-dark:#1B6137; --red-darker:#0b2e1a; --red-mid:#278a4c; --skin-glow:rgba(70,200,120,.30);
-    --skin-device: linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,0) 22%),linear-gradient(160deg,#4fcf84,#2e9b57 55%,#1b6137);
-    --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 22%),linear-gradient(160deg,#1f7a43,#16603a 55%,#0a2b18); }
-  :root[data-skin="braise"] { --red:#E8651F; --red-dark:#A33B0B; --red-darker:#4a1704; --red-mid:#D4561A; --skin-glow:rgba(255,140,60,.32);
-    --skin-device: linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,0) 22%),linear-gradient(160deg,#FF9A4D,#E8651F 55%,#A33B0B);
-    --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 22%),linear-gradient(160deg,#b8480f,#8a330a 55%,#3a1203); }
-  :root[data-skin="aurore"] { --red:#4a8cff; --red-dark:#2a4fb0; --red-darker:#101a4d; --red-mid:#3b78e0; --skin-glow:rgba(90,200,255,.32);
-    --skin-device: linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,0) 22%),linear-gradient(160deg,#3ef0c0 0%,#4a8cff 45%,#c05cff 100%);
-    --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 22%),linear-gradient(160deg,#1fb08a,#2f5fc0 50%,#7a3cb0); }
-  :root[data-skin="glace"] { --red:#58B7D9; --red-dark:#277a9e; --red-darker:#0f3a4d; --red-mid:#46a6c9; --skin-glow:rgba(140,220,255,.34);
-    --skin-device: linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,0) 22%),linear-gradient(160deg,#7fd0ee,#4aa8cc 55%,#277a9e);
-    --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 22%),linear-gradient(160deg,#2f87ab,#226a8a 55%,#0b2f40); }
-  :root[data-skin="rubis"] { --red:#C2185B; --red-dark:#7f0f3a; --red-darker:#3a0519; --red-mid:#ad1450; --skin-glow:rgba(255,80,140,.30);
-    --skin-device: linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,0) 22%),linear-gradient(160deg,#E8467F,#C2185B 55%,#7f0f3a);
-    --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 22%),linear-gradient(160deg,#9c1248,#770d34 55%,#32041a); }
-  :root[data-skin="nuit"] { --red:#3b4a8a; --red-dark:#222c5c; --red-darker:#0a0e22; --red-mid:#323f7a; --skin-glow:rgba(100,120,255,.30);
-    --skin-device: linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,0) 22%),linear-gradient(160deg,#4a5aa8,#323f7a 55%,#1a2150);
-    --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 22%),linear-gradient(160deg,#28336a,#1c2550 55%,#080b1c); }
-  /* Skins exclusifs de l'événement Halloween (boutique à bonbons) */
-  :root[data-skin="citrouille"] { --red:#F2711C; --red-dark:#B34A07; --red-darker:#4a1c02; --red-mid:#DB6414; --skin-glow:rgba(255,140,40,.34);
-    --skin-device: linear-gradient(180deg,rgba(255,255,255,.2),rgba(255,255,255,0) 22%),linear-gradient(160deg,#FF9F43,#F2711C 55%,#9a3f06);
-    --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 22%),linear-gradient(160deg,#b8530f,#8a3d0a 55%,#2e1301); }
-  :root[data-skin="sorciere"] { --red:#6a2bb5; --red-dark:#3e1a73; --red-darker:#1a0838; --red-mid:#5d27a0; --skin-glow:rgba(150,90,255,.34);
-    --skin-device: linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,0) 22%),linear-gradient(160deg,#a35cff 0%,#6a2bb5 50%,#3ecf7e 115%);
-    --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 22%),linear-gradient(160deg,#6b34b8,#4a1f82 50%,#1f8f55); }
-  :root[data-skin="hante"] { --red:#2a2236; --red-dark:#17121f; --red-darker:#08060d; --red-mid:#201a2b; --skin-glow:rgba(120,255,160,.28);
-    --skin-device: linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,0) 22%),linear-gradient(160deg,#4a3d63,#2a2236 55%,#14101c);
-    --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,0) 22%),linear-gradient(160deg,#2d2540,#1b1527 55%,#07050b); }
-  /* Skin exclusif de la crate Halloween */
-  :root[data-skin="banshitrouye"] { --red:#d9671a; --red-dark:#7a3a0a; --red-darker:#2a1240; --red-mid:#b9560f; --skin-glow:rgba(125,255,154,.30);
-    --skin-device: linear-gradient(180deg,rgba(255,255,255,.2),rgba(255,255,255,0) 22%),linear-gradient(160deg,#ff9a2e 0%,#c2570f 34%,#5b2a86 72%,#2a1240 100%);
-    --skin-device-dark: linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,0) 22%),linear-gradient(160deg,#8a4a12,#4a2467 60%,#150a26); }
-  /* Banshitrouye pose sur la coque : coin haut droit, au-dessus de tout, sans gêner les clics */
-  :root[data-skin="banshitrouye"] .device::after{ content:""; position:absolute; top:4px; right:12px; width:64px; height:64px; z-index:6; pointer-events:none;
-    background:url(https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/711.png) center/contain no-repeat; filter:drop-shadow(0 3px 5px rgba(0,0,0,.45)) drop-shadow(0 0 8px rgba(125,255,154,.55)); animation:pk-gfloat 3.2s ease-in-out infinite; }
-  @keyframes pk-gfloat{ 50%{ transform:translateY(-4px) rotate(-4deg); } }
-  @media (prefers-reduced-motion:reduce){ :root[data-skin="banshitrouye"] .device::after{ animation:none; } }
-  :root[data-skin] .device{ background: var(--skin-device); }
-  :root[data-skin] body{
-    background: radial-gradient(900px 500px at 15% -10%, var(--skin-glow), transparent 60%),
-                radial-gradient(800px 500px at 100% 0%, rgba(255,201,60,.12), transparent 55%),
-                linear-gradient(180deg, #1b1612 0%, #0f0c09 100%);
-    background-attachment: fixed;
   }
 </style>
 <link rel="stylesheet" href="theme.css">
