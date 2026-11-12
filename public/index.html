@@ -2504,12 +2504,8 @@
         <div class="notepad-players-row" id="notepadPlayersRow"></div>
         <div class="notepad-categories-row" id="notepadCategoriesRow"></div>
       </div>
-      <form class="notepad-add-player" id="notepadAddPlayerForm">
-        <input type="text" id="notepadAddPlayerInput" maxlength="16" placeholder="Ajouter un joueur…" autocomplete="off">
-        <button type="submit" class="notepad-add-player-btn" title="Ajouter">＋</button>
-      </form>
 
-      <div class="notepad-empty" id="notepadEmptyState" style="display:none;">Ajoute au moins un joueur pour commencer à prendre des notes sur son Pokémon secret.</div>
+      <div class="notepad-empty" id="notepadEmptyState" style="display:none;">Les joueurs de ta partie apparaissent ici : rejoins une partie pour prendre des notes sur leur Pokémon secret.</div>
 
       <div class="notepad-active-area" id="notepadActiveArea">
         <div class="notepad-recap" id="notepadRecap" aria-label="Récapitulatif des infos notées"></div>
@@ -2918,8 +2914,6 @@
   const notepadText = document.getElementById("notepadText");
   const notepadStatus = document.getElementById("notepadStatus");
   const notepadPlayersRow = document.getElementById("notepadPlayersRow");
-  const notepadAddPlayerForm = document.getElementById("notepadAddPlayerForm");
-  const notepadAddPlayerInput = document.getElementById("notepadAddPlayerInput");
   const notepadEmptyState = document.getElementById("notepadEmptyState");
   const notepadActiveArea = document.getElementById("notepadActiveArea");
   const notepadCategoriesRow = document.getElementById("notepadCategoriesRow");
@@ -4822,18 +4816,6 @@
     renderNotepadRecap(entry);
   }
 
-  function notepadHandleAddPlayer(e){
-    e.preventDefault();
-    const name = notepadAddPlayerInput.value.trim().slice(0, 16);
-    if(!name) return;
-    const key = "m" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-    notepadState.manualPlayers.push({ key, name });
-    notepadState.activePlayerKey = "manual:" + key;
-    saveNotepadState();
-    notepadAddPlayerInput.value = "";
-    renderNotepadAll();
-  }
-
   function openNotepad(){
     notepadOverlay.classList.add("open");
     notepadStatus.textContent = "";
@@ -6488,7 +6470,6 @@
   btnNotepadClear.addEventListener("click", clearNotepad);
   window.addEventListener("siteconfigchange", function(){ try{ if(notepadOverlay.classList.contains("open")) renderNotepadActivePlayer(); }catch(e){} });
   notepadText.addEventListener("input", onNotepadInput);
-  notepadAddPlayerForm.addEventListener("submit", notepadHandleAddPlayer);
   notepadOverlay.addEventListener("click", (e) => { if(e.target === notepadOverlay) closeNotepad(); });
   document.addEventListener("keydown", (e) => {
     if(e.key !== "Escape") return;
