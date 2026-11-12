@@ -1445,6 +1445,9 @@
     gap:8px;
   }
   .mp-guess-box .mp-guess-title{ font-size:13px; font-weight:700; color:var(--ink); }
+  .mp-guess-opts{ display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center; }
+  .mp-guess-opt{ display:flex; align-items:center; gap:6px; font-size:12.5px; font-weight:700; color:var(--ink); }
+  .mp-guess-opt select{ width:auto; max-width:100%; padding:6px 8px; font-size:12.5px; }
   .mp-guess-feedback{ font-size:12.5px; font-weight:700; text-align:center; }
   .mp-guess-feedback.ok{ color:#2a7a3d; }
   .mp-guess-feedback.ko{ color:var(--red-dark); }
@@ -6295,6 +6298,17 @@
         <div class="mp-guess-title">Deviner le Pokémon de ${mpEscapeHtml(targetName)}</div>
         <input type="text" id="mpGuessInput" class="mp-input" placeholder="Nom du Pokémon" autocomplete="off">
         <div class="search-suggest" id="mpGuessSuggest" style="display:none;"></div>
+        <div class="mp-guess-opts">
+          <label class="mp-guess-opt"><input type="checkbox" id="mpGuessShiny"> ✨ Chromatique</label>
+          <label class="mp-guess-opt">Forme
+            <select id="mpGuessForm" class="mp-input">
+              <option value="normal">Normale</option>
+              <option value="mega">Méga / Primo</option>
+              <option value="regional">Régionale (Alola, Galar, Hisui, Paldea)</option>
+              <option value="gmax">Gigamax</option>
+            </select>
+          </label>
+        </div>
         <div class="btn-row">
           <button class="btn btn-main" id="mpGuessSubmit">Valider</button>
           <button class="btn btn-secondary" id="mpGuessCancel">Annuler</button>
@@ -6332,6 +6346,10 @@
         });
       }, 200);
     });
+    input.addEventListener("input", () => {
+      const sel = document.getElementById("mpGuessForm");
+      if(sel && sel.value === "normal" && /^\s*(m-|m\.|mega[\s-]|méga[\s-]|primo[\s-])/i.test(input.value)) sel.value = "mega";
+    });
     input.addEventListener("keydown", (e) => { if(e.key === "Enter") mpSubmitGuess(); });
     document.getElementById("mpGuessSubmit").addEventListener("click", mpSubmitGuess);
     document.getElementById("mpGuessCancel").addEventListener("click", mpCancelGuess);
@@ -6353,8 +6371,10 @@
     if(submitBtn) submitBtn.disabled = true;
 
     const targetId = mpGuessTargetId;
+    const shinyBox = document.getElementById("mpGuessShiny"), formSel = document.getElementById("mpGuessForm");
     try{
-      const result = await mpApiPost("guess", { code: mpRoomCode, playerId: mpPlayerId, targetId, guess: raw });
+      const result = await mpApiPost("guess", { code: mpRoomCode, playerId: mpPlayerId, targetId, guess: raw,
+        shiny: !!(shinyBox && shinyBox.checked), form: formSel ? formSel.value : "normal" });
       if(result.gone){
         if(feedback){
           feedback.textContent = "Trop tard : ce Pokémon a déjà été deviné, ou ce joueur n'a plus de secret en cours.";
