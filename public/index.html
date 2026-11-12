@@ -985,6 +985,8 @@
     margin:0 2px;
   }
   .evo-none{ font-size:12px; color:var(--text-muted); font-style:italic; }
+  .evo-branches{ display:flex; flex-direction:column; gap:6px; }
+  .evo-branch{ display:flex; align-items:center; flex-wrap:wrap; gap:4px; }
 
   /* Famille cliquable : toucher un Pokémon affiche sa fiche, avec retour facile */
   .evo-hint{ font-size:11px; color:var(--text-muted); font-style:italic; margin:-2px 0 6px; }
@@ -3312,7 +3314,8 @@
       const descendantsRaw = await Promise.all(descendantNodes.map(async n => {
         const info = await fetchEvoStageInfo(n.url);
         const trigger = await formatEvoTrigger(n.evolutionDetails);
-        return { name: n.name, id: info.id, displayName: info.displayName, sprite: info.id ? smallSpriteUrl(info.id) : "", trigger };
+        // `parent` : espèce dont il évolue directement (permet d'afficher les branches, ex. Kirlia -> Gardevoir / Gallame)
+        return { name: n.name, id: info.id, displayName: info.displayName, sprite: info.id ? smallSpriteUrl(info.id) : "", trigger, parent: n.parentName };
       }));
 
       const ancestors = ancestorsRaw.filter(a => a.id && a.id <= MAX_DEX_ID);
@@ -4389,10 +4392,42 @@
       return;
     }
 
-    evo.descendants.forEach(d => {
-      targetEl.appendChild(makeEvoArrow());
-      targetEl.appendChild(makeEvoStage(d, stageOpts(d)));
+    // Évolutions suivantes : affichées en arbre. Si un stade a plusieurs évolutions possibles
+    // (ex. Kirlia -> Gardevoir OU Gallame), elles sont empilées en branches au lieu d'être alignées à la suite.
+    const rootKey = data.speciesName || data.name;
+    const known = new Set([rootKey]);
+    evo.descendants.forEach(d => known.add(d.name));
+    const kids = {};
+    evo.descendants.forEach((d, i) => {
+      let par = d.parent;                                   // familles officielles : parent connu
+      if(par === undefined) par = i > 0 ? evo.descendants[i - 1].name : rootKey; // famille imposée par le créateur : chaîne linéaire
+      if(!known.has(par) || par === d.name) par = rootKey;  // parent absent (filtré) : on rattache au Pokémon affiché
+      (kids[par] = kids[par] || []).push(d);
     });
+    const seen = new Set();
+    function appendBranch(container, key){
+      const list = (kids[key] || []).filter(k => !seen.has(k.name));
+      list.forEach(k => seen.add(k.name));
+      if(!list.length) return;
+      if(list.length === 1){
+        container.appendChild(makeEvoArrow());
+        container.appendChild(makeEvoStage(list[0], stageOpts(list[0])));
+        appendBranch(container, list[0].name);
+        return;
+      }
+      const col = document.createElement("div");
+      col.className = "evo-branches";
+      list.forEach(k => {
+        const line = document.createElement("div");
+        line.className = "evo-branch";
+        line.appendChild(makeEvoArrow());
+        line.appendChild(makeEvoStage(k, stageOpts(k)));
+        appendBranch(line, k.name);
+        col.appendChild(line);
+      });
+      container.appendChild(col);
+    }
+    appendBranch(targetEl, rootKey);
   }
 
   // ---------- Notepad (bloc-note, localStorage) ----------
