@@ -426,12 +426,14 @@ async function fetchSecretName(entry) {
 
 // Compare une proposition au nom secret (accents/casse ignorés). Pour une Méga, « Méga-X »
 // est aussi accepté en plus de « M-X » ; l'espèce de base seule (« X ») est refusée.
+// La forme (normale / méga / régionale / gmax) et le caractère chromatique sont vérifiés à part :
+// le préfixe « M- », « Méga- » ou « Primo- » est donc facultatif (« Kangourex » ou « M-Kangourex » pour Méga-Kangourex).
+const MEGA_PREFIX = /^(m-|m\.\s*|mega[\s-]+|primo[\s-]+)/;
 function guessMatches(guess, secretName) {
   const g = foldFr(guess);
   const n = foldFr(secretName);
   if (g === n) return true;
-  if (n.startsWith('m-') && g === 'mega-' + n.slice(2)) return true;
-  return false;
+  return g.replace(MEGA_PREFIX, '') === n.replace(MEGA_PREFIX, '');
 }
 
 function roomKey(code) {
