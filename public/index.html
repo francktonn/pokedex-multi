@@ -5,6 +5,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Qui est ce Pokémon ? — Pokédex entre amis</title>
 <script>
+  // Configuration personnalisée par le créateur (onglet 🛠️ Créateur) : bloc-note + infos de Pokémon modifiées.
+  // Lue depuis /api/admin, mise en cache dans le navigateur pour un affichage immédiat (même hors ligne).
+  (function(){
+    "use strict";
+    var KEY = "site_config_v1", last = 0, cfg = { rev: 0, notepad: null, pokemon: {} };
+    try{ var c = JSON.parse(localStorage.getItem(KEY) || "null"); if(c && typeof c === "object") cfg = { rev: c.rev || 0, notepad: c.notepad || null, pokemon: c.pokemon || {} }; }catch(e){}
+    function refresh(force){
+      var now = Date.now(); if(!force && now - last < 30000) return Promise.resolve(false);
+      last = now;
+      return fetch("/api/admin", { cache: "no-store" }).then(function(r){ return r.ok ? r.json() : null; }).then(function(j){
+        if(!j || typeof j !== "object") return false;
+        var changed = (j.rev || 0) !== cfg.rev;
+        cfg = { rev: j.rev || 0, notepad: j.notepad || null, pokemon: j.pokemon || {} };
+        try{ localStorage.setItem(KEY, JSON.stringify(cfg)); }catch(e){}
+        if(changed){ try{ window.dispatchEvent(new CustomEvent("siteconfigchange")); }catch(e){} }
+        return changed;
+      }).catch(function(){ return false; });
+    }
+    window.SiteConfig = { get: function(){ return cfg; }, refresh: refresh };
+    refresh(true);
+    document.addEventListener("visibilitychange", function(){ if(!document.hidden) refresh(false); });
+  })();
+</script>
+<script>
   // Applique le thème sauvegardé le plus tôt possible, avant le rendu de la page,
   // pour éviter un flash en mode clair au chargement si le mode sombre est actif.
   (function(){
@@ -880,6 +904,8 @@
     gap:8px;
     margin-bottom:12px;
   }
+  .info-tile.info-wide{ grid-column:1 / -1; }
+  .info-tile.info-wide .val{ font-size:13px; line-height:1.35; }
   .info-tile{
     background:var(--card-bg);
     border-radius:10px;
@@ -2259,11 +2285,13 @@
   <button type="button" role="tab" id="tabGuess" class="modetab active" aria-selected="true" data-tab="guess"><span class="ic">🔴</span><span class="lb">Devinette</span></button>
   <button type="button" role="tab" id="tabProfile" class="modetab" aria-selected="false" data-tab="profile"><span class="ic">👤</span><span class="lb">Profil</span></button>
   <button type="button" role="tab" id="tabPlayers" class="modetab" aria-selected="false" data-tab="players"><span class="ic">🧑‍🤝‍🧑</span><span class="lb">Joueurs</span></button>
+  <button type="button" role="tab" id="tabAdmin" class="modetab" aria-selected="false" data-tab="admin" style="display:none"><span class="ic">🛠️</span><span class="lb">Créateur</span></button>
 </nav>
 <div id="grpBar" class="grpbar" style="display:none;"></div>
 <div id="groupPane" style="display:none;"><div id="groupHost"></div></div>
 <div id="profilePane" style="display:none;"><div id="profileHost"></div></div>
 <div id="playersPane" style="display:none;width:100%;"><div id="playersHost"></div></div>
+<div id="adminPane" style="display:none;width:100%;"><div id="adminHost"></div></div>
 
 
 <div class="stage">
@@ -2315,6 +2343,7 @@
         <div class="info-tile"><span class="eyebrow">Catégorie</span><div class="val" id="valCategory">-</div></div>
         <div class="info-tile"><span class="eyebrow">Capture</span><div class="val" id="valCapture">-</div></div>
         <div class="info-tile"><span class="eyebrow">Forme</span><div class="val" id="valForm">-</div></div>
+        <div class="info-tile info-wide"><span class="eyebrow">Talents</span><div class="val" id="valAbilities">-</div></div>
       </div>
 
       <div class="section-label">Faiblesses &amp; résistances</div>
@@ -2430,6 +2459,7 @@
             <div class="info-tile"><span class="eyebrow">Catégorie</span><div class="val" id="searchValCategory">-</div></div>
             <div class="info-tile"><span class="eyebrow">Capture</span><div class="val" id="searchValCapture">-</div></div>
             <div class="info-tile"><span class="eyebrow">Forme</span><div class="val" id="searchValForm">-</div></div>
+            <div class="info-tile info-wide"><span class="eyebrow">Talents</span><div class="val" id="searchValAbilities">-</div></div>
           </div>
 
           <div class="section-label">Faiblesses &amp; résistances</div>
@@ -2645,8 +2675,8 @@
   // (activeSearchSettings, définie plus bas dans ce même fichier) : pas la peine
   // d'afficher une case "Génération 8" si la partie en cours ne tire que dans les
   // générations 1 à 7.
-  function noteCategories(){
-    const allowedGens = activeSearchSettings().generations;
+  function noteBaseCategories(all){
+    const allowedGens = all ? [1,2,3,4,5,6,7,8,9] : activeSearchSettings().generations;
     return [
       { key:"type", label:"Types", items: Object.keys(TYPE_FR).map(k => ({ id:"type:"+k, label:TYPE_FR[k], accent:TYPE_COLORS[k] })).concat([
         { id:"divers:monotype", label:"Monotype" },
@@ -2684,6 +2714,44 @@
       ]}
     ];
   }
+
+  // Bloc-note personnalisé par le créateur : on part des onglets/cases d'origine puis on applique le « calque » enregistré
+  // (renommé, masqué, réordonné, cases et onglets ajoutés). Ce qui est nouveau dans l'appli mais inconnu du calque est ajouté à la fin.
+  function applyNotepadConfig(base, cfg){
+    if(!cfg || !Array.isArray(cfg.categories)) return base;
+    const bMap = {}; base.forEach(c => { bMap[c.key] = c; });
+    const out = [], seen = {};
+    cfg.categories.forEach(sc => {
+      if(!sc || !sc.key) return;
+      if(sc.custom){
+        if(sc.hidden) return;
+        out.push({ key: sc.key, label: sc.label || "Sans nom", custom: true,
+          items: (sc.items || []).filter(i => i && !i.hidden).map(i => ({ id: i.id, label: i.label })) });
+        return;
+      }
+      seen[sc.key] = true;
+      const b = bMap[sc.key]; if(!b || sc.hidden) return;
+      const iMap = {}, seenI = {}; b.items.forEach(i => { iMap[i.id] = i; });
+      const items = [];
+      (sc.items || []).forEach(si => {
+        if(!si) return;
+        if(si.custom){ if(!si.hidden) items.push({ id: si.id, label: si.label }); return; }
+        seenI[si.id] = true;
+        const bi = iMap[si.id]; if(!bi || si.hidden) return;
+        items.push(si.label && si.label !== bi.label ? Object.assign({}, bi, { label: si.label }) : bi);
+      });
+      b.items.forEach(bi => { if(!seenI[bi.id]) items.push(bi); });
+      out.push(Object.assign({}, b, { label: sc.label || b.label, items }));
+    });
+    base.forEach(b => { if(!seen[b.key]) out.push(b); });
+    return out;
+  }
+  function noteCategories(){
+    const cfg = window.SiteConfig && window.SiteConfig.get();
+    return applyNotepadConfig(noteBaseCategories(false), cfg && cfg.notepad);
+  }
+  // Pour le tableau de bord (toutes les générations, sans le calque) :
+  window.PokeNotepadBase = function(){ return noteBaseCategories(true); };
 
   // Tableau des relations de type (défense) : pour chaque type, quels types attaquants
   // font x2 (weak), x0.5 (resist) ou x0 (immune). Sert à calculer les faiblesses/résistances
@@ -3093,7 +3161,7 @@
     if(speciesBasicCache[url]) return speciesBasicCache[url];
     try{
       const sp = await fetchJSON(url);
-      const info = { id: sp.id, displayName: frenchNameFrom(sp.names, sp.name) };
+      const info = { id: sp.id, name: sp.name, displayName: frenchNameFrom(sp.names, sp.name) };
       speciesBasicCache[url] = info;
       return info;
     }catch(e){
@@ -3341,7 +3409,56 @@
     return { key:"extreme", label:"Extrême", icon:"🔴" };
   }
 
-  async function loadPokemon(id){
+  // Charge un Pokémon puis applique les modifications du créateur (opts.raw = données d'origine, sans modification).
+  async function loadPokemon(id, opts){
+    const data = await loadPokemonRaw(id);
+    if(opts && opts.raw) return data;
+    try{ return await applyPokemonOverrides(data); }catch(e){ return data; }
+  }
+
+  // Famille d'évolution imposée par le créateur : liste ordonnée d'espèces. La place du Pokémon affiché en découle.
+  async function buildFamilyOverride(ids, speciesId){
+    const idx = ids.indexOf(speciesId);
+    if(idx < 0) return null;
+    const nodes = await Promise.all(ids.map(async (sid, i) => {
+      if(i === idx) return null;
+      const info = await fetchEvoStageInfo("https://pokeapi.co/api/v2/pokemon-species/" + sid);
+      return info && info.id ? { name: info.name, id: info.id, displayName: info.displayName, sprite: smallSpriteUrl(info.id), trigger: "", _i: i } : null;
+    }));
+    return {
+      ancestors: nodes.filter(n => n && n._i < idx), descendants: nodes.filter(n => n && n._i > idx), currentTrigger: ""
+    };
+  }
+
+  async function applyPokemonOverrides(data){
+    const cfg = window.SiteConfig && window.SiteConfig.get();
+    const all = cfg && cfg.pokemon;
+    if(!all || !Object.keys(all).length) return data;
+    const o = all[String(data.pokemonId)] || {};
+    const d = Object.assign({}, data);
+    if(o.name) d.displayName = o.name;
+    if(Array.isArray(o.types)){ const t = o.types.filter(x => TYPE_FR[x]).slice(0, 2); if(t.length) d.types = t; }
+    if(o.generation) d.generation = String(o.generation);
+    if(o.heightM) d.heightM = Number(o.heightM).toFixed(1);
+    if(o.weightKg) d.weightKg = Number(o.weightKg).toFixed(1);
+    if(o.stats) d.stats = data.stats.map(s => o.stats[s.name] != null ? { name: s.name, value: Number(o.stats[s.name]) } : s);
+    if(Array.isArray(o.abilities) && o.abilities.length) d.abilities = o.abilities.map(a => ({ name: a.name, hidden: !!a.hidden }));
+    if(Array.isArray(o.family) && o.family.length){ const ev = await buildFamilyOverride(o.family, data.id); if(ev) d.evolution = ev; }
+    // Les autres membres de la famille s'affichent aussi avec le nom que le créateur leur a donné.
+    if(d.evolution){
+      const rename = n => (all[String(n.id)] && all[String(n.id)].name) ? Object.assign({}, n, { displayName: all[String(n.id)].name }) : n;
+      d.evolution = { ancestors: d.evolution.ancestors.map(rename), descendants: d.evolution.descendants.map(rename), currentTrigger: d.evolution.currentTrigger };
+    }
+    return d;
+  }
+  window.PokeData = { load: loadPokemon, typeFr: TYPE_FR, typeColors: TYPE_COLORS, formatAbilities: formatAbilities };
+
+  function formatAbilities(list){
+    if(!list || !list.length) return "–";
+    return list.map(a => a.name + (a.hidden ? " (caché)" : "")).join(" · ");
+  }
+
+  async function loadPokemonRaw(id){
     const pokemon = await fetchJSON(`https://pokeapi.co/api/v2/pokemon/${id}`);
     // On récupère l'espèce via l'URL fournie par le Pokémon lui-même (plutôt que de supposer
     // que son id correspond à un numéro de Pokédex) : ceci fonctionne aussi bien pour un
@@ -3358,6 +3475,11 @@
     let genus = genusEntry ? genusEntry.genus : "";
 
     const evolution = await buildEvolutionData(species, species.name);
+    // Talents (nom français, « caché » pour le talent caché). Une erreur ici ne doit jamais empêcher d'afficher le Pokémon.
+    let abilities = [];
+    try{
+      abilities = await Promise.all((pokemon.abilities || []).map(async a => ({ name: await frenchResourceName(a.ability), hidden: !!a.is_hidden })));
+    }catch(e){ abilities = []; }
     const regional = getRegionalDexEntry(species);
     const displayName = megaShortName(pokemon.name, frenchNameFrom(species.names, pokemon.name));
 
@@ -3404,6 +3526,7 @@
       heightM: (pokemon.height/10).toFixed(1),
       weightKg: (pokemon.weight/10).toFixed(1),
       stats: pokemon.stats.map(s => ({ name: s.stat.name, value: s.base_stat })),
+      abilities: abilities,
       flavor: flavor,
       genus: genus,
       evolution: evolution,
@@ -4096,6 +4219,7 @@
     valCapture.className = "val capture-" + data.captureRate.key;
     valForm.textContent = data.form.label;
     valForm.className = "val form-" + data.form.key;
+    document.getElementById("valAbilities").textContent = formatAbilities(data.abilities);
 
     renderTypeEffect(data.types);
     document.getElementById("statsBlock").innerHTML = buildStatsHTML(data.stats);
@@ -4762,6 +4886,7 @@
     searchValCapture.className = "val capture-" + data.captureRate.key;
     searchValForm.textContent = data.form.label;
     searchValForm.className = "val form-" + data.form.key;
+    document.getElementById("searchValAbilities").textContent = formatAbilities(data.abilities);
 
     searchTypeEffect.innerHTML = buildTypeEffectHTML(data.types);
     document.getElementById("searchStatsBlock").innerHTML = buildStatsHTML(data.stats);
@@ -6319,6 +6444,7 @@
   btnNotepad.addEventListener("click", openNotepad);
   btnNotepadClose.addEventListener("click", closeNotepad);
   btnNotepadClear.addEventListener("click", clearNotepad);
+  window.addEventListener("siteconfigchange", function(){ try{ if(notepadOverlay.classList.contains("open")) renderNotepadActivePlayer(); }catch(e){} });
   notepadText.addEventListener("input", onNotepadInput);
   notepadAddPlayerForm.addEventListener("submit", notepadHandleAddPlayer);
   notepadOverlay.addEventListener("click", (e) => { if(e.target === notepadOverlay) closeNotepad(); });
@@ -6408,7 +6534,8 @@
     guess:   { btn: "tabGuess" },
     group:   { btn: "tabGroup",   pane: "groupPane",   host: "groupHost",   src: "group.js?v=3",   api: "GroupTab",   label: "group.js" },
     profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=14", api: "ProfileTab", label: "profile.js" },
-    players: { btn: "tabPlayers", pane: "playersPane", host: "playersHost", src: "players.js?v=1", api: "PlayersTab", label: "players.js" }
+    players: { btn: "tabPlayers", pane: "playersPane", host: "playersHost", src: "players.js?v=1", api: "PlayersTab", label: "players.js" },
+    admin:   { btn: "tabAdmin",   pane: "adminPane",   host: "adminHost",   src: "admin.js?v=1",   api: "AdminTab",   label: "admin.js" }
   };
   var loaded = {};
   function fail(t, msg){
@@ -6429,8 +6556,18 @@
     sc.onerror = function(){ fail(t, "Impossible de charger /" + cfg.label + ". Vérifie qu'il est bien dans le dossier public/ (à côté de index.html), puis redéploie."); };
     document.body.appendChild(sc);
   }
+  // L'onglet Créateur n'apparaît que sur un appareil déjà connecté en créateur, ou via le lien ?admin.
+  function adminVisible(){
+    var b = document.getElementById("tabAdmin"); if (!b) return;
+    var on = false;
+    try{ on = !!localStorage.getItem("admin_token") || /[?&]admin(=|&|$)/.test(location.search); }catch(e){}
+    b.style.display = on ? "" : "none";
+  }
+  adminVisible();
+  window.addEventListener("adminchange", adminVisible);
   function setTab(name){
     if (!TABS[name]) name = "guess";
+    if (name === "admin" && document.getElementById("tabAdmin").style.display === "none") name = "guess";
     document.body.classList.toggle("tab-off", name !== "guess");
     Object.keys(TABS).forEach(function(k){
       var on = k === name, b = document.getElementById(TABS[k].btn);
@@ -6448,6 +6585,7 @@
   try{
     var q = new URLSearchParams(location.search);
     if (q.get("group")) start = "group";
+    else if (/[?&]admin(=|&|$)/.test(location.search)) start = "admin";
     else if (!q.get("code")) { var saved = localStorage.getItem("modeTab"); if (TABS[saved]) start = saved; }
   }catch(e){}
   if (start !== "guess") setTab(start);
