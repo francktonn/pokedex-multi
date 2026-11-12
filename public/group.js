@@ -156,13 +156,64 @@
       .then(function (r) { enter(r.code, r.playerId); })
       .catch(function (e) { G.ui.err.textContent = e.message; });
   }
-  function doJoin() {
+  function joinCode(c) {
     var n = needName(); if (!n) return;
-    var c = G.ui.codeIn.value.trim().toUpperCase();
-    if (!c) { G.ui.err.textContent = "Entre le code du groupe."; return; }
     api("POST", { action: "join", code: c, name: n, avatar: avatarId(), card: cardOf() })
       .then(function (r) { enter(r.code, r.playerId); })
-      .catch(function (e) { G.ui.err.textContent = e.message; });
+      .catch(function (e) { G.ui.err.textContent = e.message; loadList(); });
+  }
+  function doJoin() {
+    var c = G.ui.codeIn.value.trim().toUpperCase();
+    if (!c) { G.ui.err.textContent = "Choisis un groupe dans la liste ou entre un code."; return; }
+    joinCode(c);
+  }
+
+  // ---------- Groupes rejoignables (sans code) ----------
+  var LIST_MS = 5000;
+  var listTimer = null, listBusy = false;
+  function renderList(box, groups, error) {
+    box.textContent = "";
+    if (error) { box.appendChild(el("div", "hint", error)); return; }
+    if (!groups) { box.appendChild(el("div", "hint", "Chargement…")); return; }
+    if (!groups.length) { box.appendChild(el("div", "hint", "Aucun groupe ouvert pour l'instant. Crée le tien !")); return; }
+    var ul = el("ul", "members");
+    groups.forEach(function (g) {
+      var li = el("li", "mem");
+      var av = el("img", "av"); av.alt = ""; av.draggable = false;
+      if (g.host.avatar && window.PokeProfile) {
+        av.src = window.PokeProfile.sprite(g.host.avatar, g.host.card && g.host.card.s);
+        if (g.host.card) { av.style.borderColor = window.PokeProfile.frame(g.host.card.c); if (g.host.card.s === 2) av.style.imageRendering = "auto"; }
+      } else av.style.visibility = "hidden";
+      li.appendChild(av);
+      var info = el("div", "ginfo");
+      info.appendChild(el("div", "nm", "👑 " + g.host.name));
+      var lbl = g.phase === "live" ? "en jeu" : g.phase === "prep" ? "prépare une partie" : "au calme";
+      var md = g.mode && MODES[g.mode] ? " · " + MODES[g.mode].icon + " " + MODES[g.mode].label : "";
+      info.appendChild(el("div", "gsub", g.count + "/" + g.max + " joueur" + (g.count > 1 ? "s" : "") + " · " + lbl + md));
+      li.appendChild(info);
+      var b = el("button", "btn small", "Rejoindre"); b.type = "button";
+      b.onclick = function () { joinCode(g.code); };
+      li.appendChild(b);
+      ul.appendChild(li);
+    });
+    box.appendChild(ul);
+  }
+  function loadList() {
+    var ui = G.ui;
+    if (G.code || !ui || !ui.listBox || listBusy) return;
+    listBusy = true;
+    api("GET", null, "list=1")
+      .then(function (j) { if (!G.code && ui.listBox) renderList(ui.listBox, j.groups || []); })
+      .catch(function () { if (!G.code && ui.listBox) renderList(ui.listBox, null, "Impossible de charger les groupes."); })
+      .then(function () { listBusy = false; });
+  }
+  // Actualisation douce tant qu'on est sur l'écran d'accueil du groupe et que l'onglet est visible.
+  function ensureListPolling() {
+    if (listTimer) return;
+    listTimer = setInterval(function () {
+      if (G.code) { clearInterval(listTimer); listTimer = null; return; }
+      if (!document.hidden && G.ui && G.ui.host && G.ui.host.offsetParent !== null) loadList();
+    }, LIST_MS);
   }
   function doLeave() {
     var c = G.code, p = G.pid;
@@ -272,6 +323,7 @@
     ".mem .nm{flex:1;font-weight:900;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}",
     ".mem .dot{width:10px;height:10px;border-radius:50%;background:#3cb54a;flex:none;} .mem .dot.off{background:#aaa;}",
     ".mem .me{font-size:11px;opacity:.6;font-weight:800;}",
+    ".ginfo{flex:1;min-width:0;} .ginfo .nm{font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;} .gsub{font-size:12.5px;font-weight:700;opacity:.72;margin-top:2px;line-height:1.3;}",
     ".modes{display:grid;gap:10px;}",
     ".mode{display:flex;gap:12px;align-items:center;text-align:left;width:100%;border:2px solid transparent;border-radius:16px;padding:12px;background:rgba(127,127,127,.12);color:inherit;font:inherit;cursor:pointer;}",
     ".mode:hover{border-color:var(--red,#e23b30);} .mode .ic{font-size:28px;} .mode b{display:block;font-size:16px;font-weight:900;} .mode small{opacity:.75;font-weight:700;}",
@@ -402,6 +454,9 @@
     }
     var r = el("div", "row");
     var cb = el("button", "btn", "Créer un groupe"); cb.type = "button"; cb.onclick = doCreate; r.appendChild(cb); c.appendChild(r);
+    c.appendChild(el("h3", "", "Groupes ouverts"));
+    var lb = el("div", "glist"); ui.listBox = lb; renderList(lb, null); c.appendChild(lb);
+    loadList(); ensureListPolling();
     c.appendChild(el("label", "", "Ou rejoindre avec un code"));
     var r2 = el("div", "row");
     var ci = el("input"); ci.type = "text"; ci.maxLength = 5; ci.autocomplete = "off"; ci.placeholder = "ABCDE"; ci.style.cssText = "text-transform:uppercase;letter-spacing:.2em;";
