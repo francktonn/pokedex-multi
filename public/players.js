@@ -24,17 +24,19 @@
     ".btn{border:0;border-radius:12px;padding:8px 12px;font:900 13px 'Nunito',sans-serif;cursor:pointer;background:#e9ebf1;color:#1d1d1f;}",
     ":host(.dark) .btn{background:#3a4152;color:#f2f3f7;} .btn:active{transform:scale(.96);} .btn[disabled]{opacity:.5;}",
     ".seg{display:flex;gap:4px;margin-top:12px;padding:4px;border-radius:12px;background:rgba(127,127,127,.14);}",
-    ".seg button{flex:1;border:0;border-radius:9px;padding:8px 4px;font:900 12.5px 'Nunito',sans-serif;cursor:pointer;background:transparent;color:inherit;opacity:.7;}",
+    ".seg button{flex:1;min-width:0;white-space:nowrap;border:0;border-radius:9px;padding:8px 2px;font:900 12px 'Nunito',sans-serif;cursor:pointer;background:transparent;color:inherit;opacity:.7;}",
     ".seg button.on{background:var(--red,#e23b30);color:#fff;opacity:1;}",
-    ".list{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:8px;}",
-    ".p{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:14px;background:rgba(127,127,127,.12);cursor:pointer;border:2px solid transparent;text-align:left;width:100%;font:inherit;color:inherit;}",
+    ".list{list-style:none;margin:12px 0 0;padding:0;display:grid;grid-template-columns:minmax(0,1fr);gap:8px;} .list>li{min-width:0;}",
+    ".p{box-sizing:border-box;min-width:0;display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:14px;background:rgba(127,127,127,.12);cursor:pointer;border:2px solid transparent;text-align:left;width:100%;font:inherit;color:inherit;}",
     ".p:hover{border-color:var(--red,#e23b30);} .p:active{transform:scale(.99);} .p.me{border-color:rgba(60,181,74,.55);}",
     ".rk{width:22px;flex:none;text-align:center;font:900 13px 'Nunito',sans-serif;opacity:.6;}",
     ".av{width:46px;height:46px;border-radius:50%;border:3px solid #bbb;background:#fff;object-fit:contain;image-rendering:pixelated;flex:none;}",
-    ".info{flex:1;min-width:0;} .nm{font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}",
-    ".st{font-size:12px;font-weight:700;opacity:.7;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}",
+    ".info{flex:1;min-width:0;} .top{display:flex;align-items:baseline;gap:8px;min-width:0;}",
+    ".nm{flex:1;min-width:0;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}",
+    ".st{font-size:12.5px;font-weight:700;opacity:.75;margin-top:2px;line-height:1.3;}",
     ".me-tag{font-size:11px;font-weight:800;opacity:.65;margin-left:6px;}",
-    ".when{flex:none;font-size:11.5px;font-weight:800;opacity:.65;text-align:right;display:flex;align-items:center;gap:5px;}",
+    ".when{flex:none;font-size:11px;font-weight:800;opacity:.65;display:flex;align-items:center;gap:4px;white-space:nowrap;}",
+    "@media (max-width:420px){.wrap{padding:10px 6px 40px;} .card{padding:14px 12px;} .p{padding:8px;gap:8px;} .av{width:42px;height:42px;}}",
     ".dot{width:9px;height:9px;border-radius:50%;background:#3cb54a;} .dot.off{display:none;}",
     ".err{color:#d12a20;font-weight:800;font-size:13px;margin-top:10px;}",
     ".empty{margin:14px 0 4px;text-align:center;font-weight:800;opacity:.7;line-height:1.5;}"
@@ -71,10 +73,11 @@
     } else av.style.visibility = "hidden";
     b.appendChild(av);
     var info = el("div", "info"); b.appendChild(info);
-    var nm = el("div", "nm", p.name); if (me) nm.appendChild(el("span", "me-tag", "toi")); info.appendChild(nm);
+    var top = el("div", "top"); info.appendChild(top);
+    var nm = el("div", "nm", p.name); if (me) nm.appendChild(el("span", "me-tag", "toi")); top.appendChild(nm);
+    var w = el("div", "when"); w.appendChild(el("span", "dot" + (S.now - p.seen < ONLINE_MS ? "" : " off"))); w.appendChild(el("span", "", ago(p.seen))); top.appendChild(w);
     var s = stats(p);
-    info.appendChild(el("div", "st", s.total ? "🔴 " + s.found + " devinés · " + s.pct + " % de précision" : "Pas encore de statistiques"));
-    var w = el("div", "when"); w.appendChild(el("span", "dot" + (S.now - p.seen < ONLINE_MS ? "" : " off"))); w.appendChild(el("span", "", ago(p.seen))); b.appendChild(w);
+    info.appendChild(el("div", "st", s.total ? "🔴 " + s.found + " devinés · 🎯 " + s.pct + " %" : "Pas encore de statistiques"));
     b.onclick = function () { try { window.PokeCard.show({ name: p.name, avatar: p.avatar, card: p.card, me: me }); } catch (e) {} };
     return b;
   }
