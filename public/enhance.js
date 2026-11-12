@@ -183,6 +183,34 @@
     }, 350);
   });
 
+
+  // ---------- Annuaire des joueurs : envoie ton profil au serveur (onglet « Joueurs ») ----------
+  // Aucun compte : le navigateur garde un identifiant public + un jeton secret (players_session) qui n'autorise que SA fiche.
+  var PLAYERS_KEY = "players_session";
+  var syncTimer = null, syncing = null;
+  function playersSession() { try { return JSON.parse(localStorage.getItem(PLAYERS_KEY) || "null") || {}; } catch (e) { return {}; } }
+  function syncPlayer() {
+    if (syncing) return syncing;
+    var P = window.PokeProfile, pr = P && P.get && P.get();
+    if (!pr || !pr.name || navigator.onLine === false) return Promise.resolve();
+    var sess = playersSession();
+    syncing = fetch("/api/players", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "sync", pub: sess.pub, tok: sess.tok, name: pr.name, avatar: pr.favId || null, card: P.card ? P.card() : null })
+    }).then(function (r) { return r.json().catch(function () { return {}; }); })
+      .then(function (j) {
+        if (j && j.pub && j.tok) { try { localStorage.setItem(PLAYERS_KEY, JSON.stringify({ pub: j.pub, tok: j.tok })); } catch (e) {} }
+      })
+      .catch(function () {})
+      .then(function () { syncing = null; });
+    return syncing;
+  }
+  window.PokePlayersSync = syncPlayer;
+  function scheduleSync(delay) { clearTimeout(syncTimer); syncTimer = setTimeout(syncPlayer, delay); }
+  window.addEventListener("load", function () { scheduleSync(1500); });
+  window.addEventListener("profilechange", function () { scheduleSync(4000); });
+  window.addEventListener("statschange", function () { scheduleSync(4000); });
+
   // ---------- Ferme les fenêtres avec le retour arrière du téléphone ----------
   // (pousse un état d'historique à l'ouverture d'une fenêtre, le retire à sa fermeture)
   var overlays = ["mpOverlay", "guessOverlay", "searchOverlay", "notepadOverlay", "gcOverlay"].map($).filter(Boolean);

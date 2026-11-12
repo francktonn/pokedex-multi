@@ -2258,10 +2258,12 @@
   <button type="button" role="tab" id="tabGroup" class="modetab" aria-selected="false" data-tab="group"><span class="ic">👥</span><span class="lb">Groupe</span></button>
   <button type="button" role="tab" id="tabGuess" class="modetab active" aria-selected="true" data-tab="guess"><span class="ic">🔴</span><span class="lb">Devinette</span></button>
   <button type="button" role="tab" id="tabProfile" class="modetab" aria-selected="false" data-tab="profile"><span class="ic">👤</span><span class="lb">Profil</span></button>
+  <button type="button" role="tab" id="tabPlayers" class="modetab" aria-selected="false" data-tab="players"><span class="ic">🧑‍🤝‍🧑</span><span class="lb">Joueurs</span></button>
 </nav>
 <div id="grpBar" class="grpbar" style="display:none;"></div>
 <div id="groupPane" style="display:none;"><div id="groupHost"></div></div>
 <div id="profilePane" style="display:none;"><div id="profileHost"></div></div>
+<div id="playersPane" style="display:none;width:100%;"><div id="playersHost"></div></div>
 
 
 <div class="stage">
@@ -6405,7 +6407,8 @@
   var TABS = {
     guess:   { btn: "tabGuess" },
     group:   { btn: "tabGroup",   pane: "groupPane",   host: "groupHost",   src: "group.js?v=3",   api: "GroupTab",   label: "group.js" },
-    profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=14", api: "ProfileTab", label: "profile.js" }
+    profile: { btn: "tabProfile", pane: "profilePane", host: "profileHost", src: "profile.js?v=14", api: "ProfileTab", label: "profile.js" },
+    players: { btn: "tabPlayers", pane: "playersPane", host: "playersHost", src: "players.js?v=1", api: "PlayersTab", label: "players.js" }
   };
   var loaded = {};
   function fail(t, msg){
