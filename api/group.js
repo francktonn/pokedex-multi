@@ -14,6 +14,10 @@ const TTL = 60 * 60 * 12;
 const MAX_MEMBERS = 12;
 const ONLINE_MS = 15000;
 const MODES = ['guess'];
+const INDEX_KEY = 'group:index';   // ensemble des codes de groupes (annuaire des groupes rejoignables)
+const LIST_ACTIVE_MS = 60000;      // un groupe est listé tant qu'un de ses membres a donné signe de vie dans cette durée
+const LIST_GRACE_MS = 120000;      // ... ou qu'il vient d'être créé (le 1er sondage n'a pas encore eu lieu)
+const MAX_LISTED = 50;
 
 let redisClient = null;
 function getRedis() {
@@ -92,6 +96,29 @@ module.exports = async (req, res) => {
 
   try {
     const r = getRedis();
+    if (req.method === 'GET' && req.query && req.query.list) {
+      // Groupes rejoignables : actifs, non complets. La salle (`sub`) et les identifiants des membres ne sont jamais renvoyés.
+      const codes = (await r.smembers(INDEX_KEY)).slice(0, 200);
+      const now = Date.now();
+      const groups = [];
+      for (const c of codes) {
+        const g = await getGroup(c);
+        if (!g) { await r.srem(INDEX_KEY, c); continue; }
+        const ids = Object.keys(g.members);
+        if (ids.length >= MAX_MEMBERS) continue;
+        const seen = await r.hgetall(seenKey(c));
+        const last = ids.reduce((mx, id) => Math.max(mx, Number(seen[id]) || 0), 0);
+        if (now - last > LIST_ACTIVE_MS && now - (Number(g.created) || 0) > LIST_GRACE_MS) continue;
+        const h = g.members[g.hostId] || {};
+        groups.push({
+          code: g.code, count: ids.length, max: MAX_MEMBERS, phase: g.phase, mode: g.phase === 'idle' ? null : g.mode,
+          host: { name: h.name || '?', avatar: h.avatar || null, card: h.card ? { s: h.card.s, c: h.card.c } : null }, last
+        });
+      }
+      groups.sort((a, b) => b.last - a.last);
+      res.status(200).json({ groups: groups.slice(0, MAX_LISTED).map(({ last, ...rest }) => rest), now });
+      return;
+    }
     if (req.method === 'GET') {
       const code = cleanCode(req.query.code);
       const playerId = (req.query.playerId || '').toString();
@@ -120,10 +147,11 @@ module.exports = async (req, res) => {
       for (let i = 0; i < 5 && (await r.exists(gKey(code))); i++) code = genCode();
       const playerId = 'g_' + Math.random().toString(36).slice(2, 9);
       const g = {
-        code, hostId: playerId, phase: 'idle', mode: null, sub: null, seq: 0,
+        code, hostId: playerId, phase: 'idle', mode: null, sub: null, seq: 0, created: Date.now(),
         members: { [playerId]: { name, avatar: cleanAvatar(body.avatar), card: cleanCard(body.card) } }
       };
       await saveGroup(code, g);
+      await r.sadd(INDEX_KEY, code);
       res.status(200).json({ code, playerId });
       return;
     }
@@ -169,7 +197,7 @@ module.exports = async (req, res) => {
       if (action === 'leave') {
         delete g.members[playerId];
         const ids = Object.keys(g.members);
-        if (!ids.length) { await r.del(gKey(code), seenKey(code)); return ok(); }
+        if (!ids.length) { await r.del(gKey(code), seenKey(code)); await r.srem(INDEX_KEY, code); return ok(); }
         if (isHost) {
           // Passe la main au membre le plus récemment actif, et ramène le groupe au calme.
           const seen = await r.hgetall(seenKey(code));
